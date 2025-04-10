@@ -84,6 +84,8 @@ class Tokenizer:
         for line_num, line in enumerate(lines, start=1):
             if line.strip() == "":
                 tokens.append(Token("EMPTYLINE", "", line_num, 1))
+            elif line.strip().startswith("#lang"):
+                tokens.append(Token("LANG_DIRECTIVE", line.strip(), line_num, 1))
             else:
                 tokens.extend(self._tokenize_line(line, line_num))
         return tokens
@@ -209,6 +211,14 @@ class ListNode(Node):
         return "(" + " ".join(str(e) for e in self.elements) + ")"
 
 
+@dataclass
+class LangDirective(Node):
+    value: str
+
+    def __str__(self) -> str:
+        return self.value
+
+
 class Parser:
     def __init__(self, tokens: List[Token]) -> None:
         self.tokens = tokens
@@ -226,7 +236,16 @@ class Parser:
         token = self.tokens[self.pos]
         typ = token.typ
         val = token.value
-        if typ == "QUOTE":
+        if typ == "LANG_DIRECTIVE":
+            self.pos += 1
+            return LangDirective(
+                start_line=token.line,
+                start_col=token.col,
+                end_line=token.line,
+                end_col=token.col + len(val),
+                value=val,
+            )
+        elif typ == "QUOTE":
             self.pos += 1
             quoted = self._parse_expr()
             return QuoteNode(
@@ -425,6 +444,8 @@ class Formatter:
                 return "\n".join(lines)
             else:
                 return " " * indent + "()"
+        elif isinstance(node, LangDirective):
+            return " " * indent + node.value
         else:
             raise SExprError("Unknown node type in format_node")
 
