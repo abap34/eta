@@ -7,11 +7,13 @@
     "lambda": 2,
     "library": 2,
     "if": 2,
-    "cond": 2
+    "cond": 2,
+    "let-values": 2,
+    "begin": 1
   },
   "newline_between_list_elements": true,
   "space_before_comment": 0,
-  "max_line_length": 120,
+  "max_line_length": 80,
   "inline_threshold": 120,
   "preserve_comments": true
 }
