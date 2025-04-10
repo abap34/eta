@@ -5,7 +5,7 @@ import os
 import re
 import sys
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 
 
 class SExprError(Exception):
@@ -349,8 +349,6 @@ class Formatter:
             return ""
 
         cfg = self.config
-        iw = cfg.indent_width
-        block_forms = cfg.block_forms
 
         lines: List[str] = [self.format_node(elements[0], indent)]
 
@@ -433,28 +431,42 @@ class Formatter:
     def format_ast(self, ast_nodes: List[Node], indent: int = 0) -> str:
         return "\n".join(self.format_node(node, indent) for node in ast_nodes)
 
+    def _find_split_index(self, line: str, max_len: int) -> Union[int, None]:
+        if len(line) <= max_len:
+            return None
+
+        in_string_or_comment = False
+        for i, c in enumerate(line):
+            if c == '"':
+                in_string_or_comment = not in_string_or_comment
+            elif c == ";":
+                in_string_or_comment = True
+
+            if not in_string_or_comment and c.isspace():
+                # Check if the current character is a space and the line length exceeds max_len
+                if i > max_len:
+                    return i
+
+        return None
+
+    # TODO: handle indent to make indentation consistent
     def apply_max_line_length(self, text: str) -> str:
+        lines = text.splitlines()
         max_len = self.config.max_line_length
-
-        def wrap_line(line: str, indent: int) -> str:
-            if len(line) <= max_len:
-                return line
-            wrapped_lines = []
-            while len(line) > max_len:
-                split_index = line.rfind(" ", 0, max_len)
-                if split_index == -1:
-                    split_index = max_len
-                wrapped_lines.append(line[:split_index])
-                line = line[split_index:].lstrip()
-            if line:
-                wrapped_lines.append(line)
-            return "\n".join(" " * indent + l for l in wrapped_lines)
-
-        wrapped = []
-        for line in text.splitlines():
-            li = len(line) - len(line.lstrip(" "))
-            wrapped.append(wrap_line(line, li))
-        return "\n".join(wrapped)
+        formatted_lines: List[str] = []
+        for line in lines:
+            split_index = self._find_split_index(line, max_len)
+            if split_index is None:
+                # do not need or cannot split
+                formatted_lines.append(line)
+            else:
+                # split the line at the found index
+                first_part = line[:split_index]
+                indent = " " * (len(line) - len(line.lstrip()))
+                second_part = line[split_index:]
+                formatted_lines.append(first_part)
+                formatted_lines.append(indent + second_part)
+        return "\n".join(formatted_lines)
 
     def normalize_newlines(self, text: str) -> str:
         return re.sub(r"\n{3,}", "\n\n", text)
