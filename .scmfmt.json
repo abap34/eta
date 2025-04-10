@@ -1,0 +1,17 @@
+{
+  "indent_width": 2,
+  "newline_after_open_paren": true,
+  "block_forms": {
+    "define": 2,
+    "let": 2,
+    "lambda": 2,
+    "library": 2,
+    "if": 2,
+    "cond": 2
+  },
+  "newline_between_list_elements": true,
+  "space_before_comment": 0,
+  "max_line_length": 120,
+  "inline_threshold": 120,
+  "preserve_comments": true
+}

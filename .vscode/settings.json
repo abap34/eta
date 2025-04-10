@@ -1,0 +1,14 @@
+{
+  "files.associations": {
+    "*.sls": "scheme",
+    "*.scm": "scheme"
+  },
+  "customLocalFormatters.formatters": [
+    {
+      "command": "python3 tools/format.py",
+      "languages": [
+        "scheme"
+      ]
+    }
+  ]
+}
