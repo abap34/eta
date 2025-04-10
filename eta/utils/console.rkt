@@ -4,20 +4,20 @@
 
 (define esc "\x1b")
 
-(define reset (string-append esc "(0m"))
+(define reset (string-append esc "[0m"))
 
-(define bold-code (string-append esc "(1m"))
+(define bold-code (string-append esc "[1m"))
 
 (define color-codes
   (list
-    (cons 'black (string-append esc "(30m"))
-    (cons 'red (string-append esc "(31m"))
-    (cons 'green (string-append esc "(32m"))
-    (cons 'yellow (string-append esc "(33m"))
-    (cons 'blue (string-append esc "(34m"))
-    (cons 'magenta (string-append esc "(35m"))
-    (cons 'cyan (string-append esc "(36m"))
-    (cons 'white (string-append esc "(37m"))
+    (cons 'black (string-append esc "[30m"))
+    (cons 'red (string-append esc "[31m"))
+    (cons 'green (string-append esc "[32m"))
+    (cons 'yellow (string-append esc "[33m"))
+    (cons 'blue (string-append esc "[34m"))
+    (cons 'magenta (string-append esc "[35m"))
+    (cons 'cyan (string-append esc "[36m"))
+    (cons 'white (string-append esc "[37m"))
   ))
 
 ;  get-color-code
