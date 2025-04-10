@@ -15,7 +15,7 @@ install:
 	@rm $(WRAPPER)
 
 test:
-	cd tests && $(SCHEME) --script run-tests.scm
+	$(SCHEME) --script tests/run-tests.scm
 	@echo "Tests completed."
 
 clean:

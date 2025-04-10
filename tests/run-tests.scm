@@ -1,17 +1,9 @@
-(define (run-example-test)
-  (let ((expected 34) (actual (+ (* 3 10) 4)))
-    (if (= expected actual)
-      (begin (display "Test passed!\n") #t)
-      (begin (display "Test failed!\n") #f)
-    )
+(import (rnrs) (tests parser-tests) (tests test-utils))
+
+(display "=== Running eta test suite ===\n")
+
+(let ((state (reset-tests)))
+  (let ((state (run-parser-tests state)))
+    (report-tests state)
   )
 )
-
-(define (main) 
-  (if (run-example-test) 
-    (exit 0) 
-    (exit 1) 
-  )
-)
-
-(main)
