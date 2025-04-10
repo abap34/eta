@@ -1,25 +1,38 @@
-(import (rnrs) (eta repl))
+#lang racket
 
-(define args
-  (command-line)
-)
+(require "eta/repl.rkt")
 
 (define (print-help)
-  (display "eta - a toy Scheme interpreter\n\n")
-  (display "Usage:\n")
-  (display "  eta                    ; Start REPL\n")
-  (display "  eta <file>.scm         ; Run Scheme file\n")
-  (display "  eta --help             ; Show this help\n")
-  (display "  eta --version          ; Show version info\n")
+  (displayln "eta - a toy Scheme interpreter\n")
+  (displayln "Usage:")
+  (displayln "  eta                    ; Start REPL")
+  (displayln "  eta <file>.scm         ; Run Scheme file")
+  (displayln "  eta --help             ; Show this help")
+  (displayln "  eta --version          ; Show version info")
 )
 
 (define (print-version)
-  (display "eta version 0.0.1\n")
+  (displayln "eta version 0.0.1")
 )
 
-(cond ((null? (cdr args)) (init-repl))
-  ((equal? (cadr args) "--help") (print-help))
-  ((equal? (cadr args) "--version") (print-version))
-  ((equal? (cadr args) "--script") (display "eta --script is not implemented yet\n"))
-  (else (display "Unknown command\n"))
+(define args
+  (current-command-line-arguments)
 )
+
+(cond ((= (vector-length args) 0) (init-repl))
+  ((equal? (vector-ref args 0) "--help") (print-help))
+  ((equal? (vector-ref args 0) "--version") (print-version))
+  ((equal? (vector-ref args 0) "--script") (displayln "eta --script is not implemented yet"))
+  (else (displayln "Unknown command"))
+)
+
+(define (main)
+  (cond ((= (vector-length args) 0) (init-repl))
+    ((equal? (vector-ref args 0) "--help") (print-help))
+    ((equal? (vector-ref args 0) "--version") (print-version))
+    ((equal? (vector-ref args 0) "--script") (displayln "eta --script is not implemented yet"))
+    (else (displayln "Unknown command"))
+  )
+)
+
+(main)
