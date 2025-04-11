@@ -6,7 +6,7 @@
 
 (provide Expr              ; Struct type
          make-expr         ; Constructor with type checking
-         pretty-print
+         pretty-print-Expr ; Pretty printer for Expr
          Expr-head
          Expr-args
          Expr-loc
@@ -33,3 +33,46 @@
   (unless (ExprHead? head)
     (error 'make-expr "Expected an ExprHead for 'head', got: ~a" head))
   (Expr head args loc))
+
+
+(define (ExprHead->name head)
+  (match head
+    [Const "Const"]
+    [Var "Var"]
+    [App "App"]
+    [Lambda "Lambda"]
+    [Quote "Quote"]
+    [Define "Define"]
+    [If "If"]
+    [Begin "Begin"]
+    [Let "Let"]
+    [LetRec "LetRec"]
+    [LetStar "LetStar"]
+    [Cond "Cond"]
+    [And "And"]
+    [Or "Or"]
+    [Load "Load"])
+    )
+    
+
+;  pretty-print-Expr
+;     Formats an Expr instance for readable display.
+;  Arguments:
+;      expr - The expression to format (an Expr struct)
+;  Returns:
+;      A string representation of the expression
+;  Example:
+;      (pretty-print-Expr (make-expr Const (list 42) loc)) ; => "Const(42)"
+(define (pretty-print-Expr expr)
+  (match expr
+    [(Expr head args loc)
+     (format "~a(~a)" 
+             (ExprHead->name head) 
+             (string-join 
+              (map (lambda (arg)
+                     (if (Expr? arg)
+                         (pretty-print-Expr arg)
+                         (format "~a" arg)))
+                   args)
+              " "))]
+    [other (format "~a" other)]))
