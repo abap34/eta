@@ -22,7 +22,11 @@
   (match tokens
     [(cons (Token typ val loc) rest)
      (cond
-       [(or (eq? typ Num) (eq? typ Bool) (eq? typ String))
+       [(eq? typ Num)
+        (values (make-expr Const (list (string->number val)) loc) rest)]
+       [(eq? typ Bool)
+        (values (make-expr Const (list (equal? val "#t")) loc) rest)]
+       [(eq? typ String)
         (values (make-expr Const (list val) loc) rest)]
        [else
         (error "Expected constant")])]))
