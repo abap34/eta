@@ -1,6 +1,6 @@
 #lang racket
 
-(require "eta/repl.rkt")
+(require "eta/repl/repl.rkt")
 
 (define (print-help)
   (displayln "eta - a toy Scheme interpreter\n")
