@@ -48,15 +48,24 @@
         (cond
           [(and (eq? typ 'Keyword) (equal? val "quote"))
            (define-values (e1 rest1) (parse-exp after))
-           (define-values (_ __ rest2) (expect-token-type 'RParen rest1))
-           (values (make-expr Quote (list e1) loc) rest2)]
+           (define-values (_ rparen-loc rest2) (expect-token-type 'RParen rest1))
+           (define new-loc 
+             (Location (Location-sline loc) 
+                       (Location-scol loc)
+                       (Location-eline rparen-loc)
+                       (Location-ecol rparen-loc)))
+           (values (make-expr Quote (list e1) new-loc) rest2)]
 
           [else
-           ;; General application
            (define-values (f rest1) (parse-exp rest))
            (define-values (args rest2) (parse-expr-list rest1))
-           (define-values (_ __ rest3) (expect-token-type 'RParen rest2))
-           (values (make-expr App (cons f args) loc) rest3)])]
+           (define-values (_ rparen-loc rest3) (expect-token-type 'RParen rest2))
+           (define new-loc 
+             (Location (Location-sline loc) 
+                       (Location-scol loc)
+                       (Location-eline rparen-loc)
+                       (Location-ecol rparen-loc)))
+           (values (make-expr App (cons f args) new-loc) rest3)])]
        [_ (error "Unexpected form in paren expression")])]
     [_ (error "Expected left paren")]))
 
