@@ -15,16 +15,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Racket
-        uses: Bogdanp/setup-racket@v1.10
-        with:
-          architecture: 'x64'
-          distribution: 'full'
-          variant: 'CS'
-          version: '8.10'
-
-      - name: Install dependencies
         run: |
-          raco pkg install --auto --no-docs rackunit-lib
+          sudo apt-get update
+          sudo apt-get install -y racket
 
       - name: Run tests
         run: |
