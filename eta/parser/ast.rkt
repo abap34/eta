@@ -4,39 +4,32 @@
 (require rebellion/type/enum)
 (require "tokenizer.rkt")
 
-(provide Expr
+(provide Expr              ; Struct type
+         make-expr         ; Constructor with type checking
          pretty-print
          Expr-head
          Expr-args
-         expr-deep-equal?
-         expr-equal?)
+         Expr-loc
+         ExprHead?         ; Type predicate for ExprHead
+         ; Export enum values
+         Const Var App Lambda Quote Define If Begin Let LetRec LetStar Cond And Or Load)
 
 (define-enum-type ExprHead
   (Const Var App Lambda Quote Define If Begin Let LetRec LetStar Cond And Or Load))
 
-
-
-
-
-
 (struct Expr (head args loc) #:transparent)
 
-(define (expr-deep-equal? x y)
-  (cond
-    [(and (Expr? x) (Expr? y)) (expr-equal? x y)]
-    [(and (list? x) (list? y)) (args-equal? x y)]
-    [else (equal? x y)]))
-
-(define (args-equal? a1 a2)
-  (cond
-    [(and (null? a1) (null? a2)) #t]
-    [(or (null? a1) (null? a2)) #f]
-    [else
-     (and (expr-deep-equal? (car a1) (car a2))
-          (args-equal? (cdr a1) (cdr a2)))]))
-
-(define (expr-equal? e1 e2)
-  (and (Expr? e1) (Expr? e2)
-       (eq? (Expr-head e1) (Expr-head e2))
-       (args-equal? (Expr-args e1) (Expr-args e2))
-       (location-equal? (Expr-loc e1) (Expr-loc e2))))
+;  make-expr
+;     Creates a new Expr with type checking for head.
+;  Arguments:
+;      head - The expression head (must be an ExprHead)
+;      args - List of expression arguments
+;      loc - Location information
+;  Returns:
+;      A new Expr instance
+;  Raises:
+;      exn:fail - If head is not an ExprHead
+(define (make-expr head args loc)
+  (unless (ExprHead? head)
+    (error 'make-expr "Expected an ExprHead for 'head', got: ~a" head))
+  (Expr head args loc))
