@@ -1,15 +1,13 @@
 #lang racket
 
-(provide
-  assert-equal
-  report-tests
-  reset-tests
-  make-test-state
-  update-test-state
-  make-indented-output-fn
-  default-output-fn
-  with-error-handling
-)
+(provide assert-equal
+         report-tests
+         reset-tests
+         make-test-state
+         update-test-state
+         make-indented-output-fn
+         default-output-fn
+         with-error-handling)
 
 (require "../eta/utils/console.rkt")
 
@@ -20,8 +18,7 @@
 ;  Returns:
 ;      A list of (test-count . fail-count . error-count).
 (define (make-test-state)
-  (list 0 0 0)
-)
+  (list 0 0 0))
 
 ;  update-test-state
 ;     Updates the test state based on test results.
@@ -32,10 +29,8 @@
 ;      The updated test state.
 (define (update-test-state state passed)
   (if passed
-    (list (+ (car state) 1) (cadr state) (caddr state))
-    (list (+ (car state) 1) (+ (cadr state) 1) (caddr state))
-  )
-)
+      (list (+ (car state) 1) (cadr state) (caddr state))
+      (list (+ (car state) 1) (+ (cadr state) 1) (caddr state))))
 
 ;  update-test-state-with-error
 ;     Updates the test state when an error occurs.
@@ -44,8 +39,7 @@
 ;  Returns:
 ;      The updated test state with incremented error count.
 (define (update-test-state-with-error state)
-  (list (+ (car state) 1) (cadr state) (+ (caddr state) 1))
-)
+  (list (+ (car state) 1) (cadr state) (+ (caddr state) 1)))
 
 ;  reset-tests
 ;     Resets the test state to its initial values.
@@ -54,8 +48,7 @@
 ;  Returns:
 ;      A new test state.
 (define (reset-tests)
-  (make-test-state)
-)
+  (make-test-state))
 
 ;  report-tests
 ;     Reports the test results based on the given state.
@@ -64,31 +57,26 @@
 ;  Returns:
 ;      Never returns.
 (define (report-tests state)
-  (let ((total (car state)) (fails (cadr state)) (errors (caddr state)))
+  (let ([total (car state)]
+        [fails (cadr state)]
+        [errors (caddr state)])
     (display (string-append "Total tests: " (number->string total) "\n"))
 
     (if (= fails 0)
-      (display (colorize "Passed tests: All tests passed!\n" 'green))
-      (display (string-append "Failed tests: " (number->string fails) "\n"))
-    )
+        (display (colorize "Passed tests: All tests passed!\n" 'green))
+        (display (string-append "Failed tests: " (number->string fails) "\n")))
 
     (if (> errors 0)
-      (display (string-append "Error tests: " (number->string errors) "\n"))
-      (void)
-    )
+        (display (string-append "Error tests: " (number->string errors) "\n"))
+        (void))
 
     (if (and (= fails 0) (= errors 0))
-      (begin
-        (display (colorize "All tests passed successfully!\n" 'green))
-        (exit 0)
-      )
-      (begin
-        (display (colorize "Some tests failed or errored!\n" 'red))
-        (exit 1)
-      )
-    )
-  )
-)
+        (begin
+          (display (colorize "All tests passed successfully!\n" 'green))
+          (exit 0))
+        (begin
+          (display (colorize "Some tests failed or errored!\n" 'red))
+          (exit 1)))))
 
 ;  assert-equal
 ;     Asserts that two values are equal and updates the test state.
@@ -100,14 +88,11 @@
 ;  Returns:
 ;      The updated test state.
 (define (assert-equal actual expected msg state output-fn)
-  (let ((passed (equal? actual expected)))
+  (let ([passed (equal? actual expected)])
     (if passed
-      (output-fn (colorize (string-append "✓ " msg) 'green))
-      (output-fn (colorize (string-append "✗ " msg) 'red))
-    )
-    (update-test-state state passed)
-  )
-)
+        (output-fn (colorize (string-append "✓ " msg) 'green))
+        (output-fn (colorize (string-append "✗ " msg) 'red)))
+    (update-test-state state passed)))
 
 ;  with-error-handling
 ;     Evaluates a thunk with error handling.
@@ -119,23 +104,17 @@
 ;  Returns:
 ;      The updated test state.
 ;  Example:
-;      (with-error-handling 
+;      (with-error-handling
 ;        (lambda () (test-function arg1 arg2))
 ;        "Test function X"
 ;        state
 ;        output-fn)
 (define (with-error-handling thunk msg state output-fn)
   (with-handlers
-    ((exn:fail?
-  (lambda (e)
-    (output-fn (colorize (string-append "! Error in " msg ": " (exn-message e)) 'red))
-    (update-test-state-with-error state)
-  )
-)
-    )
-    (thunk)
-  )
-)
+      ([exn:fail? (lambda (e)
+                    (output-fn (colorize (string-append "! Error in " msg ": " (exn-message e)) 'red))
+                    (update-test-state-with-error state))])
+    (thunk)))
 
 ;  make-indented-output-fn
 ;     Creates an output function that adds indentation based on depth.
@@ -151,11 +130,8 @@
 ;        (child-output-fn "World")) ; Output: "  World"
 (define (make-indented-output-fn base-output-fn depth)
   (lambda (msg)
-    (let ((indent (make-string (* depth 2) #\space))) ; 2 spaces per depth level
-      (base-output-fn (string-append indent msg))
-    )
-  )
-)
+    (let ([indent (make-string (* depth 2) #\space)]) ; 2 spaces per depth level
+      (base-output-fn (string-append indent msg)))))
 
 ;  default-output-fn
 ;     Default function for handling test output.
@@ -166,5 +142,4 @@
 ;  Example:
 ;      (default-output-fn "Hello") ; Output: "Hello"
 (define (default-output-fn msg)
-  (display (string-append "│ " msg "\n"))
-)
+  (display (string-append "│ " msg "\n")))
