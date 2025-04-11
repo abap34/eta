@@ -19,7 +19,7 @@
   (let* ([input "42"]
          [tokens (tokenize input)]
          [expr (parse tokens)]
-         [expected (make-expr Const (list "42") (Location 1 1 1 3))])
+         [expected (make-expr Const (list 42) (Location 1 1 1 3))])
     (set! state (assert expr expected "Number constant parsing test")))
 
   (let* ([input "\"hello\""]
@@ -31,13 +31,13 @@
   (let* ([input "#t"]
          [tokens (tokenize input)]
          [expr (parse tokens)]
-         [expected (make-expr Const (list "#t") (Location 1 1 1 3))])
+         [expected (make-expr Const (list #t) (Location 1 1 1 3))])
     (set! state (assert expr expected "Boolean true constant parsing test")))
 
   (let* ([input "#f"]
          [tokens (tokenize input)]
          [expr (parse tokens)]
-         [expected (make-expr Const (list "#f") (Location 1 1 1 3))])
+         [expected (make-expr Const (list #f) (Location 1 1 1 3))])
     (set! state (assert expr expected "Boolean false constant parsing test")))
 
   state)
@@ -82,7 +82,7 @@
   (let* ([input "'42"]
          [expr (parse (tokenize input))]
          [expected (make-expr Quote
-                         (list (make-expr Const (list "42") (Location 1 2 1 4)))
+                         (list (make-expr Const (list 42) (Location 1 2 1 4)))
                          (Location 1 1 1 2))])
     (set! state (assert expr expected "Quoted number parsing test")))
 
@@ -91,9 +91,9 @@
          [expected
           (make-expr Quote
                 (list (make-expr App
-                            (list (make-expr Const (list "1") (Location 1 3 1 4))
-                                  (make-expr Const (list "2") (Location 1 5 1 6))
-                                  (make-expr Const (list "3") (Location 1 7 1 8)))
+                            (list (make-expr Const (list 1) (Location 1 3 1 4))
+                                  (make-expr Const (list 2) (Location 1 5 1 6))
+                                  (make-expr Const (list 3) (Location 1 7 1 8)))
                             (Location 1 2 1 9)))
                 (Location 1 1 1 2))])
     (set! state (assert expr expected "Quoted list parsing test")))
@@ -113,8 +113,8 @@
          [expected
           (make-expr App
                 (list (make-expr Var (list "+") (Location 1 2 1 3))
-                      (make-expr Const (list "1") (Location 1 4 1 5))
-                      (make-expr Const (list "2") (Location 1 6 1 7)))
+                      (make-expr Const (list 1) (Location 1 4 1 5))
+                      (make-expr Const (list 2) (Location 1 6 1 7)))
                 (Location 1 1 1 8))])
     (set! state (assert expr expected "Simple function application parsing test")))
 
@@ -129,9 +129,9 @@
   (set! state (assert (parse (tokenize "(foo 1 \"bar\" #t)"))
                       (make-expr App
                             (list (make-expr Var (list "foo") (Location 1 2 1 5))
-                                  (make-expr Const (list "1") (Location 1 6 1 7))
+                                  (make-expr Const (list 1) (Location 1 6 1 7))
                                   (make-expr Const (list "bar") (Location 1 8 1 13))
-                                  (make-expr Const (list "#t") (Location 1 14 1 16)))
+                                  (make-expr Const (list #t) (Location 1 14 1 16)))
                             (Location 1 1 1 17))
                       "Multi-argument function application parsing test"))
 
@@ -150,11 +150,11 @@
          [expected
           (make-expr App
                 (list (make-expr Var (list "+") (Location 1 2 1 3))
-                      (make-expr Const (list "1") (Location 1 4 1 5))
+                      (make-expr Const (list 1) (Location 1 4 1 5))
                       (make-expr App
                             (list (make-expr Var (list "*") (Location 1 7 1 8))
-                                  (make-expr Const (list "2") (Location 1 9 1 10))
-                                  (make-expr Const (list "3") (Location 1 11 1 12)))
+                                  (make-expr Const (list 2) (Location 1 9 1 10))
+                                  (make-expr Const (list 3) (Location 1 11 1 12)))
                             (Location 1 6 1 13)))
                 (Location 1 1 1 14))])
     (set! state (assert expr expected "Nested function application parsing test")))
