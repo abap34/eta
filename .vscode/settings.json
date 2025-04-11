@@ -5,7 +5,7 @@
   },
   "customLocalFormatters.formatters": [
     {
-      "command": "python3 tools/format.py",
+      "command": "tee tmp/tmp.rkt | raco fmt tmp/tmp.rkt",
       "languages": [
         "scheme"
       ]
