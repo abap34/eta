@@ -1,15 +1,13 @@
-
 #lang racket
 
 (require rebellion/type/enum)
 
-(provide tokenize Token Location)
+(provide tokenize Token Location location-equal? Location? Location-sline Location-scol 
+         Location-eline Location-ecol )
 
 (define-enum-type TokenType (LParen RParen Dot Quote Bool Num String Keyword Id EOF))
 (struct Location (sline scol eline ecol) #:transparent)
 (struct Token (typ val loc) #:transparent)
-
-
 
 
 (define (tokenize src)
@@ -121,3 +119,12 @@
 
   (tokenize-loop 0 1 1)
   )
+
+
+(define (location-equal? l1 l2)
+  (and (= (Location-sline l1) (Location-sline l2))
+       (= (Location-scol l1) (Location-scol l2))
+       (= (Location-eline l1) (Location-eline l2))
+       (= (Location-ecol l1) (Location-ecol l2))))
+
+
