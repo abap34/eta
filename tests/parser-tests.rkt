@@ -3,626 +3,253 @@
 (provide run-parser-tests)
 (require "test-utils.rkt"
          "../eta/parser/ast.rkt"
+         "../eta/parser/tokenizer.rkt"
          "../eta/parser/parser.rkt")
 
-(define (test-const state output-fn)
-  (output-fn "Running test-const...")
+(define (assert-expr-equal actual expected msg state output-fn)
+  (assert-equal actual expected msg state output-fn #:cmp expr-equal?))
 
-  (let* ([input "#t"]
-         [parsed (parse input)]
-         [expected (Expr 'const (list #t))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Const test for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
+;; test-expr-equal
+;;     Tests expr-equal? function itself.
+(define (test-expr-equal state output-fn)
+  (output-fn "Running test-expr-equal...")
 
-  (let* ([input "#f"]
-         [parsed (parse input)]
-         [expected (Expr 'const (list #f))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Const test for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
+  (define assert (lambda (actual expected msg)
+                   (assert-equal actual expected msg state (make-indented-output-fn output-fn 1))))
 
-  (let* ([input "123"]
-         [parsed (parse input)]
-         [expected (Expr 'const (list 123))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Const test for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
+  ;; Shared locations
+  (define loc1 (Location 1 1 1 2))
+  (define loc2 (Location 1 1 1 2)) ;; equal to loc1
+  (define loc3 (Location 2 1 2 2)) ;; different
+
+  ;; 1. same Expr (identical contents)
+  (define e1 (Expr 'const (list "42") loc1))
+  (define e2 (Expr 'const (list "42") loc2))
+  (set! state (assert (expr-equal? e1 e2) #t "Same const exprs should be equal"))
+
+  ;; 2. value differs
+  (define e3 (Expr 'const (list "43") loc1))
+  (set! state (assert (expr-equal? e1 e3) #f "Exprs with different const values should not be equal"))
+
+  ;; 3. location differs
+  (define e4 (Expr 'const (list "42") loc3))
+  (set! state (assert (expr-equal? e1 e4) #f "Exprs with different locations should not be equal"))
+
+  ;; 4. head differs
+  (define e5 (Expr 'var (list "42") loc1))
+  (set! state (assert (expr-equal? e1 e5) #f "Exprs with different heads should not be equal"))
+
+  ;; 5. multiple args, same order
+  (define e6 (Expr 'app (list (Expr 'var (list "+") loc1)
+                              (Expr 'const (list "1") loc1)
+                              (Expr 'const (list "2") loc1))
+                   loc1))
+  (define e7 (Expr 'app (list (Expr 'var (list "+") loc2)
+                              (Expr 'const (list "1") loc2)
+                              (Expr 'const (list "2") loc2))
+                   loc2))
+  (set! state (assert (expr-equal? e6 e7) #t "Function applications with same structure should be equal"))
+
+  ;; 6. multiple args, different order
+  (define e8 (Expr 'app (list (Expr 'var (list "+") loc1)
+                              (Expr 'const (list "2") loc1)
+                              (Expr 'const (list "1") loc1))
+                   loc1))
+  (set! state (assert (expr-equal? e6 e8) #f "Function applications with different argument order should not be equal"))
+
+  ;; 7. nested exprs, deep equality
+  (define e9 (Expr 'quote (list (Expr 'var (list "x") loc1)) loc1))
+  (define e10 (Expr 'quote (list (Expr 'var (list "x") loc2)) loc2))
+  (set! state (assert (expr-equal? e9 e10) #t "Nested exprs with same structure should be equal"))
+
+  ;; 8. nested exprs, inner value differs
+  (define e11 (Expr 'quote (list (Expr 'var (list "y") loc1)) loc1))
+  (set! state (assert (expr-equal? e9 e11) #f "Nested exprs with different inner var should not be equal"))
+
+  state)
+
+
+;; test-constant-parsing
+;;     Tests for constant parsing (number, string, boolean)
+(define (test-constant-parsing state output-fn)
+  (output-fn "Running test-constant-parsing...")
+
+  (define assert (lambda (a e m)
+                   (assert-expr-equal a e m state (make-indented-output-fn output-fn 1))))
+
+  (let* ([input "42"]
+         [tokens (tokenize input)]
+         [expr (parse tokens)]
+         [expected (Expr 'const (list "42") (Location 1 1 1 3))])
+    (set! state (assert expr expected "Number constant parsing test")))
 
   (let* ([input "\"hello\""]
-         [parsed (parse input)]
-         [expected (Expr 'const (list "hello"))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Const test for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
+         [tokens (tokenize input)]
+         [expr (parse tokens)]
+         [expected (Expr 'const (list "hello") (Location 1 1 1 8))])
+    (set! state (assert expr expected "String constant parsing test")))
 
-  (let* ([input "()"]
-         [parsed (parse input)]
-         [expected (Expr 'const '(()))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Const test for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
+  (let* ([input "#t"]
+         [tokens (tokenize input)]
+         [expr (parse tokens)]
+         [expected (Expr 'const (list "#t") (Location 1 1 1 3))])
+    (set! state (assert expr expected "Boolean true constant parsing test")))
+
+  (let* ([input "#f"]
+         [tokens (tokenize input)]
+         [expr (parse tokens)]
+         [expected (Expr 'const (list "#f") (Location 1 1 1 3))])
+    (set! state (assert expr expected "Boolean false constant parsing test")))
+
+  state)
+
+;; test-variable-parsing
+;;     Tests for parsing variables (simple, complex, symbolic)
+(define (test-variable-parsing state output-fn)
+  (output-fn "Running test-variable-parsing...")
+
+  (define assert (lambda (a e m)
+                   (assert-expr-equal a e m state (make-indented-output-fn output-fn 1))))
+
+  (set! state (assert (parse (tokenize "x"))
+                      (Expr 'var (list "x") (Location 1 1 1 2))
+                      "Simple variable parsing test"))
+
+  (set! state (assert (parse (tokenize "hello-world!"))
+                      (Expr 'var (list "hello-world!") (Location 1 1 1 13))
+                      "Complex variable name parsing test"))
+
+  (set! state (assert (parse (tokenize "+"))
+                      (Expr 'var (list "+") (Location 1 1 1 2))
+                      "Symbolic variable parsing test"))
+
+  state)
+
+;; test-quote-parsing
+;;     Tests for parsing quoted expressions
+(define (test-quote-parsing state output-fn)
+  (output-fn "Running test-quote-parsing...")
+
+  (define assert (lambda (a e m)
+                   (assert-expr-equal a e m state (make-indented-output-fn output-fn 1))))
+
   (let* ([input "'x"]
-         [parsed (parse input)]
-         [expected (Expr 'quote (list (Expr 'id (list 'x))))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Const test for " input " => 'x")
-                        state
-                        (make-indented-output-fn output-fn 1))))
+         [expr (parse (tokenize input))]
+         [expected (Expr 'quote
+                         (list (Expr 'var (list "x") (Location 1 2 1 3)))
+                         (Location 1 1 1 2))])
+    (set! state (assert expr expected "Quoted variable parsing test")))
 
-  (let* ([input "-42"]
-         [parsed (parse input)]
-         [expected (Expr 'const (list -42))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Const test for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
-
-  (let* ([input "3.14"]
-         [parsed (parse input)]
-         [expected (Expr 'const (list 3.14))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Const test for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
-
-  (let* ([input "'()"]
-         [parsed (parse input)]
-         [expected (Expr 'quote (list (Expr 'const '(()))))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Const test for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
+  (let* ([input "'42"]
+         [expr (parse (tokenize input))]
+         [expected (Expr 'quote
+                         (list (Expr 'const (list "42") (Location 1 2 1 4)))
+                         (Location 1 1 1 2))])
+    (set! state (assert expr expected "Quoted number parsing test")))
 
   (let* ([input "'(1 2 3)"]
-         [parsed (parse input)]
-         [expected (Expr 'quote
-                         (list (Expr 'application
-                                     (list (Expr 'const (list 1))
-                                           (Expr 'const (list 2))
-                                           (Expr 'const (list 3))))))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Const test for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
-
-  (let* ([input "#\\a"]
-         [parsed (parse input)]
-         [expected (Expr 'const (list #\a))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Const test for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
+         [expr (parse (tokenize input))]
+         [expected
+          (Expr 'quote
+                (list (Expr 'app
+                            (list (Expr 'const (list "1") (Location 1 3 1 4))
+                                  (Expr 'const (list "2") (Location 1 5 1 6))
+                                  (Expr 'const (list "3") (Location 1 7 1 8)))
+                            (Location 1 2 1 9)))
+                (Location 1 1 1 2))])
+    (set! state (assert expr expected "Quoted list parsing test")))
 
   state)
 
-(define (test-id state output-fn)
-  (output-fn "Running test-id...")
+;; test-application-parsing
+;;     Tests for function application
+(define (test-application-parsing state output-fn)
+  (output-fn "Running test-application-parsing...")
 
-  (let* ([input "x"]
-         [parsed (parse input)]
-         [expected (Expr 'id (list 'x))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Id test for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
+  (define assert (lambda (a e m)
+                   (assert-expr-equal a e m state (make-indented-output-fn output-fn 1))))
 
-  (let* ([input "hello-world!"]
-         [parsed (parse input)]
-         [expected (Expr 'id (list 'hello-world!))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Id test for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
+  (let* ([input "(+ 1 2)"]
+         [expr (parse (tokenize input))]
+         [expected
+          (Expr 'app
+                (list (Expr 'var (list "+") (Location 1 2 1 3))
+                      (Expr 'const (list "1") (Location 1 4 1 5))
+                      (Expr 'const (list "2") (Location 1 6 1 7)))
+                (Location 1 1 1 8))])
+    (set! state (assert expr expected "Simple function application parsing test")))
 
-  (let* ([input "x2"]
-         [parsed (parse input)]
-         [expected (Expr 'id (list 'x2))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Id test for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
+  ;; (foo)
+  (set! state (assert (parse (tokenize "(foo)"))
+                      (Expr 'app
+                            (list (Expr 'var (list "foo") (Location 1 2 1 5)))
+                            (Location 1 1 1 6))
+                      "No-argument function application parsing test"))
 
-  (let* ([input "+"]
-         [parsed (parse input)]
-         [expected (Expr 'id (list '+))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Id test for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
-
-  (let* ([input "set!"]
-         [parsed (parse input)]
-         [expected (Expr 'id (list 'set!))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Id test for special form name " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
-
-  (let* ([input "->string"]
-         [parsed (parse input)]
-         [expected (Expr 'id (list '->string))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Id test for arrow symbol " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
-
-  (let* ([input "*multiply*"]
-         [parsed (parse input)]
-         [expected (Expr 'id (list '*multiply*))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Id test for symbol with asterisks " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
+  ;; (foo 1 "bar" #t)
+  (set! state (assert (parse (tokenize "(foo 1 \"bar\" #t)"))
+                      (Expr 'app
+                            (list (Expr 'var (list "foo") (Location 1 2 1 5))
+                                  (Expr 'const (list "1") (Location 1 6 1 7))
+                                  (Expr 'const (list "bar") (Location 1 8 1 13))
+                                  (Expr 'const (list "#t") (Location 1 14 1 16)))
+                            (Location 1 1 1 17))
+                      "Multi-argument function application parsing test"))
 
   state)
 
-(define (test-lambda state output-fn)
-  (output-fn "Running test-lambda...")
+;; test-complex-expressions
+;;     Tests for nested and mixed expressions
+(define (test-complex-expressions state output-fn)
+  (output-fn "Running test-complex-expressions...")
 
-  (let* ([input "(lambda (x) x)"]
-         [parsed (parse input)]
-         [expected (Expr 'lambda (list (Expr 'args (list 'x)) (Expr 'id (list 'x))))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Lambda test for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
+  (define assert (lambda (a e m)
+                   (assert-expr-equal a e m state (make-indented-output-fn output-fn 1))))
 
-  (let* ([input "(lambda (x y) (+ x y))"]
-         [parsed (parse input)]
+  ;; (+ 1 (* 2 3))
+  (let* ([expr (parse (tokenize "(+ 1 (* 2 3))"))]
          [expected
-          (Expr 'lambda
-                (list (Expr 'args (list 'x 'y))
-                      (Expr 'application
-                            (list (Expr 'id (list '+)) (Expr 'id (list 'x)) (Expr 'id (list 'y))))))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Lambda test for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
+          (Expr 'app
+                (list (Expr 'var (list "+") (Location 1 2 1 3))
+                      (Expr 'const (list "1") (Location 1 4 1 5))
+                      (Expr 'app
+                            (list (Expr 'var (list "*") (Location 1 7 1 8))
+                                  (Expr 'const (list "2") (Location 1 9 1 10))
+                                  (Expr 'const (list "3") (Location 1 11 1 12)))
+                            (Location 1 6 1 13)))
+                (Location 1 1 1 14))])
+    (set! state (assert expr expected "Nested function application parsing test")))
 
-  (let* ([input "(lambda () 42)"]
-         [parsed (parse input)]
-         [expected (Expr 'lambda (list (Expr 'args '()) (Expr 'const (list 42))))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Lambda test with no args for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
-
-  (let* ([input "(lambda (x y) (+ x y) (* x y))"]
-         [parsed (parse input)]
+  ;; (cons 'a '(b c))
+  (let* ([expr (parse (tokenize "(cons 'a '(b c))"))]
          [expected
-          (Expr 'lambda
-                (list (Expr 'args (list 'x 'y))
-                      (Expr 'application
-                            (list (Expr 'id (list '+)) (Expr 'id (list 'x)) (Expr 'id (list 'y))))
-                      (Expr 'application
-                            (list (Expr 'id (list '*)) (Expr 'id (list 'x)) (Expr 'id (list 'y))))))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Lambda test with multiple body expressions for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
-
-  (let* ([input "(lambda (x . rest) rest)"]
-         [parsed (parse input)]
-         [expected
-          (Expr 'lambda (list (Expr 'args (list 'x)) (Expr 'varargs 'rest) (Expr 'id (list 'rest))))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Lambda test with dotted pair args for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
+          (Expr 'app
+                (list (Expr 'var (list "cons") (Location 1 2 1 6))
+                      (Expr 'quote
+                            (list (Expr 'var (list "a") (Location 1 8 1 9)))
+                            (Location 1 7 1 8))
+                      (Expr 'quote
+                            (list (Expr 'app
+                                        (list (Expr 'var (list "b") (Location 1 12 1 13))
+                                              (Expr 'var (list "c") (Location 1 14 1 15)))
+                                        (Location 1 11 1 16)))
+                            (Location 1 10 1 11)))
+                (Location 1 1 1 17))])
+    (set! state (assert expr expected "Quote and application combination test")))
 
   state)
 
-(define (test-application state output-fn)
-  (output-fn "Running test-application...")
-
-  (let* ([input "(f x)"]
-         [parsed (parse input)]
-         [expected (Expr 'application (list (Expr 'id (list 'f)) (Expr 'id (list 'x))))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Application test for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
-
-  (let* ([input "(f x y)"]
-         [parsed (parse input)]
-         [expected (Expr 'application
-                         (list (Expr 'id (list 'f)) (Expr 'id (list 'x)) (Expr 'id (list 'y))))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Application test for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
-
-  (let* ([input "((lambda (x) x) 42)"]
-         [parsed (parse input)]
-         [expected (Expr 'application
-                         (list (Expr 'lambda (list (Expr 'args (list 'x)) (Expr 'id (list 'x))))
-                               (Expr 'const (list 42))))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Application test for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
-
-  (let* ([input "(+ 1 (- 3 2))"]
-         [parsed (parse input)]
-         [expected (Expr 'application
-                         (list (Expr 'id (list '+))
-                               (Expr 'const (list 1))
-                               (Expr 'application
-                                     (list (Expr 'id (list '-))
-                                           (Expr 'const (list 3))
-                                           (Expr 'const (list 2))))))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Nested application test for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
-
-  (let* ([input "(apply + '(1 2 3))"]
-         [parsed (parse input)]
-         [expected (Expr 'application
-                         (list (Expr 'id (list 'apply))
-                               (Expr 'id (list '+))
-                               (Expr 'quote
-                                     (list (Expr 'application
-                                                 (list (Expr 'const (list 1))
-                                                       (Expr 'const (list 2))
-                                                       (Expr 'const (list 3))))))))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Application with quoted list for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
-
-  (let* ([input "((if #t + -) 3 4)"]
-         [parsed (parse input)]
-         [expected
-          (Expr 'application
-                (list (Expr 'if
-                            (list (Expr 'const (list #t)) (Expr 'id (list '+)) (Expr 'id (list '-))))
-                      (Expr 'const (list 3))
-                      (Expr 'const (list 4))))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Application with conditional operator for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
-
-  state)
-
-(define (test-define state output-fn)
-  (output-fn "Running test-define...")
-
-  (let* ([input "(define x 42)"]
-         [parsed (parse input)]
-         [expected (Expr 'define (list (Expr 'id (list 'x)) (Expr 'const (list 42))))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Define test for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
-
-  (let* ([input "(define (f x) (+ x 1))"]
-         [parsed (parse input)]
-         [expected (Expr 'define
-                         (list (Expr 'id (list 'f))
-                               (Expr 'args (list 'x))
-                               (Expr 'application
-                                     (list (Expr 'id (list '+))
-                                           (Expr 'id (list 'x))
-                                           (Expr 'const (list 1))))))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Define test for function form " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
-
-  (let* ([input "(define x (lambda (y) (+ y 1)))"]
-         [parsed (parse input)]
-         [expected (Expr 'define
-                         (list (Expr 'id (list 'x))
-                               (Expr 'lambda
-                                     (list (Expr 'args (list 'y))
-                                           (Expr 'application
-                                                 (list (Expr 'id (list '+))
-                                                       (Expr 'id (list 'y))
-                                                       (Expr 'const (list 1))))))))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Define test with lambda " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
-
-  (let* ([input "(define (f x . args) (apply + x args))"]
-         [parsed (parse input)]
-         [expected (Expr 'define
-                         (list (Expr 'id (list 'f))
-                               (Expr 'args (list 'x))
-                               (Expr 'varargs 'args)
-                               (Expr 'application
-                                     (list (Expr 'id (list 'apply))
-                                           (Expr 'id (list '+))
-                                           (Expr 'id (list 'x))
-                                           (Expr 'id (list 'args))))))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Define test with variadic args " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
-
-  state)
-
-(define (test-if state output-fn)
-  (output-fn "Running test-if...")
-
-  (let* ([input "(if #t 1 2)"]
-         [parsed (parse input)]
-         [expected
-          (Expr 'if (list (Expr 'const (list #t)) (Expr 'const (list 1)) (Expr 'const (list 2))))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Basic if test for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
-
-  (let* ([input "(if (> x 0) (+ x 1) (- x 1))"]
-         [parsed (parse input)]
-         [expected
-          (Expr
-           'if
-           (list (Expr 'application
-                       (list (Expr 'id (list '>)) (Expr 'id (list 'x)) (Expr 'const (list 0))))
-                 (Expr 'application
-                       (list (Expr 'id (list '+)) (Expr 'id (list 'x)) (Expr 'const (list 1))))
-                 (Expr 'application
-                       (list (Expr 'id (list '-)) (Expr 'id (list 'x)) (Expr 'const (list 1))))))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Complex if test for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
-
-  (let* ([input "(if #f 1)"]
-         [parsed (parse input)]
-         [expected (Expr 'if (list (Expr 'const (list #f)) (Expr 'const (list 1))))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "If without else for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
-
-  state)
-
-(define (test-let state output-fn)
-  (output-fn "Running test-let...")
-
-  (let* ([input "(let ((x 1) (y 2)) (+ x y))"]
-         [parsed (parse input)]
-         [expected
-          (Expr 'let
-                (list (Expr 'bindings
-                            (list (Expr 'binding (list 'x (Expr 'const (list 1))))
-                                  (Expr 'binding (list 'y (Expr 'const (list 2))))))
-                      (Expr 'application
-                            (list (Expr 'id (list '+)) (Expr 'id (list 'x)) (Expr 'id (list 'y))))))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Basic let test for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
-
-  (let* ([input "(let ((x 1)) (let ((y (+ x 1))) (* x y)))"]
-         [parsed (parse input)]
-         [expected
-          (Expr 'let
-                (list (Expr 'bindings (list (Expr 'binding (list 'x (Expr 'const (list 1))))))
-                      (Expr 'let
-                            (list (Expr 'bindings
-                                        (list (Expr 'binding
-                                                    (list 'y
-                                                          (Expr 'application
-                                                                (list (Expr 'id (list '+))
-                                                                      (Expr 'id (list 'x))
-                                                                      (Expr 'const (list 1))))))))
-                                  (Expr 'application
-                                        (list (Expr 'id (list '*))
-                                              (Expr 'id (list 'x))
-                                              (Expr 'id (list 'y))))))))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Nested let test for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
-
-  (let* ([input "(let () 42)"]
-         [parsed (parse input)]
-         [expected (Expr 'let (list (Expr 'bindings '()) (Expr 'const (list 42))))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Let with no bindings for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
-
-  (let* ([input "(let ((x 1)) (set! x 2) x)"]
-         [parsed (parse input)]
-         [expected (Expr 'let
-                         (list (Expr 'bindings
-                                     (list (Expr 'binding (list 'x (Expr 'const (list 1))))))
-                               (Expr 'set! (list (Expr 'id (list 'x)) (Expr 'const (list 2))))
-                               (Expr 'id (list 'x))))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Let with multiple expressions for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
-
-  state)
-
-(define (test-begin-and-set state output-fn)
-  (output-fn "Running test-begin-and-set...")
-
-  (let* ([input "(begin (define x 1) (set! x 2) x)"]
-         [parsed (parse input)]
-         [expected (Expr 'begin
-                         (list (Expr 'define (list (Expr 'id (list 'x)) (Expr 'const (list 1))))
-                               (Expr 'set! (list (Expr 'id (list 'x)) (Expr 'const (list 2))))
-                               (Expr 'id (list 'x))))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Basic begin test for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
-
-  (let* ([input "(begin)"]
-         [parsed (parse input)]
-         [expected (Expr 'begin '())])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Empty begin test for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
-
-  (let* ([input "(begin 1)"]
-         [parsed (parse input)]
-         [expected (Expr 'begin (list (Expr 'const (list 1))))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Begin with single expr for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
-
-  (let* ([input "(set! x 42)"]
-         [parsed (parse input)]
-         [expected (Expr 'set! (list (Expr 'id (list 'x)) (Expr 'const (list 42))))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Basic set! test for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
-
-  (let* ([input "(set! result (f x y))"]
-         [parsed (parse input)]
-         [expected
-          (Expr 'set!
-                (list (Expr 'id (list 'result))
-                      (Expr 'application
-                            (list (Expr 'id (list 'f)) (Expr 'id (list 'x)) (Expr 'id (list 'y))))))])
-    (set! state
-          (assert-equal parsed
-                        expected
-                        (string-append "Set! with complex expr for " input)
-                        state
-                        (make-indented-output-fn output-fn 1))))
-
-  state)
-
+;; run-parser-tests
+;;     Runs all parser-related tests.
 (define (run-parser-tests state output-fn)
   (output-fn "Running parser tests...")
-  (let ([child-output-fn (make-indented-output-fn output-fn 1)])
-    (let ([state (with-error-handling (lambda () (test-const state child-output-fn))
-                                      "test-const"
-                                      state
-                                      child-output-fn)])
-      (let ([state (with-error-handling (lambda () (test-id state child-output-fn))
-                                        "test-id"
-                                        state
-                                        child-output-fn)])
-        (let ([state (with-error-handling (lambda () (test-lambda state child-output-fn))
-                                          "test-lambda"
-                                          state
-                                          child-output-fn)])
-          (let ([state (with-error-handling (lambda () (test-application state child-output-fn))
-                                            "test-application"
-                                            state
-                                            child-output-fn)])
-            (let ([state (with-error-handling (lambda () (test-define state child-output-fn))
-                                              "test-define"
-                                              state
-                                              child-output-fn)])
-              (let ([state (with-error-handling (lambda () (test-if state child-output-fn))
-                                                "test-if"
-                                                state
-                                                child-output-fn)])
-                (let ([state (with-error-handling (lambda () (test-let state child-output-fn))
-                                                  "test-let"
-                                                  state
-                                                  child-output-fn)])
-                  (with-error-handling (lambda () (test-begin-and-set state child-output-fn))
-                                       "test-begin-and-set"
-                                       state
-                                       child-output-fn))))))))))
+  (let ([out (make-indented-output-fn output-fn 1)])
+    (for/fold ([s state])
+              ([f (list test-expr-equal  ; 👈 ここに追加！
+                        test-constant-parsing
+                        test-variable-parsing
+                        test-quote-parsing
+                        test-application-parsing
+                        test-complex-expressions)])
+      (with-error-handling (lambda () (f s out))
+        (symbol->string (object-name f)) s out))))
