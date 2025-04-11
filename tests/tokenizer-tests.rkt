@@ -16,7 +16,7 @@
 
   (let* ([input "("]
          [tokens (tokenize input)]
-         [expected (list (Token 'LParen "(" (Location 1 1 1 2)))])
+         [expected (list (Token LParen "(" (Location 1 1 1 2)))])
     (set! state (assert-equal tokens expected
                               "LParen token test"
                               state
@@ -24,7 +24,7 @@
 
   (let* ([input ")"]
          [tokens (tokenize input)]
-         [expected (list (Token 'RParen ")" (Location 1 1 1 2)))])
+         [expected (list (Token RParen ")" (Location 1 1 1 2)))])
     (set! state (assert-equal tokens expected
                               "RParen token test"
                               state
@@ -32,7 +32,7 @@
 
   (let* ([input "."]
          [tokens (tokenize input)]
-         [expected (list (Token 'Dot "." (Location 1 1 1 2)))])
+         [expected (list (Token Dot "." (Location 1 1 1 2)))])
     (set! state (assert-equal tokens expected
                               "Dot token test"
                               state
@@ -40,7 +40,7 @@
 
   (let* ([input "'"]
          [tokens (tokenize input)]
-         [expected (list (Token 'Quote "'" (Location 1 1 1 2)))])
+         [expected (list (Token QuoteSym "'" (Location 1 1 1 2)))])
     (set! state (assert-equal tokens expected
                               "Quote token test"
                               state
@@ -49,8 +49,8 @@
   (let* ([input "()"]
          [tokens (tokenize input)]
          [expected (list
-                    (Token 'LParen "(" (Location 1 1 1 2))
-                    (Token 'RParen ")" (Location 1 2 1 3)))])
+                    (Token LParen "(" (Location 1 1 1 2))
+                    (Token RParen ")" (Location 1 2 1 3)))])
     (set! state (assert-equal tokens expected
                               "Multiple token test for parentheses"
                               state
@@ -59,11 +59,11 @@
   (let* ([input "(a . b)"]
          [tokens (tokenize input)]
          [expected (list
-                    (Token 'LParen "(" (Location 1 1 1 2))
-                    (Token 'Id "a" (Location 1 2 1 3))
-                    (Token 'Dot "." (Location 1 4 1 5))
-                    (Token 'Id "b" (Location 1 6 1 7))
-                    (Token 'RParen ")" (Location 1 7 1 8)))])
+                    (Token LParen "(" (Location 1 1 1 2))
+                    (Token Id "a" (Location 1 2 1 3))
+                    (Token Dot "." (Location 1 4 1 5))
+                    (Token Id "b" (Location 1 6 1 7))
+                    (Token RParen ")" (Location 1 7 1 8)))])
     (set! state (assert-equal tokens expected
                               "Dotted pair token test"
                               state
@@ -83,7 +83,7 @@
 
   (let* ([input "#t"]
          [tokens (tokenize input)]
-         [expected (list (Token 'Bool "#t" (Location 1 1 1 3)))])
+         [expected (list (Token Bool "#t" (Location 1 1 1 3)))])
     (set! state (assert-equal tokens expected
                               "True boolean token test"
                               state
@@ -91,7 +91,7 @@
 
   (let* ([input "#f"]
          [tokens (tokenize input)]
-         [expected (list (Token 'Bool "#f" (Location 1 1 1 3)))])
+         [expected (list (Token Bool "#f" (Location 1 1 1 3)))])
     (set! state (assert-equal tokens expected
                               "False boolean token test"
                               state
@@ -100,12 +100,12 @@
   (let* ([input "(if #t 1 #f)"]
          [tokens (tokenize input)]
          [expected (list
-                    (Token 'LParen "(" (Location 1 1 1 2))
-                    (Token 'Keyword "if" (Location 1 2 1 4))
-                    (Token 'Bool "#t" (Location 1 5 1 7))
-                    (Token 'Num "1" (Location 1 8 1 9))
-                    (Token 'Bool "#f" (Location 1 10 1 12))
-                    (Token 'RParen ")" (Location 1 12 1 13)))])
+                    (Token LParen "(" (Location 1 1 1 2))
+                    (Token Keyword "if" (Location 1 2 1 4))
+                    (Token Bool "#t" (Location 1 5 1 7))
+                    (Token Num "1" (Location 1 8 1 9))
+                    (Token Bool "#f" (Location 1 10 1 12))
+                    (Token RParen ")" (Location 1 12 1 13)))])
     (set! state (assert-equal tokens expected
                               "Boolean in expression test"
                               state
@@ -125,7 +125,7 @@
 
   (let* ([input "123"]
          [tokens (tokenize input)]
-         [expected (list (Token 'Num "123" (Location 1 1 1 4)))])
+         [expected (list (Token Num "123" (Location 1 1 1 4)))])
     (set! state (assert-equal tokens expected
                               "Simple number token test"
                               state
@@ -134,8 +134,8 @@
   (let* ([input "123 456"]
          [tokens (tokenize input)]
          [expected (list
-                    (Token 'Num "123" (Location 1 1 1 4))
-                    (Token 'Num "456" (Location 1 5 1 8)))])
+                    (Token Num "123" (Location 1 1 1 4))
+                    (Token Num "456" (Location 1 5 1 8)))])
     (set! state (assert-equal tokens expected
                               "Multiple number token test"
                               state
@@ -144,11 +144,11 @@
   (let* ([input "(+ 1 2)"]
          [tokens (tokenize input)]
          [expected (list
-                    (Token 'LParen "(" (Location 1 1 1 2))
-                    (Token 'Id "+" (Location 1 2 1 3))
-                    (Token 'Num "1" (Location 1 4 1 5))
-                    (Token 'Num "2" (Location 1 6 1 7))
-                    (Token 'RParen ")" (Location 1 7 1 8)))])
+                    (Token LParen "(" (Location 1 1 1 2))
+                    (Token Id "+" (Location 1 2 1 3))
+                    (Token Num "1" (Location 1 4 1 5))
+                    (Token Num "2" (Location 1 6 1 7))
+                    (Token RParen ")" (Location 1 7 1 8)))])
     (set! state (assert-equal tokens expected
                               "Numbers in expression test"
                               state
@@ -168,7 +168,7 @@
 
   (let* ([input "\"hello\""]
          [tokens (tokenize input)]
-         [expected (list (Token 'String "hello" (Location 1 1 1 8)))])
+         [expected (list (Token String "hello" (Location 1 1 1 8)))])
     (set! state (assert-equal tokens expected
                               "Simple string token test"
                               state
@@ -176,7 +176,7 @@
 
   (let* ([input "\"hello\\\"world\""]
          [tokens (tokenize input)]
-         [expected (list (Token 'String "hello\"world" (Location 1 1 1 15)))])
+         [expected (list (Token String "hello\"world" (Location 1 1 1 15)))])
     (set! state (assert-equal tokens expected
                               "String with escaped quote test"
                               state
@@ -184,7 +184,7 @@
 
   (let* ([input "\"line1\\nline2\\tindent\""]
          [tokens (tokenize input)]
-         [expected (list (Token 'String (string-append "line1" (string #\newline) "line2" (string #\tab) "indent")
+         [expected (list (Token String (string-append "line1" (string #\newline) "line2" (string #\tab) "indent")
                                 (Location 1 1 1 23)))])
     (set! state (assert-equal tokens expected
                               "String with special escapes test"
@@ -194,10 +194,10 @@
   (let* ([input "(display \"hello\")"]
          [tokens (tokenize input)]
          [expected (list
-                    (Token 'LParen "(" (Location 1 1 1 2))
-                    (Token 'Id "display" (Location 1 2 1 9))
-                    (Token 'String "hello" (Location 1 10 1 17))
-                    (Token 'RParen ")" (Location 1 17 1 18)))])
+                    (Token LParen "(" (Location 1 1 1 2))
+                    (Token Id "display" (Location 1 2 1 9))
+                    (Token String "hello" (Location 1 10 1 17))
+                    (Token RParen ")" (Location 1 17 1 18)))])
     (set! state (assert-equal tokens expected
                               "String in expression test"
                               state
@@ -217,7 +217,7 @@
 
   (let* ([input "define"]
          [tokens (tokenize input)]
-         [expected (list (Token 'Keyword "define" (Location 1 1 1 7)))])
+         [expected (list (Token Keyword "define" (Location 1 1 1 7)))])
     (set! state (assert-equal tokens expected
                               "define keyword test"
                               state
@@ -225,7 +225,7 @@
 
   (let* ([input "lambda"]
          [tokens (tokenize input)]
-         [expected (list (Token 'Keyword "lambda" (Location 1 1 1 7)))])
+         [expected (list (Token Keyword "lambda" (Location 1 1 1 7)))])
     (set! state (assert-equal tokens expected
                               "lambda keyword test"
                               state
@@ -234,19 +234,19 @@
   (let* ([input "let let* letrec if cond quote set! and or begin do load else"]
          [tokens (tokenize input)]
          [expected (list
-                    (Token 'Keyword "let" (Location 1 1 1 4))
-                    (Token 'Keyword "let*" (Location 1 5 1 9))
-                    (Token 'Keyword "letrec" (Location 1 10 1 16))
-                    (Token 'Keyword "if" (Location 1 17 1 19))
-                    (Token 'Keyword "cond" (Location 1 20 1 24))
-                    (Token 'Keyword "quote" (Location 1 25 1 30))
-                    (Token 'Keyword "set!" (Location 1 31 1 35))
-                    (Token 'Keyword "and" (Location 1 36 1 39))
-                    (Token 'Keyword "or" (Location 1 40 1 42))
-                    (Token 'Keyword "begin" (Location 1 43 1 48))
-                    (Token 'Keyword "do" (Location 1 49 1 51))
-                    (Token 'Keyword "load" (Location 1 52 1 56))
-                    (Token 'Keyword "else" (Location 1 57 1 61)))])
+                    (Token Keyword "let" (Location 1 1 1 4))
+                    (Token Keyword "let*" (Location 1 5 1 9))
+                    (Token Keyword "letrec" (Location 1 10 1 16))
+                    (Token Keyword "if" (Location 1 17 1 19))
+                    (Token Keyword "cond" (Location 1 20 1 24))
+                    (Token Keyword "quote" (Location 1 25 1 30))
+                    (Token Keyword "set!" (Location 1 31 1 35))
+                    (Token Keyword "and" (Location 1 36 1 39))
+                    (Token Keyword "or" (Location 1 40 1 42))
+                    (Token Keyword "begin" (Location 1 43 1 48))
+                    (Token Keyword "do" (Location 1 49 1 51))
+                    (Token Keyword "load" (Location 1 52 1 56))
+                    (Token Keyword "else" (Location 1 57 1 61)))])
     (set! state (assert-equal tokens expected
                               "All keywords test"
                               state
@@ -255,11 +255,11 @@
   (let* ([input "(define x 10)"]
          [tokens (tokenize input)]
          [expected (list
-                    (Token 'LParen "(" (Location 1 1 1 2))
-                    (Token 'Keyword "define" (Location 1 2 1 8))
-                    (Token 'Id "x" (Location 1 9 1 10))
-                    (Token 'Num "10" (Location 1 11 1 13))
-                    (Token 'RParen ")" (Location 1 13 1 14)))])
+                    (Token LParen "(" (Location 1 1 1 2))
+                    (Token Keyword "define" (Location 1 2 1 8))
+                    (Token Id "x" (Location 1 9 1 10))
+                    (Token Num "10" (Location 1 11 1 13))
+                    (Token RParen ")" (Location 1 13 1 14)))])
     (set! state (assert-equal tokens expected
                               "Keyword in expression test"
                               state
@@ -279,7 +279,7 @@
 
   (let* ([input "x"]
          [tokens (tokenize input)]
-         [expected (list (Token 'Id "x" (Location 1 1 1 2)))])
+         [expected (list (Token Id "x" (Location 1 1 1 2)))])
     (set! state (assert-equal tokens expected
                               "Simple identifier test"
                               state
@@ -287,7 +287,7 @@
 
   (let* ([input "hello-world!"]
          [tokens (tokenize input)]
-         [expected (list (Token 'Id "hello-world!" (Location 1 1 1 13)))])
+         [expected (list (Token Id "hello-world!" (Location 1 1 1 13)))])
     (set! state (assert-equal tokens expected
                               "Identifier with special chars test"
                               state
@@ -296,8 +296,8 @@
   (let* ([input "x2 y3z"]
          [tokens (tokenize input)]
          [expected (list
-                    (Token 'Id "x2" (Location 1 1 1 3))
-                    (Token 'Id "y3z" (Location 1 4 1 7)))])
+                    (Token Id "x2" (Location 1 1 1 3))
+                    (Token Id "y3z" (Location 1 4 1 7)))])
     (set! state (assert-equal tokens expected
                               "Identifiers with numbers test"
                               state
@@ -306,21 +306,21 @@
   (let* ([input "+ - * / < = > ! $ % & = @ ^ _"]
          [tokens (tokenize input)]
          [expected (list
-                    (Token 'Id "+" (Location 1 1 1 2))
-                    (Token 'Id "-" (Location 1 3 1 4))
-                    (Token 'Id "*" (Location 1 5 1 6))
-                    (Token 'Id "/" (Location 1 7 1 8))
-                    (Token 'Id "<" (Location 1 9 1 10))
-                    (Token 'Id "=" (Location 1 11 1 12))
-                    (Token 'Id ">" (Location 1 13 1 14))
-                    (Token 'Id "!" (Location 1 15 1 16))
-                    (Token 'Id "$" (Location 1 17 1 18))
-                    (Token 'Id "%" (Location 1 19 1 20))
-                    (Token 'Id "&" (Location 1 21 1 22))
-                    (Token 'Id "=" (Location 1 23 1 24))
-                    (Token 'Id "@" (Location 1 25 1 26))
-                    (Token 'Id "^" (Location 1 27 1 28))
-                    (Token 'Id "_" (Location 1 29 1 30)))])
+                    (Token Id "+" (Location 1 1 1 2))
+                    (Token Id "-" (Location 1 3 1 4))
+                    (Token Id "*" (Location 1 5 1 6))
+                    (Token Id "/" (Location 1 7 1 8))
+                    (Token Id "<" (Location 1 9 1 10))
+                    (Token Id "=" (Location 1 11 1 12))
+                    (Token Id ">" (Location 1 13 1 14))
+                    (Token Id "!" (Location 1 15 1 16))
+                    (Token Id "$" (Location 1 17 1 18))
+                    (Token Id "%" (Location 1 19 1 20))
+                    (Token Id "&" (Location 1 21 1 22))
+                    (Token Id "=" (Location 1 23 1 24))
+                    (Token Id "@" (Location 1 25 1 26))
+                    (Token Id "^" (Location 1 27 1 28))
+                    (Token Id "_" (Location 1 29 1 30)))])
     (set! state (assert-equal tokens expected
                               "Symbolic identifiers test"
                               state
@@ -329,10 +329,10 @@
   (let* ([input "map filter fold-left fold-right"]
          [tokens (tokenize input)]
          [expected (list
-                    (Token 'Id "map" (Location 1 1 1 4))
-                    (Token 'Id "filter" (Location 1 5 1 11))
-                    (Token 'Id "fold-left" (Location 1 12 1 21))
-                    (Token 'Id "fold-right" (Location 1 22 1 32)))])
+                    (Token Id "map" (Location 1 1 1 4))
+                    (Token Id "filter" (Location 1 5 1 11))
+                    (Token Id "fold-left" (Location 1 12 1 21))
+                    (Token Id "fold-right" (Location 1 22 1 32)))])
     (set! state (assert-equal tokens expected
                               "Complex identifiers test"
                               state
@@ -353,17 +353,17 @@
   (let* ([input "(lambda (x) (+ x 1))"]
          [tokens (tokenize input)]
          [expected (list
-                    (Token 'LParen "(" (Location 1 1 1 2))
-                    (Token 'Keyword "lambda" (Location 1 2 1 8))
-                    (Token 'LParen "(" (Location 1 9 1 10))
-                    (Token 'Id "x" (Location 1 10 1 11))
-                    (Token 'RParen ")" (Location 1 11 1 12))
-                    (Token 'LParen "(" (Location 1 13 1 14))
-                    (Token 'Id "+" (Location 1 14 1 15))
-                    (Token 'Id "x" (Location 1 16 1 17))
-                    (Token 'Num "1" (Location 1 18 1 19))
-                    (Token 'RParen ")" (Location 1 19 1 20))
-                    (Token 'RParen ")" (Location 1 20 1 21)))])
+                    (Token LParen "(" (Location 1 1 1 2))
+                    (Token Keyword "lambda" (Location 1 2 1 8))
+                    (Token LParen "(" (Location 1 9 1 10))
+                    (Token Id "x" (Location 1 10 1 11))
+                    (Token RParen ")" (Location 1 11 1 12))
+                    (Token LParen "(" (Location 1 13 1 14))
+                    (Token Id "+" (Location 1 14 1 15))
+                    (Token Id "x" (Location 1 16 1 17))
+                    (Token Num "1" (Location 1 18 1 19))
+                    (Token RParen ")" (Location 1 19 1 20))
+                    (Token RParen ")" (Location 1 20 1 21)))])
     (set! state (assert-equal tokens expected
                               "Lambda expression test"
                               state
@@ -372,24 +372,24 @@
   (let* ([input "(let ((x 1) (y 2)) (+ x y))"]
          [tokens (tokenize input)]
          [expected (list
-                    (Token 'LParen "(" (Location 1 1 1 2))
-                    (Token 'Keyword "let" (Location 1 2 1 5))
-                    (Token 'LParen "(" (Location 1 6 1 7))
-                    (Token 'LParen "(" (Location 1 7 1 8))
-                    (Token 'Id "x" (Location 1 8 1 9))
-                    (Token 'Num "1" (Location 1 10 1 11))
-                    (Token 'RParen ")" (Location 1 11 1 12))
-                    (Token 'LParen "(" (Location 1 13 1 14))
-                    (Token 'Id "y" (Location 1 14 1 15))
-                    (Token 'Num "2" (Location 1 16 1 17))
-                    (Token 'RParen ")" (Location 1 17 1 18))
-                    (Token 'RParen ")" (Location 1 18 1 19))
-                    (Token 'LParen "(" (Location 1 20 1 21))
-                    (Token 'Id "+" (Location 1 21 1 22))
-                    (Token 'Id "x" (Location 1 23 1 24))
-                    (Token 'Id "y" (Location 1 25 1 26))
-                    (Token 'RParen ")" (Location 1 26 1 27))
-                    (Token 'RParen ")" (Location 1 27 1 28)))])
+                    (Token LParen "(" (Location 1 1 1 2))
+                    (Token Keyword "let" (Location 1 2 1 5))
+                    (Token LParen "(" (Location 1 6 1 7))
+                    (Token LParen "(" (Location 1 7 1 8))
+                    (Token Id "x" (Location 1 8 1 9))
+                    (Token Num "1" (Location 1 10 1 11))
+                    (Token RParen ")" (Location 1 11 1 12))
+                    (Token LParen "(" (Location 1 13 1 14))
+                    (Token Id "y" (Location 1 14 1 15))
+                    (Token Num "2" (Location 1 16 1 17))
+                    (Token RParen ")" (Location 1 17 1 18))
+                    (Token RParen ")" (Location 1 18 1 19))
+                    (Token LParen "(" (Location 1 20 1 21))
+                    (Token Id "+" (Location 1 21 1 22))
+                    (Token Id "x" (Location 1 23 1 24))
+                    (Token Id "y" (Location 1 25 1 26))
+                    (Token RParen ")" (Location 1 26 1 27))
+                    (Token RParen ")" (Location 1 27 1 28)))])
     (set! state (assert-equal tokens expected
                               "Let expression test"
                               state
@@ -398,12 +398,12 @@
   (let* ([input "'(1 2 3)"]
          [tokens (tokenize input)]
          [expected (list
-                    (Token 'Quote "'" (Location 1 1 1 2))
-                    (Token 'LParen "(" (Location 1 2 1 3))
-                    (Token 'Num "1" (Location 1 3 1 4))
-                    (Token 'Num "2" (Location 1 5 1 6))
-                    (Token 'Num "3" (Location 1 7 1 8))
-                    (Token 'RParen ")" (Location 1 8 1 9)))])
+                    (Token QuoteSym "'" (Location 1 1 1 2))
+                    (Token LParen "(" (Location 1 2 1 3))
+                    (Token Num "1" (Location 1 3 1 4))
+                    (Token Num "2" (Location 1 5 1 6))
+                    (Token Num "3" (Location 1 7 1 8))
+                    (Token RParen ")" (Location 1 8 1 9)))])
     (set! state (assert-equal tokens expected
                               "Quoted list test"
                               state
@@ -412,34 +412,34 @@
   (let* ([input "(define (fact n) (if (= n 0) 1 (* n (fact (- n 1)))))"]
          [tokens (tokenize input)]
          [expected (list
-                    (Token 'LParen "(" (Location 1 1 1 2))
-                    (Token 'Keyword "define" (Location 1 2 1 8))
-                    (Token 'LParen "(" (Location 1 9 1 10))
-                    (Token 'Id "fact" (Location 1 10 1 14))
-                    (Token 'Id "n" (Location 1 15 1 16))
-                    (Token 'RParen ")" (Location 1 16 1 17))
-                    (Token 'LParen "(" (Location 1 18 1 19))
-                    (Token 'Keyword "if" (Location 1 19 1 21))
-                    (Token 'LParen "(" (Location 1 22 1 23))
-                    (Token 'Id "=" (Location 1 23 1 24))
-                    (Token 'Id "n" (Location 1 25 1 26))
-                    (Token 'Num "0" (Location 1 27 1 28))
-                    (Token 'RParen ")" (Location 1 28 1 29))
-                    (Token 'Num "1" (Location 1 30 1 31))
-                    (Token 'LParen "(" (Location 1 32 1 33))
-                    (Token 'Id "*" (Location 1 33 1 34))
-                    (Token 'Id "n" (Location 1 35 1 36))
-                    (Token 'LParen "(" (Location 1 37 1 38))
-                    (Token 'Id "fact" (Location 1 38 1 42))
-                    (Token 'LParen "(" (Location 1 43 1 44))
-                    (Token 'Id "-" (Location 1 44 1 45))
-                    (Token 'Id "n" (Location 1 46 1 47))
-                    (Token 'Num "1" (Location 1 48 1 49))
-                    (Token 'RParen ")" (Location 1 49 1 50))
-                    (Token 'RParen ")" (Location 1 50 1 51))
-                    (Token 'RParen ")" (Location 1 51 1 52))
-                    (Token 'RParen ")" (Location 1 52 1 53))
-                    (Token 'RParen ")" (Location 1 53 1 54)))])
+                    (Token LParen "(" (Location 1 1 1 2))
+                    (Token Keyword "define" (Location 1 2 1 8))
+                    (Token LParen "(" (Location 1 9 1 10))
+                    (Token Id "fact" (Location 1 10 1 14))
+                    (Token Id "n" (Location 1 15 1 16))
+                    (Token RParen ")" (Location 1 16 1 17))
+                    (Token LParen "(" (Location 1 18 1 19))
+                    (Token Keyword "if" (Location 1 19 1 21))
+                    (Token LParen "(" (Location 1 22 1 23))
+                    (Token Id "=" (Location 1 23 1 24))
+                    (Token Id "n" (Location 1 25 1 26))
+                    (Token Num "0" (Location 1 27 1 28))
+                    (Token RParen ")" (Location 1 28 1 29))
+                    (Token Num "1" (Location 1 30 1 31))
+                    (Token LParen "(" (Location 1 32 1 33))
+                    (Token Id "*" (Location 1 33 1 34))
+                    (Token Id "n" (Location 1 35 1 36))
+                    (Token LParen "(" (Location 1 37 1 38))
+                    (Token Id "fact" (Location 1 38 1 42))
+                    (Token LParen "(" (Location 1 43 1 44))
+                    (Token Id "-" (Location 1 44 1 45))
+                    (Token Id "n" (Location 1 46 1 47))
+                    (Token Num "1" (Location 1 48 1 49))
+                    (Token RParen ")" (Location 1 49 1 50))
+                    (Token RParen ")" (Location 1 50 1 51))
+                    (Token RParen ")" (Location 1 51 1 52))
+                    (Token RParen ")" (Location 1 52 1 53))
+                    (Token RParen ")" (Location 1 53 1 54)))])
     (set! state (assert-equal tokens expected
                               "Complex factorial definition test"
                               state
@@ -448,18 +448,18 @@
   (let* ([input "(define (square x)\n  (* x x))"]
          [tokens (tokenize input)]
          [expected (list
-                    (Token 'LParen "(" (Location 1 1 1 2))
-                    (Token 'Keyword "define" (Location 1 2 1 8))
-                    (Token 'LParen "(" (Location 1 9 1 10))
-                    (Token 'Id "square" (Location 1 10 1 16))
-                    (Token 'Id "x" (Location 1 17 1 18))
-                    (Token 'RParen ")" (Location 1 18 1 19))
-                    (Token 'LParen "(" (Location 2 3 2 4))
-                    (Token 'Id "*" (Location 2 4 2 5))
-                    (Token 'Id "x" (Location 2 6 2 7))
-                    (Token 'Id "x" (Location 2 8 2 9))
-                    (Token 'RParen ")" (Location 2 9 2 10))
-                    (Token 'RParen ")" (Location 2 10 2 11)))])
+                    (Token LParen "(" (Location 1 1 1 2))
+                    (Token Keyword "define" (Location 1 2 1 8))
+                    (Token LParen "(" (Location 1 9 1 10))
+                    (Token Id "square" (Location 1 10 1 16))
+                    (Token Id "x" (Location 1 17 1 18))
+                    (Token RParen ")" (Location 1 18 1 19))
+                    (Token LParen "(" (Location 2 3 2 4))
+                    (Token Id "*" (Location 2 4 2 5))
+                    (Token Id "x" (Location 2 6 2 7))
+                    (Token Id "x" (Location 2 8 2 9))
+                    (Token RParen ")" (Location 2 9 2 10))
+                    (Token RParen ")" (Location 2 10 2 11)))])
     (set! state (assert-equal tokens expected
                               "Multi-line code test"
                               state

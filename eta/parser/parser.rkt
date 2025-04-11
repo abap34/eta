@@ -16,39 +16,42 @@
 (define (peek-type tokens)
   (match tokens
     [(cons (Token typ _ _) _) typ]
-    [_ 'EOF]))
+    [_ EOF]))
 
 (define (parse-const tokens)
   (match tokens
     [(cons (Token typ val loc) rest)
      (cond
-       [(member typ '(Num Bool String))
+       [(or (eq? typ Num) (eq? typ Bool) (eq? typ String))
         (values (make-expr Const (list val) loc) rest)]
        [else
         (error "Expected constant")])]))
 
 (define (parse-var tokens)
   (match tokens
-    [(cons (Token 'Id name loc) rest)
+    [(cons (Token typ name loc) rest)
+     #:when (eq? typ Id)
      (values (make-expr Var (list name) loc) rest)]
     [_ (error "Expected identifier")]))
 
 (define (parse-quote tokens)
   (match tokens
-    [(cons (Token 'Quote _ loc) rest)
+    [(cons (Token typ _ loc) rest)
+     #:when (eq? typ QuoteSym)
      (define-values (quoted-expr rest2) (parse-exp rest))
      (values (make-expr Quote (list quoted-expr) loc) rest2)]
     [_ (error "Expected quote")]))
 
 (define (parse-paren-exp tokens)
   (match tokens
-    [(cons (Token 'LParen _ loc) rest)
+    [(cons (Token typ _ loc) rest)
+     #:when (eq? typ LParen)
      (match rest
-       [(cons (Token typ val _) after)
+       [(cons (Token kw-typ val _) after)
         (cond
-          [(and (eq? typ 'Keyword) (equal? val "quote"))
+          [(and (eq? kw-typ Keyword) (equal? val "quote"))
            (define-values (e1 rest1) (parse-exp after))
-           (define-values (_ rparen-loc rest2) (expect-token-type 'RParen rest1))
+           (define-values (_ rparen-loc rest2) (expect-token-type RParen rest1))
            (define new-loc 
              (Location (Location-sline loc) 
                        (Location-scol loc)
@@ -59,7 +62,7 @@
           [else
            (define-values (f rest1) (parse-exp rest))
            (define-values (args rest2) (parse-expr-list rest1))
-           (define-values (_ rparen-loc rest3) (expect-token-type 'RParen rest2))
+           (define-values (_ rparen-loc rest3) (expect-token-type RParen rest2))
            (define new-loc 
              (Location (Location-sline loc) 
                        (Location-scol loc)
@@ -72,19 +75,21 @@
 (define (parse-expr-list tokens)
   (define (loop ts acc)
     (match (peek-type ts)
-      ['RParen (values (reverse acc) ts)]
-      ['EOF (error "Unexpected end in list")]
+      [typ #:when (eq? typ RParen) (values (reverse acc) ts)]
+      [typ #:when (eq? typ EOF) (error "Unexpected end in list")]
       [_ (define-values (expr rest) (parse-exp ts))
          (loop rest (cons expr acc))]))
   (loop tokens '()))
 
 (define (parse-exp tokens)
   (match (peek-type tokens)
-    [(or 'Num 'Bool 'String) (parse-const tokens)]
-    ['Id                    (parse-var tokens)]
-    ['Quote                 (parse-quote tokens)]
-    ['LParen                (parse-paren-exp tokens)]
-    [_                      (error "Unexpected token in expression")]))
+    [typ #:when (or (eq? typ Num) 
+                   (eq? typ Bool) 
+                   (eq? typ String)) (parse-const tokens)]
+    [typ #:when (eq? typ Id) (parse-var tokens)]
+    [typ #:when (eq? typ QuoteSym) (parse-quote tokens)]
+    [typ #:when (eq? typ LParen) (parse-paren-exp tokens)]
+    [_ (error "Unexpected token in expression")]))
 
 (define (parse tokens)
   (define-values (expr rest) (parse-exp tokens))

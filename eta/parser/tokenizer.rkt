@@ -2,13 +2,28 @@
 
 (require rebellion/type/enum)
 
-(provide tokenize Token Location location-equal? Location? Location-sline Location-scol 
-         Location-eline Location-ecol )
+(provide tokenize Token Token-typ Token-val Token-loc
+         Location location-equal? Location? Location-sline Location-scol 
+         Location-eline Location-ecol TokenType
+         LParen RParen Dot QuoteSym
+         Bool Num String Keyword
+         Id EOF)
 
-(define-enum-type TokenType (LParen RParen Dot Quote Bool Num String Keyword Id EOF))
+(define-enum-type TokenType (LParen RParen Dot QuoteSym Bool Num String Keyword Id EOF))
 (struct Location (sline scol eline ecol) #:transparent)
-(struct Token (typ val loc) #:transparent)
 
+;; Token
+;;    Represents a token in the source code
+;; Arguments:
+;;    typ - TokenType enum value
+;;    val - String value of the token
+;;    loc - Location object with position information
+(struct Token (typ val loc)
+  #:transparent
+  #:guard (lambda (typ val loc name)
+            (unless (TokenType? typ)
+              (error 'Token "expected a TokenType value for typ, got: ~v" typ))
+            (values typ val loc)))
 
 (define (tokenize src)
   (define len (string-length src))
@@ -43,7 +58,7 @@
            (typ (if (member lexeme '("define" "lambda" "let" "let*" "letrec"
                                               "if" "cond" "quote" "set!" "and" "or"
                                               "begin" "do" "load" "else"))
-                    'Keyword 'Id)))
+                    Keyword Id)))
       (values (make-token typ lexeme line col line (+ col (- end pos)))
               end line (+ col (- end pos)))))
 
@@ -54,7 +69,7 @@
           p))
     (let* ((end (loop pos))
            (lexeme (substring src pos end)))
-      (values (make-token 'Num lexeme line col line (+ col (- end pos)))
+      (values (make-token Num lexeme line col line (+ col (- end pos)))
               end line (+ col (- end pos)))))
 
   (define (read-string pos line col)
@@ -64,7 +79,7 @@
           (let ((ch (get-at p)))
             (cond
               [(char=? ch #\")
-               (values (make-token 'String (list->string (reverse acc)) line col l (+ c 1))
+               (values (make-token String (list->string (reverse acc)) line col l (+ c 1))
                        (+ p 1) l (+ c 1))]
               [(char=? ch #\\)
                (let ((next (get-at (+ p 1))))
@@ -86,25 +101,25 @@
         (let ((ch (get-at (+ pos 1))))
           (cond
             [(char=? ch #\t)
-             (values (make-token 'Bool "#t" line col line (+ col 2))
+             (values (make-token Bool "#t" line col line (+ col 2))
                      (+ pos 2) line (+ col 2))]
             [(char=? ch #\f)
-             (values (make-token 'Bool "#f" line col line (+ col 2))
+             (values (make-token Bool "#f" line col line (+ col 2))
                      (+ pos 2) line (+ col 2))]
             [else
              (error (format "Invalid boolean literal: #%c" ch))]))))
 
   (define (read-next-token pos line col)
     (if (finish? pos)
-        (values (make-token 'EOF "" line col line col) pos line col)
+        (values (make-token EOF "" line col line col) pos line col)
         (let-values (((pos1 line1 col1 ch) (advance pos line col)))
           (cond
             [(char-whitespace? ch)
              (read-next-token pos1 line1 col1)]
-            [(char=? ch #\() (values (make-token 'LParen "(" line col line col1) pos1 line1 col1)]
-            [(char=? ch #\)) (values (make-token 'RParen ")" line col line col1) pos1 line1 col1)]
-            [(char=? ch #\.) (values (make-token 'Dot "." line col line col1) pos1 line1 col1)]
-            [(char=? ch #\') (values (make-token 'Quote "'" line col line col1) pos1 line1 col1)]
+            [(char=? ch #\() (values (make-token LParen "(" line col line col1) pos1 line1 col1)]
+            [(char=? ch #\)) (values (make-token RParen ")" line col line col1) pos1 line1 col1)]
+            [(char=? ch #\.) (values (make-token Dot "." line col line col1) pos1 line1 col1)]
+            [(char=? ch #\') (values (make-token QuoteSym "'" line col line col1) pos1 line1 col1)]
             [(char=? ch #\#) (read-bool pos line col)]
             [(char=? ch #\") (read-string pos line col)]
             [(char-numeric? ch) (read-number pos line col)]
@@ -113,7 +128,7 @@
 
   (define (tokenize-loop pos line col)
     (let-values (((token pos* line* col*) (read-next-token pos line col)))
-      (if (eq? (Token-typ token) 'EOF)
+      (if (eq? (Token-typ token) EOF)
           '()
           (cons token (tokenize-loop pos* line* col*)))))
 
