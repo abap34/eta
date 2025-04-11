@@ -87,12 +87,16 @@
 ;      state - The current test state.
 ;  Returns:
 ;      The updated test state.
-(define (assert-equal actual expected msg state output-fn)
-  (let ([passed (equal? actual expected)])
+(define (assert-equal actual expected msg state output-fn #:cmp [cmp equal?])
+  (let ([passed (cmp actual expected)])
     (if passed
         (output-fn (colorize (string-append "✓ " msg) 'green))
-        (output-fn (colorize (string-append "✗ " msg) 'red)))
+        (begin
+          (output-fn (colorize (string-append "✗ " msg) 'red))
+          (output-fn (string-append "    expected: " (format "~s" expected)))
+          (output-fn (string-append "      actual: " (format "~s" actual)))))
     (update-test-state state passed)))
+
 
 ;  with-error-handling
 ;     Evaluates a thunk with error handling.
