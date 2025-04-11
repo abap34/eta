@@ -3,6 +3,8 @@
 (require "test-utils.rkt"
          "parser-tests.rkt"
          "tokenizer-tests.rkt"
+         "eval-tests.rkt"
+         "repl-tests.rkt"
          "../eta/utils/console.rkt")
 
 ;  available-tests
@@ -13,7 +15,9 @@
 ;      A list of available tests and their functions.
 (define available-tests
   '(("tokenizer" . run-tokenizer-tests)
-    ("parser" . run-parser-tests)))
+    ("parser" . run-parser-tests)
+    ("eval" . run-eval-tests)
+    ("repl" . run-repl-tests)))
 
 ;  print-help
 ;     Prints the help message with available tests.
@@ -65,19 +69,35 @@
   (let ([state (make-test-state)])
     (let ([final-state
            (if (null? test-names)
-               (let ([state (with-error-handling
-                             (lambda ()
-                               (run-tokenizer-tests
-                                state
-                                default-output-fn))
-                             "tokenizer tests"
-                             state
-                             default-output-fn)])
+               (let* ([state (with-error-handling
+                              (lambda ()
+                                (run-tokenizer-tests
+                                 state
+                                 default-output-fn))
+                              "tokenizer tests"
+                              state
+                              default-output-fn)]
+                      [state (with-error-handling
+                              (lambda ()
+                                (run-parser-tests 
+                                 state
+                                 default-output-fn))
+                              "parser tests"
+                              state
+                              default-output-fn)]
+                      [state (with-error-handling
+                              (lambda ()
+                                (run-eval-tests
+                                 state
+                                 default-output-fn))
+                              "eval tests"
+                              state
+                              default-output-fn)])
                  (with-error-handling
                   (lambda ()
-                    (run-parser-tests state
-                                      default-output-fn))
-                  "parser tests"
+                    (run-repl-tests state
+                                    default-output-fn))
+                  "repl tests"
                   state
                   default-output-fn))
                (foldl (lambda (test-name state)
