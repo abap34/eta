@@ -28,13 +28,13 @@ eta/
 ### Requirements
 
 Scheme implementation that supports R6RS.
-I built and tested with: [Chez Scheme](https://cisco.github.io/ChezScheme/) 
+I built and tested with: (Rackets)[https://docs.racket-lang.org/].
 
 ### Installation
 
 ```
 $ make install 
-$ make install PREFIX=/usr/local SCHEME=chezscheme BINDIR=/usr/local/bin  # optional. see Makefile for more options
+$ make install PREFIX=/usr/local SCHEME=racket BINDIR=/usr/local/bin  # optional. see Makefile for more options
 ```
 
 ### Enter the REPL
