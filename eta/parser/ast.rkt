@@ -10,6 +10,7 @@
          Expr-head
          Expr-args
          Expr-loc
+         Expr?
          ExprHead?         ; Type predicate for ExprHead
          ; Export enum values
          Const Var App Lambda Quote Define If Begin Let LetRec LetStar Cond And Or Load)
