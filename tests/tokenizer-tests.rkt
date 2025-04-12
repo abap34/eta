@@ -2,7 +2,8 @@
 
 (provide run-tokenizer-tests)
 (require "test-utils.rkt"
-         "../eta/parser/tokenizer.rkt")
+         "../eta/parser/tokenizer.rkt"
+         "../eta/utils/location.rkt")
 
 ;  test-basic-tokens
 ;     Tests basic token types like parentheses, dot, and quote.

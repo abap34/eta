@@ -6,7 +6,9 @@
          "../eta/parser/tokenizer.rkt"
          "../eta/parser/parser.rkt"
          "../eta/eval/env.rkt"
-         "../eta/eval/eval.rkt")
+         "../eta/eval/eval.rkt"
+         "../eta/utils/location.rkt"
+         "../eta/utils/error.rkt")
 
 ;  test-constant-eval
 ;     Tests evaluation of constants (numbers, booleans, strings).
@@ -150,6 +152,37 @@
   
   state)
 
+;  test-undefined-variable
+;     Tests error handling for undefined variables.
+;  Arguments:
+;      state - The current test state.
+;      output-fn - Function to display output.
+;  Returns:
+;      Updated test state.
+(define (test-undefined-variable state output-fn)
+  (output-fn "Running test-undefined-variable...")
+  
+  (define assert (lambda (a e m)
+                   (assert-equal a e m state (make-indented-output-fn output-fn 1))))
+  
+  (let* ([env (make-env #f)]
+         [undef-var (make-expr Var (list "undefined_var") (Location 2 3 2 16))])
+    
+    ;; Test undefined variable lookup
+    (let ([result (eta-eval undef-var env)])
+      (set! state (assert (EtaError? result) #t "Undefined variable should return an error"))
+      (set! state (assert (EtaError-message result) 
+                         "Undefined variable: undefined_var" 
+                         "Error message for undefined variable"))
+      (set! state (assert (equal? (EtaError-location result) (Location 2 3 2 16))
+                         #t
+                         "Error location for undefined variable"))
+      (set! state (assert (equal? (EtaError-type result) 'runtime)
+                         #t
+                         "Error type for undefined variable"))))
+  
+  state)
+
 ;  run-eval-tests
 ;     Runs all evaluator tests.
 ;  Arguments:
@@ -165,6 +198,7 @@
                    test-constant-eval
                    test-variable-lookup
                    test-arithmetic-ops
-                   test-quote)])
+                   test-quote
+                   test-undefined-variable)])
       (with-error-handling (lambda () (f s out))
         (symbol->string (object-name f)) s out))))
