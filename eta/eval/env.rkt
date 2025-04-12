@@ -1,6 +1,19 @@
 #lang racket
 
-(provide make-env env-extend env-lookup env-set!)
+(provide make-env env-extend env-lookup env-set! NotFound? make-not-found NotFound-name)
+
+(require "../utils/error.rkt")
+
+;  NotFound
+;     Represents a variable not found in the environment.
+;  Arguments:
+;      name - The name of the variable that was not found.
+;  Returns:
+;      A NotFound struct representing the missing variable.
+;  Example:
+;      (make-not-found 'x) ; => (NotFound 'x)
+(struct NotFound (name) #:transparent)
+(define (make-not-found name) (NotFound name))
 
 ;  make-env
 ;     Creates a new environment.
@@ -39,18 +52,16 @@
 ;      env - The environment to search.
 ;      key - The key to look up.
 ;  Returns:
-;      The value associated with the key, or an error if not found.
+;      The value associated with the key, or a NotFound struct if not found.
 ;  Example:
-;      (env-lookup global-env 'x) ; => 10
+;      (env-lookup global-env 'x) ; => 10 or (NotFound 'x)
 ;  Notes:
 ;      Searches parent environments if the key is not found in the current one.
 (define (env-lookup env key)
   (cond
     [(hash-has-key? env key) (hash-ref env key)]
     [(hash-ref env 'parent #f) (env-lookup (hash-ref env 'parent) key)]
-    [else (error "Unbound variable" key)])) 
-    ; MEMO: It may be better to use a some kind of expression of error
-    ;      instead of racket's error 
+    [else (make-not-found key)]))
 
 ;  env-set!
 ;     Sets a value in the environment.

@@ -4,7 +4,8 @@
 (require "test-utils.rkt"
          "../eta/parser/ast.rkt"
          "../eta/parser/tokenizer.rkt"
-         "../eta/parser/parser.rkt")
+         "../eta/parser/parser.rkt"
+         "../eta/utils/location.rkt")
 
 
 

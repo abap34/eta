@@ -4,6 +4,8 @@
 
 (require "../eval/eval.rkt"
          "../eval/env.rkt"
+         "../utils/error.rkt"
+         "../utils/location.rkt"
          "../utils/console.rkt"
          "../parser/parser.rkt"
          "../parser/ast.rkt"
@@ -45,10 +47,22 @@
        (exit)]
       [else
        (let* ([tokens (tokenize input)]
-              [ast (parse tokens)]
-              [result (eta-eval ast env)])
-         (displayln (colorize (format "=> ~a" result) 'cyan))
-         (repl-loop env))])))
+              [parsed-result (parse tokens)])
+         (if (EtaError? parsed-result)
+             ;; Handle parsing error
+             (displayln 
+                         (format-error-with-source parsed-result input)
+                         )
+             ;; Evaluate expression
+             (let ([eval-result (eta-eval parsed-result env)])
+               (if (EtaError? eval-result)
+                   ;; Handle evaluation error
+                   (displayln  
+                              (format-error-with-source eval-result input)
+                              )
+                   ;; Show result
+                   (displayln (colorize (format "=> ~a" eval-result) 'cyan))))))
+         (repl-loop env)])))
 
 ;  init-repl
 ;     Initializes and starts the eta REPL.
