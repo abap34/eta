@@ -3,7 +3,8 @@
 (provide run-tokenizer-tests)
 (require "test-utils.rkt"
          "../eta/parser/tokenizer.rkt"
-         "../eta/utils/location.rkt")
+         "../eta/utils/location.rkt"
+         "../eta/utils/error.rkt")
 
 ;  test-basic-tokens
 ;     Tests basic token types like parentheses, dot, and quote.
@@ -102,7 +103,7 @@
          [tokens (tokenize input)]
          [expected (list
                     (Token LParen "(" (Location 1 1 1 2))
-                    (Token Keyword "if" (Location 1 2 1 4))
+                    (Token Id "if" (Location 1 2 1 4))
                     (Token Bool "#t" (Location 1 5 1 7))
                     (Token Num "1" (Location 1 8 1 9))
                     (Token Bool "#f" (Location 1 10 1 12))
@@ -207,7 +208,7 @@
   state)
 
 ;  test-keyword-tokens
-;     Tests keyword (reserved words) token recognition.
+;     Tests identifiers that were previously treated as keywords.
 ;  Arguments:
 ;      state - The current test state.
 ;      output-fn - Function to display output.
@@ -218,38 +219,38 @@
 
   (let* ([input "define"]
          [tokens (tokenize input)]
-         [expected (list (Token Keyword "define" (Location 1 1 1 7)))])
+         [expected (list (Token Id "define" (Location 1 1 1 7)))])
     (set! state (assert-equal tokens expected
-                              "define keyword test"
+                              "define identifier test"
                               state
                               (make-indented-output-fn output-fn 1))))
 
   (let* ([input "lambda"]
          [tokens (tokenize input)]
-         [expected (list (Token Keyword "lambda" (Location 1 1 1 7)))])
+         [expected (list (Token Id "lambda" (Location 1 1 1 7)))])
     (set! state (assert-equal tokens expected
-                              "lambda keyword test"
+                              "lambda identifier test"
                               state
                               (make-indented-output-fn output-fn 1))))
 
   (let* ([input "let let* letrec if cond quote set! and or begin do load else"]
          [tokens (tokenize input)]
          [expected (list
-                    (Token Keyword "let" (Location 1 1 1 4))
-                    (Token Keyword "let*" (Location 1 5 1 9))
-                    (Token Keyword "letrec" (Location 1 10 1 16))
-                    (Token Keyword "if" (Location 1 17 1 19))
-                    (Token Keyword "cond" (Location 1 20 1 24))
-                    (Token Keyword "quote" (Location 1 25 1 30))
-                    (Token Keyword "set!" (Location 1 31 1 35))
-                    (Token Keyword "and" (Location 1 36 1 39))
-                    (Token Keyword "or" (Location 1 40 1 42))
-                    (Token Keyword "begin" (Location 1 43 1 48))
-                    (Token Keyword "do" (Location 1 49 1 51))
-                    (Token Keyword "load" (Location 1 52 1 56))
-                    (Token Keyword "else" (Location 1 57 1 61)))])
+                    (Token Id "let" (Location 1 1 1 4))
+                    (Token Id "let*" (Location 1 5 1 9))
+                    (Token Id "letrec" (Location 1 10 1 16))
+                    (Token Id "if" (Location 1 17 1 19))
+                    (Token Id "cond" (Location 1 20 1 24))
+                    (Token Id "quote" (Location 1 25 1 30))
+                    (Token Id "set!" (Location 1 31 1 35))
+                    (Token Id "and" (Location 1 36 1 39))
+                    (Token Id "or" (Location 1 40 1 42))
+                    (Token Id "begin" (Location 1 43 1 48))
+                    (Token Id "do" (Location 1 49 1 51))
+                    (Token Id "load" (Location 1 52 1 56))
+                    (Token Id "else" (Location 1 57 1 61)))])
     (set! state (assert-equal tokens expected
-                              "All keywords test"
+                              "All keywords now as identifiers test"
                               state
                               (make-indented-output-fn output-fn 1))))
 
@@ -257,12 +258,12 @@
          [tokens (tokenize input)]
          [expected (list
                     (Token LParen "(" (Location 1 1 1 2))
-                    (Token Keyword "define" (Location 1 2 1 8))
+                    (Token Id "define" (Location 1 2 1 8))
                     (Token Id "x" (Location 1 9 1 10))
                     (Token Num "10" (Location 1 11 1 13))
                     (Token RParen ")" (Location 1 13 1 14)))])
     (set! state (assert-equal tokens expected
-                              "Keyword in expression test"
+                              "Special form in expression test"
                               state
                               (make-indented-output-fn output-fn 1))))
 
@@ -355,7 +356,7 @@
          [tokens (tokenize input)]
          [expected (list
                     (Token LParen "(" (Location 1 1 1 2))
-                    (Token Keyword "lambda" (Location 1 2 1 8))
+                    (Token Id "lambda" (Location 1 2 1 8))
                     (Token LParen "(" (Location 1 9 1 10))
                     (Token Id "x" (Location 1 10 1 11))
                     (Token RParen ")" (Location 1 11 1 12))
@@ -374,7 +375,7 @@
          [tokens (tokenize input)]
          [expected (list
                     (Token LParen "(" (Location 1 1 1 2))
-                    (Token Keyword "let" (Location 1 2 1 5))
+                    (Token Id "let" (Location 1 2 1 5))
                     (Token LParen "(" (Location 1 6 1 7))
                     (Token LParen "(" (Location 1 7 1 8))
                     (Token Id "x" (Location 1 8 1 9))
@@ -414,13 +415,13 @@
          [tokens (tokenize input)]
          [expected (list
                     (Token LParen "(" (Location 1 1 1 2))
-                    (Token Keyword "define" (Location 1 2 1 8))
+                    (Token Id "define" (Location 1 2 1 8))
                     (Token LParen "(" (Location 1 9 1 10))
                     (Token Id "fact" (Location 1 10 1 14))
                     (Token Id "n" (Location 1 15 1 16))
                     (Token RParen ")" (Location 1 16 1 17))
                     (Token LParen "(" (Location 1 18 1 19))
-                    (Token Keyword "if" (Location 1 19 1 21))
+                    (Token Id "if" (Location 1 19 1 21))
                     (Token LParen "(" (Location 1 22 1 23))
                     (Token Id "=" (Location 1 23 1 24))
                     (Token Id "n" (Location 1 25 1 26))
@@ -450,7 +451,7 @@
          [tokens (tokenize input)]
          [expected (list
                     (Token LParen "(" (Location 1 1 1 2))
-                    (Token Keyword "define" (Location 1 2 1 8))
+                    (Token Id "define" (Location 1 2 1 8))
                     (Token LParen "(" (Location 1 9 1 10))
                     (Token Id "square" (Location 1 10 1 16))
                     (Token Id "x" (Location 1 17 1 18))
@@ -465,6 +466,54 @@
                               "Multi-line code test"
                               state
                               (make-indented-output-fn output-fn 1))))
+
+  state)
+
+;  test-tokenizer-errors
+;     Tests error handling in the tokenizer.
+;  Arguments:
+;      state - The current test state.
+;      output-fn - Function to display output.
+;  Returns:
+;      Updated test state.
+(define (test-tokenizer-errors state output-fn)
+  (output-fn "Running test-tokenizer-errors...")
+
+  (define assert (lambda (a e m)
+                   (assert-equal a e m state (make-indented-output-fn output-fn 1))))
+
+  ;; Test unterminated string
+  (let* ([input "\"hello"]
+         [result (tokenize input)])
+    (set! state (assert (TokenizeError? result) #t 
+                        "Unterminated string literal detected as error")))
+
+  ;; Test invalid escape sequence in string
+  (let* ([input "\"hello\\"]
+         [result (tokenize input)])
+    (set! state (assert (TokenizeError? result) #t 
+                        "Invalid escape sequence detected as error")))
+
+  ;; Test invalid boolean literal
+  (let* ([input "#x"]
+         [result (tokenize input)])
+    (set! state (assert (TokenizeError? result) #t 
+                        "Invalid boolean literal detected as error")))
+
+  ;; Test error message for unterminated string
+  (let* ([input "\"hello"]
+         [result (tokenize input)])
+    (set! state (assert (string-contains? (EtaError-message result) "Unterminated string") #t 
+                        "Error message for unterminated string is correct")))
+
+  ;; Test error location
+  (let* ([input "\n\n  \"hello"]
+         [result (tokenize input)])
+    (set! state (assert (Location-sline (EtaError-location result)) 3 
+                        "Error location line number is correct"))
+    (set! state (assert (Location-scol (EtaError-location result)) 3 
+                        "Error location column number is correct")))
+
 
   state)
 
@@ -514,9 +563,15 @@
                              "test-identifier-tokens"
                              state
                              child-output-fn)])
-                (with-error-handling
-                    (lambda ()
-                      (test-complex-expressions state child-output-fn))
-                  "test-complex-expressions"
-                  state
-                  child-output-fn)))))))))
+                (let ([state (with-error-handling
+                                 (lambda ()
+                                   (test-tokenizer-errors state child-output-fn))
+                               "test-tokenizer-errors"
+                               state
+                               child-output-fn)])
+                  (with-error-handling
+                      (lambda ()
+                        (test-complex-expressions state child-output-fn))
+                    "test-complex-expressions"
+                    state
+                    child-output-fn))))))))))

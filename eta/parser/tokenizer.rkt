@@ -7,10 +7,10 @@
 (provide tokenize Token Token-typ Token-val Token-loc
          TokenType
          LParen RParen Dot QuoteSym
-         Bool Num String Keyword
+         Bool Num String 
          Id EOF)
 
-(define-enum-type TokenType (LParen RParen Dot QuoteSym Bool Num String Keyword Id EOF))
+(define-enum-type TokenType (LParen RParen Dot QuoteSym Bool Num String Id EOF))
 
 ;; Token
 ;;    Represents a token in the source code
@@ -54,12 +54,8 @@
           p
           (loop (+ p 1))))
     (let* ((end (loop pos))
-           (lexeme (substring src pos end))
-           (typ (if (member lexeme '("define" "lambda" "let" "let*" "letrec"
-                                              "if" "cond" "quote" "set!" "and" "or"
-                                              "begin" "do" "load" "else"))
-                    Keyword Id)))
-      (values (make-token typ lexeme line col line (+ col (- end pos)))
+           (lexeme (substring src pos end)))
+      (values (make-token Id lexeme line col line (+ col (- end pos)))
               end line (+ col (- end pos)))))
 
   (define (read-number pos line col)
@@ -118,7 +114,7 @@
              (values (make-tokenize-error 
                      (format "Invalid boolean literal: #~a" ch)
                      (make-location line col col)
-                     `(got ,ch))
+                     )
                      (+ pos 2) line (+ col 2))]))))
 
   (define (read-next-token pos line col)
@@ -139,7 +135,7 @@
             [else (values (make-tokenize-error 
                           (format "Unexpected character: ~a" ch)
                           (make-location line col col)
-                          `(char ,ch))
+                          )
                           pos1 line1 col1)]))))
 
   (define (tokenize-loop pos line col tokens-acc errors-acc)
