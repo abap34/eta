@@ -48,39 +48,41 @@ The eta language defines the following expression types via the `ExprHead` enum:
 | Bind       | Single binding in a let/let*/letrec expression       |
 | Bindings   | Collection of bindings                               |
 | Arg        | Function argument or argument list                   |
+| S-Expr     | S-expression for quoted lists and nested structures  |
 
 ## Args Structure by Expression Type
 
 The following table summarizes the structure of the `args` field for each `ExprHead` type:
 
-| ExprHead   | Args Structure                         | Description                                                                                                      |
-| ---------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Const      | `(list tag value)`                     | `tag`: Symbol ('Num, 'Bool, 'String)<br>`value`: The actual value                                                |
-| Var        | `(list name)`                          | `name`: String - name of the variable                                                                            |
-| App        | `(list operator args)`                 | `operator`: Expr - function to apply<br>`args`: List of Expr - arguments                                         |
-| Lambda     | `(list args body)`                     | `args`: Expr (Arg) - argument pattern<br>`body`: Expr (Body) - function body                                     |
-| Quote      | `(list expr)`                          | `expr`: Expr - quoted expression                                                                                 |
-| Define     | `(list name value)`                    | `name`: Token or Expr (Var) - variable name<br>`value`: Expr - value                                             |
-| If         | `(list has-else? test then [else])`    | `has-else?`: Boolean - #t if else exists<br>`test`: Expr<br>`then`: Expr<br>`else`: Expr (optional)              |
-| Begin      | List of expressions                    | List of Expr objects to be evaluated in sequence                                                                 |
-| UnNamedLet | `(list bindings body)`                 | `bindings`: Expr (Bindings)<br>`body`: Expr (Body)                                                               |
-| NamedLet   | `(list name bindings body)`            | `name`: Token or Expr (Var)<br>`bindings`: Expr (Bindings)<br>`body`: Expr (Body)                                |
-| LetRec     | `(list bindings body)`                 | `bindings`: Expr (Bindings)<br>`body`: Expr (Body)                                                               |
-| LetStar    | `(list bindings body)`                 | `bindings`: Expr (Bindings)<br>`body`: Expr (Body)                                                               |
-| Cond       | `(list has-else? clauses [else-expr])` | `has-else?`: Boolean - #t if else exists<br>`clauses`: List of Expr (CondClause)<br>`else-expr`: Expr (optional) |
-| CondClause | `(list test body)`                     | `test`: Expr - condition<br>`body`: List of Expr - expressions if condition is true                              |
-| And        | List of expressions                    | List of Expr objects to be AND-ed                                                                                |
-| Or         | List of expressions                    | List of Expr objects to be OR-ed                                                                                 |
-| Set!       | `(list var value)`                     | `var`: Token or Expr (Var) - variable<br>`value`: Expr - new value                                               |
-| Load       | `(list filename)`                      | `filename`: String - path to file                                                                                |
-| Do         | `(list vars test body)`                | `vars`: List of Expr (DoLet)<br>`test`: Expr (DoFinal)<br>`body`: Expr (Body)                                    |
-| DoLet      | `(list name init step)`                | `name`: Token or Expr (Var)<br>`init`: Expr - initial value<br>`step`: Expr - update expr                        |
-| DoFinal    | `(list test result)`                   | `test`: Expr - termination condition<br>`result`: List of Expr - result expressions                              |
-| Nil        | Empty list `'()`                       | No arguments                                                                                                     |
-| Body       | `(list defines expressions)`           | `defines`: List of Expr (Define)<br>`expressions`: List of Expr - body expressions                               |
-| Bind       | `(list name value)`                    | `name`: Token or Expr (Var)<br>`value`: Expr - bound value                                                       |
-| Bindings   | List of binding expressions            | List of Expr (Bind) objects                                                                                      |
-| Arg        | `(list required-args variadic-args)`   | `required-args`: List of required arguments<br>`variadic-args`: List of variadic args                            |
+| ExprHead   | Args Structure                         | Description                                                                                                              |
+| ---------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Const      | `(list tag value)`                     | `tag`: Symbol ('Num, 'Bool, 'String)<br>`value`: The actual value                                                        |
+| Var        | `(list name)`                          | `name`: String - name of the variable                                                                                    |
+| App        | `(list operator args)`                 | `operator`: Expr - function to apply<br>`args`: List of Expr - arguments                                                 |
+| Lambda     | `(list args body)`                     | `args`: Expr (Arg) - argument pattern<br>`body`: Expr (Body) - function body                                             |
+| Quote      | `(list expr)`                          | `expr`: Expr - quoted expression                                                                                         |
+| Define     | `(list name value)`                    | `name`: Expr (Var) - variable name<br>`value`: Expr - value                                                              |
+| If         | `(list has-else? test then [else])`    | `has-else?`: Boolean - #t if else exists<br>`test`: Expr<br>`then`: Expr<br>`else`: Expr (optional)                      |
+| Begin      | List of expressions                    | List of Expr objects to be evaluated in sequence                                                                         |
+| UnNamedLet | `(list bindings body)`                 | `bindings`: Expr (Bindings)<br>`body`: Expr (Body)                                                                       |
+| NamedLet   | `(list name bindings body)`            | `name`: Expr (Var)<br>`bindings`: Expr (Bindings)<br>`body`: Expr (Body)                                                 |
+| LetRec     | `(list bindings body)`                 | `bindings`: Expr (Bindings)<br>`body`: Expr (Body)                                                                       |
+| LetStar    | `(list bindings body)`                 | `bindings`: Expr (Bindings)<br>`body`: Expr (Body)                                                                       |
+| Cond       | `(list has-else? clauses [else-expr])` | `has-else?`: Boolean - #t if else exists<br>`clauses`: List of Expr (CondClause)<br>`else-expr`: List of Expr (optional) |
+| CondClause | `(list test body)`                     | `test`: Expr - condition<br>`body`: List of Expr - expressions if condition is true                                      |
+| And        | List of expressions                    | List of Expr objects to be AND-ed                                                                                        |
+| Or         | List of expressions                    | List of Expr objects to be OR-ed                                                                                         |
+| Set!       | `(list var value)`                     | `var`: Expr (Var) - variable<br>`value`: Expr - new value                                                                |
+| Load       | `(list filename)`                      | `filename`: Expr (Const with String tag) - path to file                                                                  |
+| Do         | `(list vars test body)`                | `vars`: List of Expr (DoLet)<br>`test`: Expr (DoFinal)<br>`body`: Expr (Body)                                            |
+| DoLet      | `(list name init step)`                | `name`: Expr (Var)<br>`init`: Expr - initial value<br>`step`: Expr - update expr                                         |
+| DoFinal    | `(list test result)`                   | `test`: Expr - termination condition<br>`result`: List of Expr - result expressions                                      |
+| Nil        | Empty list `'()`                       | No arguments                                                                                                             |
+| Body       | `(list defines expressions)`           | `defines`: List of Expr (Define)<br>`expressions`: List of Expr - body expressions                                       |
+| Bind       | `(list name value)`                    | `name`: Expr (Var)<br>`value`: Expr - bound value                                                                        |
+| Bindings   | List of binding expressions            | List of Expr (Bind) objects                                                                                              |
+| Arg        | `(list required-args variadic-args)`   | `required-args`: List of required arguments<br>`variadic-args`: List of variadic args                                    |
+| S-Expr     | List of S-expressions                  | List of Expr objects representing nested S-expressions                                                                   |
 
 ## Constructor Functions
 
@@ -142,6 +144,13 @@ The parser module provides specialized constructor functions for creating differ
 (make-do-let location name init step)
 (make-do-final location cond body)
 (make-body location defines expressions)
+```
+
+### Quotation and S-Expressions
+
+```scheme
+(make-quote location value)
+(make-sexpr location args)
 ```
 
 ### Other
@@ -476,9 +485,9 @@ Logical operations with short-circuit evaluation.
         (make-const ten-loc 'Num 10)))))
 ```
 
-### Quote
+### Quote and S-Expressions
 
-Represents quoted expressions.
+Represents quoted expressions including S-expression structures.
 
 ```scheme
 ;; 'x
@@ -489,9 +498,8 @@ Represents quoted expressions.
 ;; '(1 2 3)
 (make-quote
   loc
-  (make-app
-    list-loc
-    (make-var list-loc "list")
+  (make-sexpr
+    sexpr-loc
     (list
       (make-const num1-loc 'Num 1)
       (make-const num2-loc 'Num 2)
@@ -505,3 +513,4 @@ Represents quoted expressions.
 3. Location information is preserved throughout for error reporting.
 4. The parser module provides specialized constructor functions that handle the creation of properly structured AST nodes.
 5. Each expression node is built using the generic `make-expr` function with the appropriate ExprHead enum value.
+6. The S-Expr type is used specifically to represent nested structures in quoted expressions, allowing for more accurate representation of quoted lists and compound data.
