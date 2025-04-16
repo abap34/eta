@@ -36,12 +36,27 @@
   (delay-parser (lambda () parser-expr)))
 
 
-(define (loc token-or-expr)
-  (if (Expr? token-or-expr)
-      (Expr-loc token-or-expr)
-      (if (Token? token-or-expr)
-          (Token-loc token-or-expr)
-          (error "loc: Expected Expr or Token, got" token-or-expr))))
+; loc
+;    Creates a location object for a
+;      - token
+;      - list of tokens
+;      - expr
+;      - list of exprs
+;  Arguments:
+;      arg - Token, list of tokens, Expr, or list of Expr
+;  Returns:
+;      A Location object representing the location of the argument
+(define (loc arg)
+  (cond
+    [(Token? arg) (Token-loc arg)]
+    [(list? arg)
+     (if (empty? arg)
+         #f
+         (create-span-location
+          (loc (first arg))
+          (loc (last arg))))]
+    [(Expr? arg) (Expr-loc arg)]
+    [else #f]))
 
 ; make-parser-error
 ;     Creates a parse error with a message and location
@@ -409,6 +424,17 @@
 (define (make-load location filename)
   (make-expr Load (list filename) location))  
 
+
+; make-sexpr
+;     Create a s-expression node
+;  Arguments:
+;     location - Source location
+;     args - The list of arguments (Expr)
+;  Returns:
+;     An Expr with S-Expr head
+(define (make-sexpr location args)
+  (make-expr S-Expr args location))
+
 ;; ---------- Basic Parser Combinators ----------
 
 
@@ -427,7 +453,7 @@
 ;  Arguments:
 ;      msg - Message to log
 ;  Returns:
-;       must fail
+;       Always return (parser-error) with the empty message
 (define (logging msg)
   (lambda (tokens)
     (display (format "Log: ~a\n" msg))
@@ -436,23 +462,40 @@
 
 ;  any-of
 ;     Tries each parser in order, returning the result of the first successful parser
-;     or the most relevant error from all tried parsers.
+;     or the error from the parser that progressed furthest in the input.
 ;  Arguments:
 ;      parsers - List of parsers to try
-;      [error-msg] - Optional error message when all parsers fail
 ;  Returns:
 ;      A parser that returns the result of the first successful parser
-;      or the most relevant error if all parsers fail
+;      or the furthest error if all parsers fail
+;  Notes:
+;      The "furthest error" is determined by which parser consumed
+;      the most tokens based on error location.
 (define (any-of . parsers)
   (lambda (tokens)
-    (let loop ([ps parsers] [ts tokens])
+    (let loop ([ps parsers] [ts tokens] [best-error #f])
       (if (empty? ps)
-          (make-parser-error "No parsers succeeded" (tokens-span tokens))
-          (let ([parser (first ps)])
-            (let ([result (parser ts)])
-              (if (EtaError? result)
-                  (loop (rest ps) ts)  ; Try the next parser
-                  result)))))))
+          (or best-error (make-parser-error "No parsers succeeded" (tokens-span tokens)))
+          (let* ([parser (first ps)]
+                 [result (parser ts)])
+            (if (EtaError? result)
+                (let* ([current-loc (EtaError-location result)]
+                       [best-loc (and best-error (EtaError-location best-error))]
+                       [new-best-error
+                        (cond
+                          [(not best-error) result]
+                          [(not current-loc) best-error]
+                          [(not best-loc) result]
+                          [(location<? best-loc current-loc) result]
+                          [else best-error])])
+                  ;; Continue with next parser, keeping track of the furthest error
+                  (loop (rest ps) ts new-best-error))
+                ;; Success! Return the result
+                result))))))
+
+
+
+
 ;  sequence
 ;     Applies a sequence of parsers in order, collecting their results
 ;  Arguments:
@@ -488,7 +531,7 @@
     (let ([result (parser tokens)])
       (if (EtaError? result)
           (make-parser-error 
-           (format "Error parsing ~a: ~a" desc (EtaError-message result))
+           (format "~a ─ ~a" desc (EtaError-message result))
            (EtaError-location result))
           result))))
 
@@ -520,7 +563,7 @@
     (if (empty? tokens)
         (make-parser-error 
          (format "Expected ~a, got end of input" expected-desc)
-         #f)
+         (tokens-span tokens))  ; Use tokens-span to get location at end of input
         (let ([token (first tokens)])
           (if (pred token)
               (cons token (rest tokens))
@@ -635,61 +678,41 @@
 
 ;; Left parenthesis parser
 (define lparen
-  (label "lparen" (token-type LParen)))
+   (token-type LParen))
 
 ;; Right parenthesis parser
 (define rparen
-  (label "rparen" (token-type RParen)))
+  (token-type RParen))
 
 ;; Dot symbol parser
 (define dot-sym
-  (label "dot" (token-type DotSym)))
+ (token-type DotSym))
 
 ;; Quote symbol parser
 (define quote-sym
-  (label "quote" (token-type QuoteSym)))
-
-;; Boolean parser
-(define boolean
-  (label "boolean" (token-type Bool)))
-
-;; Number parserp
-(define number
-  (label "number" (token-type Num)))
-
-;; String parser
-(define string
-  (label "string" (token-type String)))
-
-;; Identifier parser
-(define identifier
-  (label "identifier" (token-type Id)))
-
-;; EOF parser
-(define eof-parser
-  (label "end-of-file" (token-type EOF)))
-
-;; ---------- Non-terminal Parsers ----------
+   (token-type QuoteSym))
 
 ; Num
-(define parse-number
+(define number
   (map-parser
    (token-type Num)
    (lambda (token)
      (let ([loc (Token-loc token)])
-       (make-const loc 'Num (Token-val token))))))
+       (make-const loc 'Num (string->number (Token-val token)))))))
       
 
 ; Bool
-(define parse-boolean 
+(define boolean 
   (map-parser
    (token-type Bool)
    (lambda (token)
      (let ([loc (Token-loc token)])
-       (make-const loc 'Bool (Token-val token))))))
+       (make-const loc 'Bool (if (equal? (Token-val token) "#t")
+                                 #t
+                                 #f))))))
 
 ; String
-(define parse-string 
+(define string 
   (map-parser
    (token-type String)
    (lambda (token)
@@ -698,7 +721,7 @@
 
 
 ; ()
-(define parse-nil
+(define nil
   (map-parser
    (sequence
     (label "LParen" lparen)
@@ -710,14 +733,18 @@
         (make-nil loc)))))
 
 
+
+;; ---------- Non-terminal Parsers ----------
+
+
+
 ;  Const ::= Num | Bool | String | ()
 (define parse-const 
   (any-of
-    (label "Num" parse-number)
-    (label "Bool" parse-boolean)
-    (label "String" parse-string)
-    (label "Nil" parse-nil)))
-
+    (label "Num" number)
+    (label "Bool" boolean)
+    (label "String" string)
+    (label "Nil" nil)))
 
 ; Id
 (define parse-id 
@@ -733,7 +760,7 @@
    (sequence
     (label "LParen" lparen)
     (label "define" (keyword "define"))
-    (label "Id" identifier)
+    (label "Id" (parser-ref parse-id))
     (label "Exp" (parser-ref parse-exp))  ;; Use parser-ref for delayed evaluation
     (label "RParen" rparen))
     (lambda (result)
@@ -750,9 +777,9 @@
       (sequence
        (label "LParen" lparen)
        (label "define" (keyword "define"))
-       (label "Id" identifier)
-       (label "Id*" (zero-or-more identifier))
-       (label "[. Id*]" (maybe (sequence dot-sym (zero-or-more identifier))))
+       (label "Id" (parser-ref parse-id))
+       (label "Id*" (zero-or-more (parser-ref parse-id)))
+       (label "[. Id*]" (maybe (sequence dot-sym (zero-or-more (parser-ref parse-id)))))
        (label "Body" (parser-ref parse-body))
        (label "RParen" rparen))
       (lambda (result)
@@ -811,8 +838,8 @@
   (map-parser
    (sequence
     (label "LParen" lparen)
-    (label "Id*" (one-or-more identifier))
-    (label "[. Id]" (maybe (sequence dot-sym identifier)))
+    (label "Id*" (one-or-more (parser-ref parse-id)))
+    (label "[. Id]" (maybe (sequence dot-sym (parser-ref parse-id))))
     (label "RParen" rparen))
     (lambda (result)
       (let ([required-args (second result)]
@@ -884,7 +911,7 @@
    (sequence
     (label "LParen" lparen)
     (label "set!" (keyword "set!"))
-    (label "Id" identifier)
+    (label "Id" (parser-ref parse-id))
     (label "Exp" (parser-ref parse-exp))
     (label "RParen" rparen))
     (lambda (result)
@@ -902,7 +929,7 @@
    (sequence
     (label "LParen" lparen)
     (label "let" (keyword "let"))
-    (label "[Id]" (maybe identifier))
+    (label "[Id]" (maybe (parser-ref parse-id)))
     (label "Bindings" (parser-ref parse-bindings))
     (label "Body" (parser-ref parse-body))
     (label "RParen" rparen))
@@ -1082,7 +1109,7 @@
   (map-parser
    (sequence
     (label "LParen" lparen)
-    (label "Id" identifier)
+    (label "Id" (parser-ref parse-id))
     (label "InitExp" (parser-ref parse-exp))
     (label "StepExp" (parser-ref parse-exp))
     (label "RParen" rparen))
@@ -1148,7 +1175,7 @@
   (map-parser
    (sequence
     (label "LParen" lparen)
-    (label "Id" identifier)
+    (label "Id" (parser-ref parse-id))
     (label "Exp" (parser-ref parse-exp))
     (label "RParen" rparen))
     (lambda (result)
@@ -1160,12 +1187,28 @@
         (make-bind loc name value)))))
 
 
-; S-Exp ::= Const | Id | (S-Exp S-Exp*)
+; S-Exp ::= Const | Id | NestedS-Exp
 (define parse-s-exp 
   (any-of
     (label "Const" (parser-ref parse-const))
     (label "Id" (parser-ref parse-id))
-    (label "S-Expr" (parser-ref parse-s-exp))))
+    (label "NestedS-Exp" (parser-ref parse-nested-s-exp))))
+
+; NestedS-Exp ::= (S-Exp S-Exp*)
+(define parse-nested-s-exp
+   (map-parser
+   (sequence
+    (label "LParen" lparen)
+    (label "S-Exp" (parser-ref parse-s-exp))
+    (label "S-Exp*" (zero-or-more (parser-ref parse-s-exp)))
+    (label "RParen" rparen))
+    (lambda (result)
+      (let ([arg (second result)]
+            [args (third result)]
+            [loc (create-span-location
+                  (loc (first result))
+                  (loc (last result)))])
+        (make-sexpr loc (cons arg args))))))
 
 
 ; Load ::= (load String)
@@ -1175,7 +1218,7 @@
    (sequence
     (label "LParen" lparen)
     (label "load" (keyword "load"))
-    (label "String" parse-string)
+    (label "String" string)
     (label "RParen" rparen))
     (lambda (result)
       (let ([filename (second result)]
@@ -1242,4 +1285,13 @@
 ; Returns:
 ;     An expression tree or an error if parsing fails
 (define (parse tokens)
-  (try-parser parse-toplevel tokens))
+  (let ([result (parse-toplevel tokens)])
+    (if (EtaError? result)
+        result
+        (match result
+          [(cons ast rest-tokens)
+           (if (and (equal? (length rest-tokens) 1)
+                    (equal? (Token-typ (first rest-tokens)) EOF))
+               ast
+               (make-parser-error "Unexpected tokens after parsing" 
+                                  (tokens-span rest-tokens)))]))))

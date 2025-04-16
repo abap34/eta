@@ -123,7 +123,7 @@
      (if location
          (format " at ~a" (location->string location))
          "")
-     (format ": ~a" message))))
+     (format ":\n~a" message))))
 
 ;; format-error-with-source
 ;;    Formats an error with visual markers pointing to the error location in the source code.
