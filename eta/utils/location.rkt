@@ -10,7 +10,8 @@
          Location-eline
          Location-ecol
           location->string
-         create-span-location)
+         create-span-location
+          location<?)
 
 ;; Location
 ;;    Represents a source code location
@@ -20,7 +21,6 @@
 ;;    eline - Ending line number
 ;;    ecol - Ending column number
 (struct Location (sline scol eline ecol) #:transparent)
-
 
 ;; location->string
 ;;    Converts a location to a string representation
@@ -72,3 +72,18 @@
             (Location-scol start-loc)
             (Location-eline end-loc)
             (Location-ecol end-loc)))
+
+
+;;  location<? 
+;;      Compare whether loc2 comes after loc1.
+;;  Arguments:
+;;      loc1 - The first Location
+;;      loc2 - The second Location
+;;  Returns:
+;;      #t if loc2 comes after loc1, otherwise #f
+(define (location<? loc1 loc2)
+  (cond
+    [(> (Location-sline loc2) (Location-sline loc1)) #t]
+    [(= (Location-sline loc2) (Location-sline loc1))
+     (> (Location-scol loc2) (Location-scol loc1))]
+    [else #f]))
