@@ -12,11 +12,13 @@
          Expr-loc
          Expr?
          ExprHead?         ; Type predicate for ExprHead
+         ExprHead->name
          ; Export enum values
-         Const Var App Lambda Quote Define If Begin Let LetRec LetStar Cond And Or Load)
-
+         Const Var App Lambda Quote Define If Begin UnNamedLet NamedLet LetRec LetStar Cond CondClause And Or Load Dot Set! Do DoLet DoFinal Nil Body 
+         Bind Bindings Arg)
 (define-enum-type ExprHead
-  (Const Var App Lambda Quote Define If Begin Let LetRec LetStar Cond And Or Load))
+  (Const Var App Lambda Quote Define If Begin UnNamedLet NamedLet LetRec LetStar Cond CondClause And Or Load Dot Set! Do DoLet DoFinal Nil Body
+    Bind Bindings Arg))
 
 (struct Expr (head args loc) #:transparent)
 
@@ -35,7 +37,6 @@
     (error 'make-expr "Expected an ExprHead for 'head', got: ~a" head))
   (Expr head args loc))
 
-
 (define (ExprHead->name head)
   (match head
     [Const "Const"]
@@ -52,8 +53,21 @@
     [Cond "Cond"]
     [And "And"]
     [Or "Or"]
-    [Load "Load"])
-    )
+    [Load "Load"]
+    [Dot "Dot"]
+    [Set! "Set!"]
+    [Do "Do"])
+    [DoLet "DoLet"]
+    [DoFinal "DoFinal"]
+    [Nil "Nil"]
+    [Body "Body"]
+    [Bind "Bind"]
+    [Bindings "Bindings"]
+    [Arg "Arg"]
+    [UnNamedLet "UnNamedLet"]
+    [NamedLet "NamedLet"]
+    [CondClause "CondClause"]
+)
     
 
 ;  pretty-print-Expr
