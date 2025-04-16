@@ -5,7 +5,9 @@
          "../utils/error.rkt"
          "../utils/location.rkt")
 
-(provide parse)
+(provide parse
+         parse-as
+        )
 
 
 ;  delay-parser
@@ -167,8 +169,10 @@
 ;     An Expr with Arg head
 (define (make-single-arg location name)
       (make-expr Arg 
-          '()           ; no required args
-          (list name)   ; single variadic arg
+          (list
+            '()           ; no required args
+            (list name)
+          )   ; single variadic arg
       location))
 
 ; make-list-arg
@@ -180,7 +184,7 @@
 ;  Returns:
 ;     An Expr with Arg head
 (define (make-list-arg location required-args variadic-args)
-  (make-expr Arg required-args variadic-args location))
+  (make-expr Arg (list required-args variadic-args) location))
 
 
 ; make-quote
@@ -460,6 +464,20 @@
     (make-parser-error "" (tokens-span tokens))))
 
 
+; assert-all-producers
+;     Asserts that all parsers in a list are valid parser functions
+;  Arguments:
+;      parsers - List of parsers to check
+;  Returns:
+;      None if all parsers are valid
+;  Raises:
+;      exn:fail - If any parser is not a valid function
+(define (assert-all-producers parsers)
+  (for-each (lambda (p)
+            (unless (procedure? p)
+              (error 'assert-all-producers "Expected a procedure but found: ~s" p)))
+          parsers))
+
 ;  any-of
 ;     Tries each parser in order, returning the result of the first successful parser
 ;     or the error from the parser that progressed furthest in the input.
@@ -472,6 +490,8 @@
 ;      The "furthest error" is determined by which parser consumed
 ;      the most tokens based on error location.
 (define (any-of . parsers)
+  ; assert parser is a list of procedures
+  (assert-all-producers parsers)
   (lambda (tokens)
     (let loop ([ps parsers] [ts tokens] [best-error #f])
       (if (empty? ps)
@@ -504,6 +524,7 @@
 ;  Returns:
 ;      A new parser that returns a list of all parser results or appropriate error
 (define (sequence . parsers)
+  (assert-all-producers parsers)
   (lambda (tokens)
     (let loop ([ps parsers] [ts tokens] [results '()])
       (if (empty? ps)
@@ -777,16 +798,20 @@
       (sequence
        (label "LParen" lparen)
        (label "define" (keyword "define"))
+       (label "LParen" lparen)
        (label "Id" (parser-ref parse-id))
        (label "Id*" (zero-or-more (parser-ref parse-id)))
        (label "[. Id*]" (maybe (sequence dot-sym (zero-or-more (parser-ref parse-id)))))
+       (label "RParen" rparen)
        (label "Body" (parser-ref parse-body))
        (label "RParen" rparen))
       (lambda (result)
-        (let ([name (third result)]
-              [args (fourth result)]
-              [variadic-args (fifth result)]
-              [body (sixth result)]
+        (let ([name (fourth result)]
+              [args (fifth result)]
+              [variadic-args (if (sixth result)
+                                 (list (sixth result))
+                                 '())]
+              [body (eighth result)]
               [loc (create-span-location
                     (loc (first result))
                     (loc (last result)))])
@@ -825,7 +850,7 @@
 
 
 
-; Single Id
+; SingleId = Id
 (define parse-single-arg 
   (map-parser
    (token-type Id)
@@ -833,12 +858,12 @@
      (let ([loc (Token-loc token)])
        (make-single-arg loc (Token-val token))))))
 
-; Multiple Ids
+; MultipleIds = (Id* [Id . Id])
 (define parse-list-arg 
   (map-parser
    (sequence
     (label "LParen" lparen)
-    (label "Id*" (one-or-more (parser-ref parse-id)))
+    (label "Id*" (zero-or-more (parser-ref parse-id)))
     (label "[. Id]" (maybe (sequence dot-sym (parser-ref parse-id))))
     (label "RParen" rparen))
     (lambda (result)
@@ -855,11 +880,8 @@
 ;     | (Id* [Id . Id])                         ; Argument list 
 (define parse-arg
    (any-of
-    (list
      (label "Single Id" (parser-ref parse-single-arg))
-      (label "List of Ids" (parser-ref parse-list-arg)))))
-
-
+      (label "List of Ids" (parser-ref parse-list-arg))))
 
 ; App ::= (Exp Exp*)
 (define parse-app 
@@ -915,8 +937,8 @@
     (label "Exp" (parser-ref parse-exp))
     (label "RParen" rparen))
     (lambda (result)
-      (let ([name (second result)]
-            [value (third result)]
+      (let ([name (third result)]
+            [value (fourth result)]
             [loc (create-span-location
                   (loc (first result))
                   (loc (last result)))])
@@ -934,9 +956,9 @@
     (label "Body" (parser-ref parse-body))
     (label "RParen" rparen))
     (lambda (result)
-      (let ([name (second result)]
-            [bindings (third result)]
-            [body (fourth result)]
+      (let ([name (third result)]
+            [bindings (fourth result)]
+            [body (fifth result)]
             [loc (create-span-location
                   (loc (first result))
                   (loc (last result)))])
@@ -991,9 +1013,9 @@
     (label "Else" (maybe (parser-ref parse-exp)))
     (label "RParen" rparen))
     (lambda (result)
-      (let ([cond-exp (second result)]
-            [then-exp (third result)]
-            [else-exp (fourth result)]
+      (let ([cond-exp (third result)]
+            [then-exp (fourth result)]
+            [else-exp (fifth result)]
             [loc (create-span-location
                   (Token-loc (first result))
                   (Token-loc (last result)))])
@@ -1047,7 +1069,7 @@
     (label "Exp*" (zero-or-more (parser-ref parse-exp)))
     (label "RParen" rparen))
     (lambda (result)
-      (let ([args (second result)]
+      (let ([args (third result)]
             [loc (create-span-location
                   (loc (first result))
                   (loc (last result)))])
@@ -1062,7 +1084,7 @@
     (label "Exp*" (zero-or-more (parser-ref parse-exp)))
     (label "RParen" rparen))
     (lambda (result)
-      (let ([args (second result)]
+      (let ([args (third result)]
             [loc (create-span-location
                   (loc (first result))
                   (loc (last result)))])
@@ -1221,7 +1243,7 @@
     (label "String" string)
     (label "RParen" rparen))
     (lambda (result)
-      (let ([filename (second result)]
+      (let ([filename (third result)]
             [loc (create-span-location
                   (loc (first result))
                   (loc (last result)))])
@@ -1274,8 +1296,8 @@
 (define parse-toplevel
   (any-of
     (label "Define" parse-define)
-    (label "Exp" parse-exp)
-    (label "Load" parse-load)))
+    (label "Load" parse-load)
+    (label "Exp" parse-exp)))
 
 
 ; parse
@@ -1295,3 +1317,28 @@
                ast
                (make-parser-error "Unexpected tokens after parsing" 
                                   (tokens-span rest-tokens)))]))))
+
+;  parse-as
+;     Parse input string using a specific parser function.
+;  Arguments:
+;     input - A string to parse
+;     parser-fn - The specific parser function to use (e.g., parse-define, parse-exp)
+;  Returns:
+;     The parsed AST node or an error if parsing fails
+;  Example:
+;     (parse-as "(define (f x y) (+ x y))" parse-define)
+;  Notes:
+;     This allows testing specific parser components directly
+(define (parse-as input parser-fn)
+  (let* ([tokens (tokenize input)]
+         [result (parser-fn tokens)])
+    (if (EtaError? result)
+        result
+        (match result
+          [(cons ast rest-tokens)
+           (if (and (not (empty? rest-tokens))
+                    (not (and (= (length rest-tokens) 1)
+                              (eq? (Token-typ (first rest-tokens)) EOF))))
+               (make-parser-error "Unexpected tokens after parsing" 
+                             (tokens-span rest-tokens))
+               ast)]))))
