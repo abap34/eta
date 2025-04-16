@@ -200,7 +200,7 @@
              (car errors-acc))]
         [(eq? (Token-typ token-or-error) EOF)
          (if (null? errors-acc)
-             (reverse tokens-acc)
+             (reverse (cons token-or-error tokens-acc))  ; Include the EOF token in the result
              (car errors-acc))]
         [else
          (tokenize-loop pos* line* col* 
