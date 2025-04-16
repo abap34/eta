@@ -36,6 +36,13 @@
   (delay-parser (lambda () parser-expr)))
 
 
+(define (loc token-or-expr)
+  (if (Expr? token-or-expr)
+      (Expr-loc token-or-expr)
+      (if (Token? token-or-expr)
+          (Token-loc token-or-expr)
+          (error "loc: Expected Expr or Token, got" token-or-expr))))
+
 ; make-parser-error
 ;     Creates a parse error with a message and location
 ; Arguments:
@@ -616,7 +623,6 @@
 
 
 
-
 ;; ---------- Terminal Parsers ----------
 
 ;  Terminal Parsers
@@ -731,11 +737,11 @@
     (label "Exp" (parser-ref parse-exp))  ;; Use parser-ref for delayed evaluation
     (label "RParen" rparen))
     (lambda (result)
-      (let ([name (second result)]
-            [value (third result)]
+      (let ([name (third result)]
+            [value (fourth result)]
             [loc (create-span-location
-                  (Token-loc (first result))
-                  (Token-loc (last result)))])
+                  (loc (first result))
+                  (loc (last result)))])
         (make-define loc name value)))))
 
 ; (define (Id Id* [. Id*]) Body)
@@ -750,15 +756,13 @@
        (label "Body" (parser-ref parse-body))
        (label "RParen" rparen))
       (lambda (result)
-        (let ([name (second result)]
-              [args (third result)]
-              [variadic-args (if (fourth result) 
-                                 (list (fourth result)) 
-                                 '())]
-              [body (fifth result)]
+        (let ([name (third result)]
+              [args (fourth result)]
+              [variadic-args (fifth result)]
+              [body (sixth result)]
               [loc (create-span-location
-                    (Token-loc (first result))
-                    (Token-loc (last result)))])
+                    (loc (first result))
+                    (loc (last result)))])
           (make-define loc name 
                        (make-lambda loc 
                                      (make-list-arg loc args variadic-args)
@@ -770,9 +774,7 @@
 (define parse-define
   (any-of 
       (label "Variable Define" (parser-ref parse-variable-define))
-      (logging "Variable Define Failed")
       (label "Function Define" (parser-ref parse-function-define))
-      (logging "Function Define Failed")
       ))
 
 
@@ -787,11 +789,11 @@
     (label "Body" (parser-ref parse-body))
     (label "RParen" rparen))
     (lambda (result)
-      (let ([args (second result)]
-            [body (third result)]
+      (let ([args (third result)]
+            [body (fourth result)]
             [loc (create-span-location
-                  (Token-loc (first result))
-                  (Token-loc (last result)))])
+                  (loc (first result))
+                  (loc (last result)))])
         (make-lambda loc args body)))))
 
 
@@ -818,8 +820,8 @@
                                (list (third result)) 
                                '())]
             [loc (create-span-location
-                  (Token-loc (first result))
-                  (Token-loc (last result)))])
+                  (loc (first result))
+                  (loc (last result)))])
         (make-list-arg loc required-args variadic-args)))))
 
 ; Arg ::= Id                                    ; Single argument
@@ -844,8 +846,8 @@
       (let ([op (second result)]
             [args (third result)]
             [loc (create-span-location
-                  (Token-loc (first result))
-                  (Token-loc (last result)))])
+                  (loc (first result))
+                  (loc (last result)))])
         (make-app loc op args)))))
 
 ; Quote ::= (quote S-Exp)
@@ -859,8 +861,8 @@
     (lambda (result)
       (let ([s-exp (third result)]
             [loc (create-span-location
-                  (Token-loc (first result))
-                  (Token-loc (last result)))])
+                  (loc (first result))
+                  (loc (last result)))])
         (make-quote loc s-exp)))))
 
 ; QuoteShorthand ::= 'S-Exp
@@ -872,8 +874,8 @@
     (lambda (result)
       (let ([s-exp (second result)]
             [loc (create-span-location
-                  (Token-loc (first result))
-                  (Token-loc (last result)))])
+                  (loc (first result))
+                  (loc (last result)))])
         (make-quote loc s-exp)))))
 
 ; Set! ::= (set! Id Exp)
@@ -889,8 +891,8 @@
       (let ([name (second result)]
             [value (third result)]
             [loc (create-span-location
-                  (Token-loc (first result))
-                  (Token-loc (last result)))])
+                  (loc (first result))
+                  (loc (last result)))])
         (make-setbang loc name value)))))
 
 
@@ -909,8 +911,8 @@
             [bindings (third result)]
             [body (fourth result)]
             [loc (create-span-location
-                  (Token-loc (first result))
-                  (Token-loc (last result)))])
+                  (loc (first result))
+                  (loc (last result)))])
         (if name
             (make-named-let loc name bindings body)
             (make-unnamed-let loc bindings body))))))
@@ -929,8 +931,8 @@
       (let ([bindings (second result)]
             [body (third result)]
             [loc (create-span-location
-                  (Token-loc (first result))
-                  (Token-loc (last result)))])
+                  (loc (first result))
+                  (loc (last result)))])
         (make-letstar loc bindings body)))))
 
 ; Letrec ::= (letrec Bindings Body)
@@ -946,8 +948,8 @@
       (let ([bindings (second result)]
             [body (third result)]
             [loc (create-span-location
-                  (Token-loc (first result))
-                  (Token-loc (last result)))])
+                  (loc (first result))
+                  (loc (last result)))])
         (make-letrec loc bindings body)))))
 
 
@@ -1004,8 +1006,8 @@
       (let ([cond-exp (second result)]
             [then-exps (third result)]
             [loc (create-span-location
-                  (Token-loc (first result))
-                  (Token-loc (last result)))])
+                  (loc (first result))
+                  (loc (last result)))])
         (make-cond-clause loc cond-exp then-exps)))))
 
 
@@ -1020,8 +1022,8 @@
     (lambda (result)
       (let ([args (second result)]
             [loc (create-span-location
-                  (Token-loc (first result))
-                  (Token-loc (last result)))])
+                  (loc (first result))
+                  (loc (last result)))])
         (make-and loc args)))))
 
 ; Or ::= (or Exp*)
@@ -1035,8 +1037,8 @@
     (lambda (result)
       (let ([args (second result)]
             [loc (create-span-location
-                  (Token-loc (first result))
-                  (Token-loc (last result)))])
+                  (loc (first result))
+                  (loc (last result)))])
         (make-or loc args)))))
 
 
@@ -1051,8 +1053,8 @@
     (lambda (result)
       (let ([args (third result)]
             [loc (create-span-location
-                  (Token-loc (first result))
-                  (Token-loc (last result)))])
+                  (loc (first result))
+                  (loc (last result)))])
         (make-begin loc args)))))
 
 
@@ -1071,8 +1073,8 @@
             [do-final (third result)]
             [body (fourth result)]
             [loc (create-span-location
-                  (Token-loc (first result))
-                  (Token-loc (last result)))])
+                  (loc (first result))
+                  (loc (last result)))])
         (make-do loc do-lets do-final body)))))
 
 ; DoLet ::= (Id Exp Exp)
@@ -1089,8 +1091,8 @@
             [init (third result)]
             [step (fourth result)]
             [loc (create-span-location
-                  (Token-loc (first result))
-                  (Token-loc (last result)))])
+                  (loc (first result))
+                  (loc (last result)))])
         (make-do-let loc name init step)))))
 
 
@@ -1106,8 +1108,8 @@
       (let ([cond-exp (second result)]
             [body-exps (third result)]
             [loc (create-span-location
-                  (Token-loc (first result))
-                  (Token-loc (last result)))])
+                  (loc (first result))
+                  (loc (last result)))])
         (make-do-final loc cond-exp body-exps)))))
 
 ; Body ::= Define* Exp+
@@ -1121,9 +1123,9 @@
             [exps (second result)]
             [loc (create-span-location
                   (if (empty? defines) 
-                      (Expr-loc (first exps))
-                      (Expr-loc (first defines)))
-                  (Expr-loc (last exps)))])
+                      (loc (first exps))
+                      (loc (first defines)))
+                  (loc (last exps)))])
         (make-body loc defines exps)))))
 
 
@@ -1137,8 +1139,8 @@
     (lambda (result)
       (let ([bindings (second result)]
             [loc (create-span-location
-                  (Token-loc (first result))
-                  (Token-loc (last result)))])
+                  (loc (first result))
+                  (loc (last result)))])
         (make-bindings loc bindings)))))
 
 ; Bind ::= (Id Exp)
@@ -1153,8 +1155,8 @@
       (let ([name (second result)]
             [value (third result)]
             [loc (create-span-location
-                  (Token-loc (first result))
-                  (Token-loc (last result)))])
+                  (loc (first result))
+                  (loc (last result)))])
         (make-bind loc name value)))))
 
 
@@ -1178,8 +1180,8 @@
     (lambda (result)
       (let ([filename (second result)]
             [loc (create-span-location
-                  (Token-loc (first result))
-                  (Token-loc (last result)))])
+                  (loc (first result))
+                  (loc (last result)))])
         (make-load loc filename)))))
 
 
@@ -1231,7 +1233,6 @@
     (label "Define" parse-define)
     (label "Exp" parse-exp)
     (label "Load" parse-load)))
-
 
 
 ; parse
