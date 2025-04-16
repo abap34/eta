@@ -6,6 +6,30 @@
          "../eta/utils/location.rkt"
          "../eta/utils/error.rkt")
 
+;  remove-eof
+;     Removes the EOF token from the end of a token list.
+;  Arguments:
+;     tokens - A list of tokens possibly ending with an EOF token
+;  Returns:
+;     The token list with the EOF token removed
+;  Notes:
+;     Verifies that the last token is an EOF token before removing it
+(define (remove-eof tokens)
+  (if (and (list? tokens)
+           (not (empty? tokens))
+           (eq? (Token-typ (last tokens)) EOF))
+      (take tokens (sub1 (length tokens)))
+      (error "Expected EOF token at end of token list")))
+
+;  tokenize-without-eof
+;     Tokenizes input and removes the trailing EOF token
+;  Arguments:
+;     input - The input string to tokenize
+;  Returns:
+;     A list of tokens with the EOF token removed
+(define (tokenize-without-eof input)
+  (remove-eof (tokenize input)))
+
 ;  test-basic-tokens
 ;     Tests basic token types like parentheses, dot, and quote.
 ;  Arguments:
@@ -17,7 +41,7 @@
   (output-fn "Running test-basic-tokens...")
 
   (let* ([input "("]
-         [tokens (tokenize input)]
+         [tokens (tokenize-without-eof input)]
          [expected (list (Token LParen "(" (Location 1 1 1 2)))])
     (set! state (assert-equal tokens expected
                               "LParen token test"
@@ -25,7 +49,7 @@
                               (make-indented-output-fn output-fn 1))))
 
   (let* ([input ")"]
-         [tokens (tokenize input)]
+         [tokens (tokenize-without-eof input)]
          [expected (list (Token RParen ")" (Location 1 1 1 2)))])
     (set! state (assert-equal tokens expected
                               "RParen token test"
@@ -33,15 +57,15 @@
                               (make-indented-output-fn output-fn 1))))
 
   (let* ([input "."]
-         [tokens (tokenize input)]
-         [expected (list (Token Dot "." (Location 1 1 1 2)))])
+         [tokens (tokenize-without-eof input)]
+         [expected (list (Token DotSym "." (Location 1 1 1 2)))])
     (set! state (assert-equal tokens expected
-                              "Dot token test"
+                              "DotSym token test"
                               state
                               (make-indented-output-fn output-fn 1))))
 
   (let* ([input "'"]
-         [tokens (tokenize input)]
+         [tokens (tokenize-without-eof input)]
          [expected (list (Token QuoteSym "'" (Location 1 1 1 2)))])
     (set! state (assert-equal tokens expected
                               "Quote token test"
@@ -49,7 +73,7 @@
                               (make-indented-output-fn output-fn 1))))
 
   (let* ([input "()"]
-         [tokens (tokenize input)]
+         [tokens (tokenize-without-eof input)]
          [expected (list
                     (Token LParen "(" (Location 1 1 1 2))
                     (Token RParen ")" (Location 1 2 1 3)))])
@@ -59,15 +83,15 @@
                               (make-indented-output-fn output-fn 1))))
 
   (let* ([input "(a . b)"]
-         [tokens (tokenize input)]
+         [tokens (tokenize-without-eof input)]
          [expected (list
                     (Token LParen "(" (Location 1 1 1 2))
                     (Token Id "a" (Location 1 2 1 3))
-                    (Token Dot "." (Location 1 4 1 5))
+                    (Token DotSym "." (Location 1 4 1 5))
                     (Token Id "b" (Location 1 6 1 7))
                     (Token RParen ")" (Location 1 7 1 8)))])
     (set! state (assert-equal tokens expected
-                              "Dotted pair token test"
+                              "DotSymted pair token test"
                               state
                               (make-indented-output-fn output-fn 1))))
 
@@ -84,7 +108,7 @@
   (output-fn "Running test-boolean-tokens...")
 
   (let* ([input "#t"]
-         [tokens (tokenize input)]
+         [tokens (tokenize-without-eof input)]
          [expected (list (Token Bool "#t" (Location 1 1 1 3)))])
     (set! state (assert-equal tokens expected
                               "True boolean token test"
@@ -92,7 +116,7 @@
                               (make-indented-output-fn output-fn 1))))
 
   (let* ([input "#f"]
-         [tokens (tokenize input)]
+         [tokens (tokenize-without-eof input)]
          [expected (list (Token Bool "#f" (Location 1 1 1 3)))])
     (set! state (assert-equal tokens expected
                               "False boolean token test"
@@ -100,7 +124,7 @@
                               (make-indented-output-fn output-fn 1))))
 
   (let* ([input "(if #t 1 #f)"]
-         [tokens (tokenize input)]
+         [tokens (tokenize-without-eof input)]
          [expected (list
                     (Token LParen "(" (Location 1 1 1 2))
                     (Token Id "if" (Location 1 2 1 4))
@@ -126,7 +150,7 @@
   (output-fn "Running test-number-tokens...")
 
   (let* ([input "123"]
-         [tokens (tokenize input)]
+         [tokens (tokenize-without-eof input)]
          [expected (list (Token Num "123" (Location 1 1 1 4)))])
     (set! state (assert-equal tokens expected
                               "Simple number token test"
@@ -134,7 +158,7 @@
                               (make-indented-output-fn output-fn 1))))
 
   (let* ([input "123 456"]
-         [tokens (tokenize input)]
+         [tokens (tokenize-without-eof input)]
          [expected (list
                     (Token Num "123" (Location 1 1 1 4))
                     (Token Num "456" (Location 1 5 1 8)))])
@@ -144,7 +168,7 @@
                               (make-indented-output-fn output-fn 1))))
 
   (let* ([input "(+ 1 2)"]
-         [tokens (tokenize input)]
+         [tokens (tokenize-without-eof input)]
          [expected (list
                     (Token LParen "(" (Location 1 1 1 2))
                     (Token Id "+" (Location 1 2 1 3))
@@ -169,7 +193,7 @@
   (output-fn "Running test-string-tokens...")
 
   (let* ([input "\"hello\""]
-         [tokens (tokenize input)]
+         [tokens (tokenize-without-eof input)]
          [expected (list (Token String "hello" (Location 1 1 1 8)))])
     (set! state (assert-equal tokens expected
                               "Simple string token test"
@@ -177,7 +201,7 @@
                               (make-indented-output-fn output-fn 1))))
 
   (let* ([input "\"hello\\\"world\""]
-         [tokens (tokenize input)]
+         [tokens (tokenize-without-eof input)]
          [expected (list (Token String "hello\"world" (Location 1 1 1 15)))])
     (set! state (assert-equal tokens expected
                               "String with escaped quote test"
@@ -185,7 +209,7 @@
                               (make-indented-output-fn output-fn 1))))
 
   (let* ([input "\"line1\\nline2\\tindent\""]
-         [tokens (tokenize input)]
+         [tokens (tokenize-without-eof input)]
          [expected (list (Token String (string-append "line1" (string #\newline) "line2" (string #\tab) "indent")
                                 (Location 1 1 1 23)))])
     (set! state (assert-equal tokens expected
@@ -194,7 +218,7 @@
                               (make-indented-output-fn output-fn 1))))
 
   (let* ([input "(display \"hello\")"]
-         [tokens (tokenize input)]
+         [tokens (tokenize-without-eof input)]
          [expected (list
                     (Token LParen "(" (Location 1 1 1 2))
                     (Token Id "display" (Location 1 2 1 9))
@@ -218,7 +242,7 @@
   (output-fn "Running test-keyword-tokens...")
 
   (let* ([input "define"]
-         [tokens (tokenize input)]
+         [tokens (tokenize-without-eof input)]
          [expected (list (Token Id "define" (Location 1 1 1 7)))])
     (set! state (assert-equal tokens expected
                               "define identifier test"
@@ -226,7 +250,7 @@
                               (make-indented-output-fn output-fn 1))))
 
   (let* ([input "lambda"]
-         [tokens (tokenize input)]
+         [tokens (tokenize-without-eof input)]
          [expected (list (Token Id "lambda" (Location 1 1 1 7)))])
     (set! state (assert-equal tokens expected
                               "lambda identifier test"
@@ -234,7 +258,7 @@
                               (make-indented-output-fn output-fn 1))))
 
   (let* ([input "let let* letrec if cond quote set! and or begin do load else"]
-         [tokens (tokenize input)]
+         [tokens (tokenize-without-eof input)]
          [expected (list
                     (Token Id "let" (Location 1 1 1 4))
                     (Token Id "let*" (Location 1 5 1 9))
@@ -255,7 +279,7 @@
                               (make-indented-output-fn output-fn 1))))
 
   (let* ([input "(define x 10)"]
-         [tokens (tokenize input)]
+         [tokens (tokenize-without-eof input)]
          [expected (list
                     (Token LParen "(" (Location 1 1 1 2))
                     (Token Id "define" (Location 1 2 1 8))
@@ -280,7 +304,7 @@
   (output-fn "Running test-identifier-tokens...")
 
   (let* ([input "x"]
-         [tokens (tokenize input)]
+         [tokens (tokenize-without-eof input)]
          [expected (list (Token Id "x" (Location 1 1 1 2)))])
     (set! state (assert-equal tokens expected
                               "Simple identifier test"
@@ -288,7 +312,7 @@
                               (make-indented-output-fn output-fn 1))))
 
   (let* ([input "hello-world!"]
-         [tokens (tokenize input)]
+         [tokens (tokenize-without-eof input)]
          [expected (list (Token Id "hello-world!" (Location 1 1 1 13)))])
     (set! state (assert-equal tokens expected
                               "Identifier with special chars test"
@@ -296,7 +320,7 @@
                               (make-indented-output-fn output-fn 1))))
 
   (let* ([input "x2 y3z"]
-         [tokens (tokenize input)]
+         [tokens (tokenize-without-eof input)]
          [expected (list
                     (Token Id "x2" (Location 1 1 1 3))
                     (Token Id "y3z" (Location 1 4 1 7)))])
@@ -306,7 +330,7 @@
                               (make-indented-output-fn output-fn 1))))
 
   (let* ([input "+ - * / < = > ! $ % & = @ ^ _"]
-         [tokens (tokenize input)]
+         [tokens (tokenize-without-eof input)]
          [expected (list
                     (Token Id "+" (Location 1 1 1 2))
                     (Token Id "-" (Location 1 3 1 4))
@@ -329,7 +353,7 @@
                               (make-indented-output-fn output-fn 1))))
 
   (let* ([input "map filter fold-left fold-right"]
-         [tokens (tokenize input)]
+         [tokens (tokenize-without-eof input)]
          [expected (list
                     (Token Id "map" (Location 1 1 1 4))
                     (Token Id "filter" (Location 1 5 1 11))
@@ -353,7 +377,7 @@
   (output-fn "Running test-complex-expressions...")
 
   (let* ([input "(lambda (x) (+ x 1))"]
-         [tokens (tokenize input)]
+         [tokens (tokenize-without-eof input)]
          [expected (list
                     (Token LParen "(" (Location 1 1 1 2))
                     (Token Id "lambda" (Location 1 2 1 8))
@@ -372,7 +396,7 @@
                               (make-indented-output-fn output-fn 1))))
 
   (let* ([input "(let ((x 1) (y 2)) (+ x y))"]
-         [tokens (tokenize input)]
+         [tokens (tokenize-without-eof input)]
          [expected (list
                     (Token LParen "(" (Location 1 1 1 2))
                     (Token Id "let" (Location 1 2 1 5))
@@ -398,7 +422,7 @@
                               (make-indented-output-fn output-fn 1))))
 
   (let* ([input "'(1 2 3)"]
-         [tokens (tokenize input)]
+         [tokens (tokenize-without-eof input)]
          [expected (list
                     (Token QuoteSym "'" (Location 1 1 1 2))
                     (Token LParen "(" (Location 1 2 1 3))
@@ -412,7 +436,7 @@
                               (make-indented-output-fn output-fn 1))))
 
   (let* ([input "(define (fact n) (if (= n 0) 1 (* n (fact (- n 1)))))"]
-         [tokens (tokenize input)]
+         [tokens (tokenize-without-eof input)]
          [expected (list
                     (Token LParen "(" (Location 1 1 1 2))
                     (Token Id "define" (Location 1 2 1 8))
@@ -448,7 +472,7 @@
                               (make-indented-output-fn output-fn 1))))
 
   (let* ([input "(define (square x)\n  (* x x))"]
-         [tokens (tokenize input)]
+         [tokens (tokenize-without-eof input)]
          [expected (list
                     (Token LParen "(" (Location 1 1 1 2))
                     (Token Id "define" (Location 1 2 1 8))
