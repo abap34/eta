@@ -5,12 +5,19 @@
 (require "../utils/error.rkt")
 
 (provide tokenize Token Token-typ Token-val Token-loc
+         Token? 
          TokenType
-         LParen RParen Dot QuoteSym
+         TokenType?
+         Token-loc
+         Token-typ
+         Token-val
+         LParen RParen DotSym QuoteSym
          Bool Num String 
+         tokens-span
+         format-token
          Id EOF)
 
-(define-enum-type TokenType (LParen RParen Dot QuoteSym Bool Num String Id EOF))
+(define-enum-type TokenType (LParen RParen DotSym QuoteSym Bool Num String Id EOF))
 
 ;; Token
 ;;    Represents a token in the source code
@@ -23,7 +30,53 @@
   #:guard (lambda (typ val loc name)
             (unless (TokenType? typ)
               (error 'Token "expected a TokenType value for typ, got: ~v" typ))
+            ;; Check consistency between token type and its value
+            (case typ
+              [(== LParen) (unless (equal? val "(")
+                          (error 'Token "LParen token must have value '(', got: ~v" val))]
+              [(== RParen) (unless (equal? val ")")
+                          (error 'Token "RParen token must have value ')', got: ~v" val))]
+              [(== DotSym) (unless (equal? val ".")
+                           (error 'Token "DotSym token must have value '.', got: ~v" val))]
+              [(== QuoteSym) (unless (equal? val "'")
+                             (error 'Token "QuoteSym token must have value ''', got: ~v" val))]
+              [(== Bool) (unless (or (equal? val "#t") (equal? val "#f"))
+                         (error 'Token "Bool token must have value '#t' or '#f', got: ~v" val))]
+              [(== EOF) (unless (equal? val "")
+                        (error 'Token "EOF token must have empty value, got: ~v" val))]
+              [else (void)]) ; No specific checks for Num, String, and Id
             (values typ val loc)))
+
+(define (tokens-span tokens)
+  (if (empty? tokens)
+      (Location 0 0 0 0)
+      (let ([first-token (first tokens)]
+            [last-token (last tokens)])
+        (if (and first-token last-token)
+            (create-span-location (Token-loc first-token) (Token-loc last-token))
+            (if first-token
+                (Token-loc first-token)
+                (Location 0 0 0 0))))))
+
+(define (TokenType->name typ)
+  (match typ
+    [(== RParen)  "RParen"]
+    [(== LParen)  "LParen"]
+    [(== DotSym)  "DotSym"]
+    [(== QuoteSym) "QuoteSym"]
+    [(== Bool)     "Bool"]
+    [(== Num)      "Num"]
+    [(== String)   "String"]
+    [(== Id)       "Id"]
+    [(== EOF)      "EOF"]
+    [_ (error 'TokenType->name "Unknown TokenType: ~v" typ)]))
+
+
+(define (format-token token)
+  (format "~a: ~a at ~a"
+          (TokenType->name (Token-typ token))
+          (Token-val token)
+          (location->string (Token-loc token))))
 
 (define (tokenize src)
   (define len (string-length src))
@@ -126,7 +179,7 @@
              (read-next-token pos1 line1 col1)]
             [(char=? ch #\() (values (make-token LParen "(" line col line col1) pos1 line1 col1)]
             [(char=? ch #\)) (values (make-token RParen ")" line col line col1) pos1 line1 col1)]
-            [(char=? ch #\.) (values (make-token Dot "." line col line col1) pos1 line1 col1)]
+            [(char=? ch #\.) (values (make-token DotSym "." line col line col1) pos1 line1 col1)]
             [(char=? ch #\') (values (make-token QuoteSym "'" line col line col1) pos1 line1 col1)]
             [(char=? ch #\#) (read-bool pos line col)]
             [(char=? ch #\") (read-string pos line col)]
