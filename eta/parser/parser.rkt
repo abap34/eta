@@ -805,9 +805,9 @@
   (if (and (Expr? id-expr)
            (equal? (Expr-head id-expr) Var))
       (first (Expr-args id-expr))
-      (error "Expected Id, got: " id-expr)))
+      (error "Faild to get var name. Expected Expr with Var head, got: ~a" id-expr)))
 
-; (define (Id Id* [. Id*]) Body)
+; (define (Id Id* [. Id]) Body)
 (define parse-function-define 
     (map-parser
       (sequence
@@ -816,7 +816,7 @@
        (label "LParen" lparen)
        (label "Id" (parser-ref parse-id))
        (label "Id*" (zero-or-more (parser-ref parse-id)))
-       (label "[. Id*]" (maybe (sequence dot-sym (zero-or-more (parser-ref parse-id)))))
+       (label "[. Id]" (maybe (sequence dot-sym (parser-ref parse-id))))
        (label "RParen" rparen)
        (label "Body" (parser-ref parse-body))
        (label "RParen" rparen))
@@ -824,7 +824,7 @@
         (let ([name (fourth result)]
               [args (map get-var-name (fifth result))]
               [variadic-arg (if (sixth result)
-                                 (get-var-name (second (sixth result)))
+                                (get-var-name (second (sixth result)))
                                 '())]
               [body (eighth result)]
               [loc (create-span-location
