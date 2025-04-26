@@ -4,13 +4,7 @@
 
 (require "../utils/error.rkt"
          "../utils/console.rkt"
-         "../parser/parser.rkt"
-         "../parser/tokenizer.rkt"
-         "../eval/interp.rkt"
-         "../eval/runtime-values.rkt"
-         "../eval/env.rkt"
-         "../eval/builtins.rkt")
-
+         "../eval/interp-interface.rkt")
   
 
 (define (banner)
@@ -21,9 +15,6 @@
 (define (prompt)
   (display (colorize "eta> " 'green)))
 
-
-(define (init-basic-env)
-  (add-builtins-to-env (init-toplevel-env)))
 
 ;  repl-loop
 ;     Simple Read-Eval-Print Loop for eta.
@@ -41,25 +32,8 @@
        (exit)]
       [(string=? input "")
        (repl-loop env)]
-      [else
-       (let ([tokens (tokenize input)])
-           (if (TokenizeError? tokens)
-              (begin
-                (displayln (format-error-with-source tokens input))
-                (repl-loop env))
-              (let ([parsed-result (parse tokens)])
-                (if (ParseError? parsed-result)
-                 (begin
-                (displayln (format-error-with-source tokens input))
-                (repl-loop env))
-                (let ([result (eval env parsed-result)])
-                  (if (RuntimeError? result)
-                    (begin
-                      (displayln (format-error-with-source result input))
-                      (repl-loop env))
-                    (begin
-                      (displayln (colorize (format "=> ~a" (runtime-value->string result)) 'cyan))
-                      (repl-loop env))))))))])))
+      [else (displayln (format-eval-result (eta-eval env input) input))])
+    (repl-loop env)))
                     
 ;  init-repl
 ;     Initializes and starts the eta REPL.

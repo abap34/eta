@@ -7,28 +7,10 @@
          )
 
 
-(provide
- eval
+(provide eval-expr 
+         eval-each-expr
  )
 
-;  eval
-;     Main entry point for evaluating expressions
-;  Arguments:
-;     env - The environment in which to evaluate
-;     expr - The expression to evaluate
-;  Returns:
-;     An EtaValue representing the result of evaluation
-;  Example:
-;     (eval env (parse "(+ 1 2)")) => (EtaValue Number 3)
-(define (eval env expr)
-  (cond
-    [(Expr? expr) (eval-expr expr env)]
-    [(list? expr) (eval-each-expr expr env)]
-    [else
-     (make-runtime-error
-      (format "Cannot evaluate non-expression: ~a" expr)
-      (Expr-loc expr)
-      )]))
 
 ; eval-sequence
 ;     Evaluate a sequence of expressions in the given environment.
