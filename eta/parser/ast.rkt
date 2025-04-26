@@ -14,9 +14,9 @@
          ExprHead?         ; Type predicate for ExprHead
          ExprHead->name
          ; Export enum values
-         Const Var App Lambda Quote Define If Begin UnNamedLet NamedLet LetRec LetStar Cond CondClause And Or Load Dot Set! Do DoLet DoFinal Nil Body 
+         Const Var App Lambda Quote Define If Begin UnNamedLet NamedLet LetRec LetStar Cond CondClause And Or Load Set! Do DoLet DoFinal Nil Body 
          Bind Bindings Arg S-Expr
-         )
+)
 
 
 ; Expr-head
@@ -26,7 +26,7 @@
 ;    Many of them may become obsolete as a result of desugar and other mechanisms. 
 (define-enum-type ExprHead
   (Const  ; Constant value
-   Nil  ; Nil value
+   Nil    ; Nil value
    Var    ; Variable 
    App    ; Application
    Lambda ; Lambda function
@@ -48,7 +48,6 @@
    And         ; Logical AND expression  
    Or          ; Logical OR expression
    Load        ; Load a module or file (MEMO: This is not a special form, but a function call. But in 
-   Dot         ; Dot operator (MEMO: This head may be deprecated in the future)
    Set!        ; Set! operator 
    Do          ; Do expression
      DoLet       ; Let expression inside a Do expression
@@ -96,7 +95,6 @@
     [(== And) "And"]
     [(== Or) "Or"]
     [(== Load) "Load"]
-    [(== Dot) "Dot"]
     [(== Set!) "Set!"]
     [(== Do) "Do"]
     [(== DoLet) "DoLet"]
@@ -172,3 +170,4 @@
     
     ; Default case
     [else (format "~a" expr)]))
+
