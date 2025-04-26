@@ -9,17 +9,15 @@
          EtaError-type
          eta-error->string
          format-error-with-source
+         format-error-with-source
          make-token-error
-         
-         ;; New specific error types
+         localize-error-location
          TokenizeError
          make-tokenize-error
          TokenizeError?
-         
          ParseError
          make-parse-error
          ParseError?
-         
          RuntimeError
          make-runtime-error
          RuntimeError?)
@@ -82,7 +80,7 @@
 ;; Arguments:
 ;;    message - A string describing the error
 ;;    location - Source location information (optional, defaults to #f)
-;; Returns:
+;; Returns:      []
 ;;    A new RuntimeError instance
 ;; Example:
 ;;    (make-runtime-error "Division by zero" (make-location 3 15 3 18))
@@ -99,6 +97,25 @@
 ;;    A TokenizeError struct
 (define (make-token-error message line col)
   (make-tokenize-error message (make-location line col col)))
+
+; localize-error-location
+;;    Adds location information to an EtaError.
+;; Arguments:
+;;    error - The EtaError to modify
+;;    location - The location information to add
+;; Returns:
+;;    The modified EtaError with location information
+(define (localize-error-location error location)
+  (if (EtaError? error)
+      (let ([message (EtaError-message error)])
+         (cond 
+           [(TokenizeError? error) (TokenizeError (EtaError-type error) message location)]
+           [(ParseError? error) (ParseError (EtaError-type error) message location)]
+           [(RuntimeError? error) (RuntimeError (EtaError-type error) message location)]
+         )
+      )
+      (error (format "Expected an EtaError, got: ~a" error))))
+
 
 ;; eta-error->string
 ;;    Converts an EtaError to a human-readable string.
