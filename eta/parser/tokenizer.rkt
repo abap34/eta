@@ -12,18 +12,18 @@
          Token-typ
          Token-val
          LParen RParen DotSym QuoteSym
-         Bool Num String 
+         Bool Num StringToken 
          tokens-span
          format-token
          Id EOF)
 
-(define-enum-type TokenType (LParen RParen DotSym QuoteSym Bool Num String Id EOF))
+(define-enum-type TokenType (LParen RParen DotSym QuoteSym Bool Num StringToken Id EOF))
 
 ;; Token
 ;;    Represents a token in the source code
 ;; Arguments:
 ;;    typ - TokenType enum value
-;;    val - String value of the token
+;;    val - StringToken value of the token
 ;;    loc - Location object with position information
 (struct Token (typ val loc)
   #:transparent
@@ -44,7 +44,7 @@
                          (error 'Token "Bool token must have value '#t' or '#f', got: ~v" val))]
               [(== EOF) (unless (equal? val "")
                         (error 'Token "EOF token must have empty value, got: ~v" val))]
-              [else (void)]) ; No specific checks for Num, String, and Id
+              [else (void)]) ; No specific checks for Num, StringToken, and Id
             (values typ val loc)))
 
 (define (tokens-span tokens)
@@ -66,7 +66,7 @@
     [(== QuoteSym) "QuoteSym"]
     [(== Bool)     "Bool"]
     [(== Num)      "Num"]
-    [(== String)   "String"]
+    [(== StringToken)   "StringToken"]
     [(== Id)       "Id"]
     [(== EOF)      "EOF"]
     [_ (error 'TokenType->name "Unknown TokenType: ~v" typ)]))
@@ -128,7 +128,7 @@
           (let ((ch (get-at p)))
             (cond
               [(char=? ch #\")
-               (values (make-token String (list->string (reverse acc)) line col l (+ c 1))
+               (values (make-token StringToken (list->string (reverse acc)) line col l (+ c 1))
                        (+ p 1) l (+ c 1))]
               [(char=? ch #\\)
                (if (>= (+ p 1) len)
