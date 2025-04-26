@@ -168,11 +168,14 @@
 ;  Returns:
 ;     An Expr with Arg head
 (define (make-single-arg location name)
+      (unless (string? name)
+        (error (format "Expected a string for argument name, got: ~a" name) location))
+
       (make-expr Arg 
           (list
-            '()           ; no required args
-            (list name)
-          )   ; single variadic arg
+            '() ; no required args
+           name ; single variadic arg
+          )   ;
       location))
 
 ; make-list-arg
@@ -180,11 +183,24 @@
 ;  Arguments:
 ;     location - Source location
 ;     required-args - List of required argument names (strings)
-;     variadic-args - List of variadic argument names (strings)
+;     variadic-arg  - The variadic argument name (string)
 ;  Returns:
 ;     An Expr with Arg head
-(define (make-list-arg location required-args variadic-args)
-  (make-expr Arg (list required-args variadic-args) location))
+(define (make-list-arg location required-args variadic-arg)
+  (unless (and (list? required-args) (andmap string? required-args))
+    (error (format "Expected a list of strings for required args, got: ~a" required-args) location))
+
+  (unless (or (string? variadic-arg) 
+              (eq? variadic-arg '()))
+    (error (format "Expected a string or empty list for variadic arg, got: ~a" variadic-arg) location))
+
+    
+  (make-expr Arg 
+          (list 
+            required-args 
+            variadic-arg
+          ) 
+      location))
 
 
 ; make-quote
@@ -301,7 +317,7 @@
 ;     An Expr with Cond head
 (define (make-cond-noelse location clauses)
   (make-expr Cond (list #f clauses) location))
-;                   ^^^ no else
+;                       ^^^ no else
 
 ; make-cond-else
 ;     Create a cond expression node with else
@@ -689,14 +705,6 @@
 
 ;; ---------- Terminal Parsers ----------
 
-;  Terminal Parsers
-;     Collection of parsers for each terminal symbol in the Eta language.
-;     These parsers serve as the building blocks for more complex parsers.
-;  Notes:
-;     Each parser consumes a token of a specific type and returns it with
-;     the remaining tokens. They can be combined with higher-level combinators
-;     to build more complex parsing logic.
-
 ;; Left parenthesis parser
 (define lparen
    (token-type LParen))
@@ -735,7 +743,7 @@
 ; String
 (define string 
   (map-parser
-   (token-type String)
+   (token-type StringToken)
    (lambda (token)
      (let ([loc (Token-loc token)])
        (make-const loc 'String (Token-val token))))))
@@ -792,7 +800,14 @@
                   (loc (last result)))])
         (make-define loc name value)))))
 
-; (define (Id Id* [. Id*]) Body)
+
+(define (get-var-name id-expr)
+  (if (and (Expr? id-expr)
+           (equal? (Expr-head id-expr) Var))
+      (first (Expr-args id-expr))
+      (error "Faild to get var name. Expected Expr with Var head, got: ~a" id-expr)))
+
+; (define (Id Id* [. Id]) Body)
 (define parse-function-define 
     (map-parser
       (sequence
@@ -801,23 +816,23 @@
        (label "LParen" lparen)
        (label "Id" (parser-ref parse-id))
        (label "Id*" (zero-or-more (parser-ref parse-id)))
-       (label "[. Id*]" (maybe (sequence dot-sym (zero-or-more (parser-ref parse-id)))))
+       (label "[. Id]" (maybe (sequence dot-sym (parser-ref parse-id))))
        (label "RParen" rparen)
        (label "Body" (parser-ref parse-body))
        (label "RParen" rparen))
       (lambda (result)
         (let ([name (fourth result)]
-              [args (fifth result)]
-              [variadic-args (if (sixth result)
-                                 (list (sixth result))
-                                 '())]
+              [args (map get-var-name (fifth result))]
+              [variadic-arg (if (sixth result)
+                                (get-var-name (second (sixth result)))
+                                '())]
               [body (eighth result)]
               [loc (create-span-location
                     (loc (first result))
                     (loc (last result)))])
           (make-define loc name 
                        (make-lambda loc 
-                                     (make-list-arg loc args variadic-args)
+                                     (make-list-arg loc args variadic-arg)
                                      body))))))
 
 
@@ -867,9 +882,9 @@
     (label "[. Id]" (maybe (sequence dot-sym (parser-ref parse-id))))
     (label "RParen" rparen))
     (lambda (result)
-      (let ([required-args (second result)]
+      (let ([required-args (map get-var-name (second result))]
             [variadic-args (if (third result) 
-                               (list (third result)) 
+                                (get-var-name (second (third result)))
                                '())]
             [loc (create-span-location
                   (loc (first result))
@@ -881,7 +896,7 @@
 (define parse-arg
    (any-of
      (label "Single Id" (parser-ref parse-single-arg))
-      (label "List of Ids" (parser-ref parse-list-arg))))
+     (label "List of Ids" (parser-ref parse-list-arg))))
 
 ; App ::= (Exp Exp*)
 (define parse-app 
@@ -1299,25 +1314,6 @@
     (label "Load" parse-load)
     (label "Exp" parse-exp)))
 
-
-; parse
-;   Entry point of parsing.
-; Arguments:
-;     tokens - list of tokens
-; Returns:
-;     An expression tree or an error if parsing fails
-(define (parse tokens)
-  (let ([result (parse-toplevel tokens)])
-    (if (EtaError? result)
-        result
-        (match result
-          [(cons ast rest-tokens)
-           (if (and (equal? (length rest-tokens) 1)
-                    (equal? (Token-typ (first rest-tokens)) EOF))
-               ast
-               (make-parser-error "Unexpected tokens after parsing" 
-                                  (tokens-span rest-tokens)))]))))
-
 ;  parse-as
 ;     Parse input string using a specific parser function.
 ;  Arguments:
@@ -1329,9 +1325,8 @@
 ;     (parse-as "(define (f x y) (+ x y))" parse-define)
 ;  Notes:
 ;     This allows testing specific parser components directly
-(define (parse-as input parser-fn)
-  (let* ([tokens (tokenize input)]
-         [result (parser-fn tokens)])
+(define (parse-as tokens parser-fn)
+  (let* ([result (parser-fn tokens)])
     (if (EtaError? result)
         result
         (match result
@@ -1342,3 +1337,12 @@
                (make-parser-error "Unexpected tokens after parsing" 
                              (tokens-span rest-tokens))
                ast)]))))
+
+; parse
+;   Entry point of parsing.
+; Arguments:
+;     tokens - list of tokens
+; Returns:
+;     An expression tree or an error if parsing fails
+(define (parse tokens)
+  (parse-as tokens parse-toplevel))

@@ -194,7 +194,7 @@
 
   (let* ([input "\"hello\""]
          [tokens (tokenize-without-eof input)]
-         [expected (list (Token String "hello" (Location 1 1 1 8)))])
+         [expected (list (Token StringToken "hello" (Location 1 1 1 8)))])
     (set! state (assert-equal tokens expected
                               "Simple string token test"
                               state
@@ -202,18 +202,18 @@
 
   (let* ([input "\"hello\\\"world\""]
          [tokens (tokenize-without-eof input)]
-         [expected (list (Token String "hello\"world" (Location 1 1 1 15)))])
+         [expected (list (Token StringToken "hello\"world" (Location 1 1 1 15)))])
     (set! state (assert-equal tokens expected
-                              "String with escaped quote test"
+                              "StringToken with escaped quote test"
                               state
                               (make-indented-output-fn output-fn 1))))
 
   (let* ([input "\"line1\\nline2\\tindent\""]
          [tokens (tokenize-without-eof input)]
-         [expected (list (Token String (string-append "line1" (string #\newline) "line2" (string #\tab) "indent")
+         [expected (list (Token StringToken (string-append "line1" (string #\newline) "line2" (string #\tab) "indent")
                                 (Location 1 1 1 23)))])
     (set! state (assert-equal tokens expected
-                              "String with special escapes test"
+                              "StringToken with special escapes test"
                               state
                               (make-indented-output-fn output-fn 1))))
 
@@ -222,10 +222,10 @@
          [expected (list
                     (Token LParen "(" (Location 1 1 1 2))
                     (Token Id "display" (Location 1 2 1 9))
-                    (Token String "hello" (Location 1 10 1 17))
+                    (Token StringToken "hello" (Location 1 10 1 17))
                     (Token RParen ")" (Location 1 17 1 18)))])
     (set! state (assert-equal tokens expected
-                              "String in expression test"
+                              "StringToken in expression test"
                               state
                               (make-indented-output-fn output-fn 1))))
 

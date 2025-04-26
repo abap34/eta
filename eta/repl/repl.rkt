@@ -3,11 +3,9 @@
 (provide init-repl)
 
 (require "../utils/error.rkt"
-         "../utils/location.rkt"
          "../utils/console.rkt"
-         "../parser/parser.rkt"
-         "../parser/ast.rkt"
-         "../parser/tokenizer.rkt")
+         "../eval/interp-interface.rkt")
+  
 
 (define (banner)
   (display (bold "✨ Welcome to "))
@@ -17,16 +15,6 @@
 (define (prompt)
   (display (colorize "eta> " 'green)))
 
-;  get-parse-result
-;     Helper function to extract the result from parser output
-;  Arguments:
-;     parser-result - The result from the parser (either a single Expr or a list containing one Expr)
-;  Returns:
-;     The Expr object (unwrapped from list if necessary)
-(define (get-parse-result parser-result)
-  (if (and (list? parser-result) (= (length parser-result) 1))
-      (first parser-result)
-      parser-result))
 
 ;  repl-loop
 ;     Simple Read-Eval-Print Loop for eta.
@@ -44,28 +32,9 @@
        (exit)]
       [(string=? input "")
        (repl-loop env)]
-      [else
-       (let* ([tokens (tokenize input)]
-              [raw-result (parse tokens)]
-              [result (get-parse-result raw-result)])
-         
-         (cond
-           [(TokenizeError? result)
-            (displayln (format-error-with-source result input))]
-           [(ParseError? result)
-            (displayln (format-error-with-source result input))]
-           [(EtaError? result)
-            (displayln (format-error-with-source result input))]
-           [else
-            (begin
-              (displayln (colorize "Tokenized Input:" 'blue))
-              (for-each (lambda (token)
-                          (displayln (format-token token)))
-                        tokens)
-              (displayln (colorize "Parsed Result:" 'blue))
-              (displayln (pretty-print-Expr result)))]))
-       (repl-loop env)])))
-
+      [else (displayln (format-eval-result (eta-eval env input) input))])
+    (repl-loop env)))
+                    
 ;  init-repl
 ;     Initializes and starts the eta REPL.
 ;  Arguments:
@@ -73,6 +42,6 @@
 ;  Returns:
 ;      Never returns (starts the REPL loop).
 (define (init-repl)
-  (let ([global-env #f])    ; mock
+  (let ([global-env (init-basic-env)])
     (banner)
     (repl-loop global-env)))

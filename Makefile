@@ -1,7 +1,7 @@
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
 EXECUTABLE = eta
-ENTRY = main.scm
+ENTRY = main.rkt
 SCHEME ?= racket
 WRAPPER = eta.sh
 TEST ?= 
