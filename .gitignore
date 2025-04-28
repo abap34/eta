@@ -1,2 +1,3 @@
 /coverage
 tmp/tmp.rkt
+/tools/tree-sitter/src
