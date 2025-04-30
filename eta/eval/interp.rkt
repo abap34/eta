@@ -283,11 +283,11 @@
 
     (with-successfull-eval (eval-expr operator-expr env)
       (lambda (operator-value)
-        (unless (or (equal? (EtaValue-tag operator-value) EtaClosure)
-                    (equal? (EtaValue-tag operator-value) EtaBuiltin))
+        (if (not (or (equal? (EtaValue-tag operator-value) EtaClosure)
+                     (equal? (EtaValue-tag operator-value) EtaBuiltin)))
           (make-runtime-error
            (format "Application of non-function: ~a" (EtaValue-tag operator-value))
-           (Expr-loc operator-expr)))
+           (Expr-loc operator-expr))
 
         (with-successfull-eval (eval-each-expr operand-exprs env)
           (lambda (args)
@@ -296,9 +296,10 @@
                        (apply-closure operator-value args env)
                        (apply-builtin operator-value args env))])
 
-              (if (RuntimeError? result)
+              (if (and (RuntimeError? result)
+                       (not (EtaError-location result)))
                   (localize-error-location result (Expr-loc expr))
-                  result))))))))
+                  result)))))))))
 
 ;  apply-builtin
 ;     Apply a builtin function to arguments
@@ -337,11 +338,11 @@
          [loc (Closure-loc closure)])
 
     ; Check arity
-    (unless (arity-check param-spec args)
+    (if (not (arity-check param-spec args))
       (make-runtime-error
        (format "Wrong number of arguments. Expected ~a, got ~a"
                (length (ParamSpec-required param-spec))
-               (length args))))
+               (length args)))
 
     ; Create a new environment with captured env as parent
     (let* ([func-env (make-child-env captured-env)]
@@ -349,7 +350,7 @@
            [func-env (assign-params! param-spec args func-env)])
 
       ; Evaluate the body in the extended environment
-      (eval-body body func-env))))
+      (eval-body body func-env)))))
 
 
 ;  eval-set!
