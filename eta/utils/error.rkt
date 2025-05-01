@@ -20,7 +20,8 @@
          ParseError?
          RuntimeError
          make-runtime-error
-         RuntimeError?)
+         RuntimeError?
+         )
 
 (require "location.rkt" "console.rkt")
 
@@ -30,7 +31,7 @@
 ;; Fields:
 ;;    type - The type of error (e.g., 'syntax, 'runtime, 'parse)
 ;;    message - A string describing the error
-;;    location - Source location information (optional)
+;;    location - Source location information (optional). If no location, #f
 (struct EtaError (type message location) #:transparent)
 
 ;; Specific error types that extend EtaError
