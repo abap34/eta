@@ -1314,6 +1314,11 @@
     (label "Load" parse-load)
     (label "Exp" parse-exp)))
 
+
+; Script ::= Toplevel*
+(define parse-script
+   (zero-or-more parse-toplevel))
+   
 ;  parse-as
 ;     Parse input string using a specific parser function.
 ;  Arguments:
@@ -1345,4 +1350,4 @@
 ; Returns:
 ;     An expression tree or an error if parsing fails
 (define (parse tokens)
-  (parse-as tokens parse-toplevel))
+  (parse-as tokens parse-script))

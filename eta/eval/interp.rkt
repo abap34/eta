@@ -14,7 +14,7 @@
 
 ; eval-sequence
 ;     Evaluate a sequence of expressions in the given environment.
-;     Returns the last evaluated expression or first error.
+;     Returns the **last evaluated expression** or **first** error.
 ; Arguments:
 ;     expr-list - A list of expressions to evaluate
 ;     env - The environment in which to evaluate
@@ -36,25 +36,26 @@
 
 ; eval-each-expr
 ;     Evaluate a list of expressions in the given environment.
-;     Returns the list of each evaluated expression or first error.
+;     Returns the list of each evaluated expression in given order or return **first** error.
 ;     !! Does not return last value of the list !!
 ;  Arguments:
 ;     expr-list - A list of expressions to evaluate
 ;     env - The environment in which to evaluate
 ;  Returns:
 ;     A list of evaluated expressions or a RuntimeError
+;  Example:
+;   (eval-each-expr (list (make-const 'Num 1) (make-const 'Num 2) (make-const 'Num 3)) env)
+;   => (1 2 3)
 (define (eval-each-expr expr-list env)
-  (if (null? expr-list)
-      '()
-      (let loop ([exprs expr-list]
+   (let loop ([exprs expr-list]
                  [result '()])
         (if (null? exprs)
-            result
+            (reverse result)
             (let ([new-result (eval-expr (first exprs) env)])
               (if (RuntimeError? new-result)
                   new-result
                   (loop (rest exprs)
-                        (cons new-result result))))))))
+                        (cons new-result result)))))))
 
 
 ; with-successfull-eval
@@ -316,7 +317,7 @@
   (let ([result ((Builtin-proc (EtaValue-value builtin)) args env)])
     (if (EtaValue? result)
         result
-        (make-runtime-value EtaValue result))))
+        (make-runtime-error result))))
 
 
 ;  apply-closure
@@ -395,7 +396,7 @@
     (with-successfull-eval (eval-each-expr defines env)
       (lambda (result)
         (if (null? exps)
-            (EtaValue Number 0) ; TODO: return void
+            (make-void)
             (eval-sequence exps env))))))
 
 ;  eval-nil

@@ -74,11 +74,12 @@
 ;     (check-args-count "+" args 2)    ; Exactly 2 arguments
 ;     (check-args-count "-" args '(1)) ; At least 1 argument
 ;     (check-args-count "cons" args '(2 2)) ; Between 1 and 2 arguments (i.e., exactly 2)
-(define (check-args-count func-name args expected)
+(define (check-args-count func-name args expected proc)
   (let ([count (length args)])
     (cond
       [(number? expected) 
-       (unless (= count expected)
+       (if (= count expected)
+         (proc args)
          (make-runtime-error 
                 (format "~a expects ~a argument~a, got ~a" 
                        func-name expected (if (= expected 1) "" "s") count)))]
@@ -89,10 +90,12 @@
            (make-runtime-error 
                   (format "~a requires at least ~a argument~a, got ~a" 
                          func-name min (if (= min 1) "" "s") count)))
-         (when (> count max)
+         (if (> count max)
            (make-runtime-error 
                   (format "~a expects at most ~a argument~a, got ~a" 
-                         func-name max (if (= max 1) "" "s") count))))])))
+                         func-name max (if (= max 1) "" "s") count))
+            (proc args)
+                  ))])))
 
 ;  ensure-numbers
 ;     Ensures all arguments are numbers and extracts their values
@@ -144,103 +147,97 @@
 ;; ===== Built-in Function Implementations =====
 
 ;; I/O Functions
-(define (print-impl args env)
-  (check-args-count "print" args 1)
-  (printf "~a\n" (EtaValue-value (first args)))
-  (make-runtime-value Void '()))
-
 (define (display-impl args env)
-  (check-args-count "display" args 1)
-  (printf "~a" (EtaValue-value (first args)))
-  (make-runtime-value Void '()))
-
-(define (newline-impl args env)
-  (check-args-count "newline" args 0)
-  (newline)
-  (make-runtime-value Void '()))
+  (check-args-count "display" args 1
+    (lambda (checked-args)
+      (printf "~a" (EtaValue-value (first checked-args)))
+      (make-runtime-value Void '()))))
 
 (define (read-line-impl args env)
-  (check-args-count "read-line" args 0)
-  (make-runtime-value String (read-line)))
+  (check-args-count "read-line" args 0
+    (lambda (checked-args)
+      (make-runtime-value String (read-line)))))
 
 ;; Arithmetic Operations
 (define (add-impl args env)
   (let ([nums (ensure-numbers "+" args)])
     (make-runtime-value Number (apply + nums))))
 
+; MEMO: support both 1 and 2 arguments
 (define (subtract-impl args env)
-  (check-args-count "-" args '(1))
-  (cond
-    [(= 1 (length args))
-     (let ([val (EtaValue-value (first args))])
-       (if (number? val)
-           (make-runtime-value Number (- val))
-           (make-runtime-error 
-                  (format "- expects numbers, got: ~a" 
-                         (runtime-value->string (first args))))))]
-    [else
-     (let* ([vals (ensure-numbers "-" args)]
-            [first (first vals)]
-            [rest (rest vals)])
-       (make-runtime-value Number (apply - first rest)))]))
+  (check-args-count "-" args '(1 2)
+    (lambda (checked-args)
+      (cond
+        [(= 1 (length checked-args))
+         (let ([val (EtaValue-value (first checked-args))])
+           (if (number? val)
+               (make-runtime-value Number (- 0 val))
+               (make-runtime-error 
+                 (format "- expects numbers, got: ~a" 
+                         (runtime-value->string (first checked-args))))))]
+        [(= 2 (length checked-args))
+         (let* ([vals (ensure-numbers "-" checked-args)]
+                [x (first vals)]
+                [y (second vals)])
+           (make-runtime-value Number (- x y)))]
+        [else
+         (make-runtime-error "- expects 1 or 2 arguments")]))))
 
+; MEMO: support any number of arguments
 (define (multiply-impl args env)
   (let ([nums (ensure-numbers "*" args)])
     (make-runtime-value Number (apply * nums))))
 
+
+; MEMO: support only 2 arguments. 
+;       This function returns a float number. **NOT AN EXACT NUMBER**
 (define (divide-impl args env)
-  (check-args-count "/" args '(1))
-  (cond
-    [(= 1 (length args))
-     (let ([val (EtaValue-value (first args))])
-       (if (number? val)
-           (if (= val 0)
-              (make-runtime-error "Division by zero")
-               (make-runtime-value Number (/ 1 val)))
-            (make-runtime-error 
-                  (format "/ expects numbers, got: ~a" 
-                         (runtime-value->string (first args))))))]
-    [else
-     (let* ([vals (ensure-numbers "/" args)]
-            [first (first vals)]
-            [rest (rest vals)])
-       (if (member 0 rest)
-           (make-runtime-error "Division by zero")
-           (make-runtime-value Number (apply / first rest))))]))
+  (check-args-count "/" args 2
+    (lambda (checked-args)
+      (let* ([vals (ensure-numbers "/" checked-args)]
+             [x (first vals)]
+             [y (second vals)])
+        (if (= y 0)
+            (make-runtime-error "Division by zero")
+            (make-runtime-value Number (exact->inexact (/ x y))))))))
 
 ;; Comparison Operations
 (define (make-comparison-impl op-name op)
   (lambda (args env)
-    (check-args-count op-name args '(2))
-    (let* ([vals (ensure-numbers op-name args)]
-           [result (for/and ([i (in-range (sub1 (length vals)))])
-                     (op (list-ref vals i) (list-ref vals (add1 i))))])
-      (make-runtime-value Boolean result))))
+    (check-args-count op-name args '(2)
+      (lambda (checked-args)
+        (let* ([vals (ensure-numbers op-name checked-args)]
+               [result (for/and ([i (in-range (sub1 (length vals)))])
+                         (op (list-ref vals i) (list-ref vals (add1 i))))])
+          (make-runtime-value Boolean result))))))
 
 ;; List Operations
 (define (list-impl args env)
   (make-runtime-value List args))
 
 (define (cons-impl args env)
-  (check-args-count "cons" args 2)
-  (let ([item (first args)]
-        [lst (second args)])
-    (let ([lst-val (check-list-arg "cons" lst)])
-      (make-runtime-value List (cons item lst-val)))))
+  (check-args-count "cons" args 2
+    (lambda (checked-args)
+      (let ([item (first checked-args)]
+            [lst (second checked-args)])
+        (let ([lst-val (check-list-arg "cons" lst)])
+          (make-runtime-value List (cons item lst-val)))))))
 
 (define (car-impl args env)
-  (check-args-count "car" args 1)
-  (let ([lst-val (check-list-arg "car" (first args))])
-    (if (null? lst-val)
-        (make-runtime-error "car called on empty list")
-        (first lst-val))))
+  (check-args-count "car" args 1
+    (lambda (checked-args)
+      (let ([lst-val (check-list-arg "car" (first checked-args))])
+        (if (null? lst-val)
+            (make-runtime-error "car called on empty list")
+            (first lst-val))))))
 
 (define (cdr-impl args env)
-  (check-args-count "cdr" args 1)
-  (let ([lst-val (check-list-arg "cdr" (first args))])
-    (if (null? lst-val)
-       (make-runtime-error "cdr called on empty list")
-        (make-runtime-value List (rest lst-val)))))
+  (check-args-count "cdr" args 1
+    (lambda (checked-args)
+      (let ([lst-val (check-list-arg "cdr" (first checked-args))])
+        (if (null? lst-val)
+           (make-runtime-error "cdr called on empty list")
+            (make-runtime-value List (rest lst-val)))))))
 
 ;  add-builtins-to-env
 ;     Adds built-in functions to the environment
@@ -252,9 +249,7 @@
       ;; Register all built-in functions
 
     ;; I/O Functions
-    (define-builtin! env "print" print-impl)
     (define-builtin! env "display" display-impl)
-    (define-builtin! env "newline" newline-impl)
     (define-builtin! env "read-line" read-line-impl)
 
     ;; Arithmetic Operations
@@ -285,7 +280,7 @@
 ;  Example:
 ;     (get-builtin-names) => (list "+" "-" "*" "/" "=" "<" ">" "list" "cons" "car" "cdr")
 (define (get-builtin-names)
-  (list "print" "display" "newline" "read-line"
+  (list "display" "read-line"
         "+" "-" "*" "/" 
         "=" "<" ">"
         "list" "cons" "car" "cdr"))

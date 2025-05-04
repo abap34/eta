@@ -18,6 +18,13 @@
          exit-with-eval-result
 )
 
+
+; EvalResult
+;  Represents the result of evaluating an expression.
+;    - success? - A boolean indicating if the evaluation was successful. (bool)
+;    - value - The evaluated value or an error message. 
+;               if success? is #t, this is the evaluated value. (EtaValue | list of EtaValue)
+;               if success? is #f, this is an error. (EtaError)
 (struct EvalResult (success? value) #:transparent)
 
 ; format-eval-result
@@ -28,7 +35,9 @@
 ;   A string representation of the EvalResult.
 (define (format-eval-result result source)
   (if (EvalResult-success? result)
-      (colorize (runtime-value->string (EvalResult-value result)) 'cyan)
+      (if (list? (EvalResult-value result))
+          (string-join (map (lambda (v) (colorize (runtime-value->string v) 'cyan)) (EvalResult-value result)) "\n")
+          (colorize (runtime-value->string (EvalResult-value result)) 'cyan))
         (colorize (format-error-with-source (EvalResult-value result) source) 'red)))
 
 ; exit-with-eval-result
@@ -96,7 +105,7 @@
                     (EvalResult #t result))))))))
 
 ; eta-eval-toplevel
-;    Evaluates an expression in new toplevel environment.
+;    Evaluates an script in new toplevel environment.
 ; Arguments:
 ;    source - The source code to evaluate. (string)
 ; Returns:
