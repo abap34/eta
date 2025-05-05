@@ -89,372 +89,6 @@
                    #f)))
 
 
-;; -- ast builders 
-
-
-;  make-const
-;     Create a constant expression node
-;  Arguments:
-;     location - Source location
-;     tag - The type of the constant (e.g., number, string, boolean)
-;     value - The constant value (e.g., 42, "hello", #t)
-;  Returns:
-;     An Expr with Const head
-(define (make-const location tag value)
-  (make-expr Const (list tag value) location))  ; TODO: validate tag
-
-;  make-symbol
-;     Create a symbol (variable) expression node
-;  Arguments:
-;     location - Source location
-;     name - The symbol name (string)
-;  Returns:
-;     An Expr with Var head
-(define (make-var location name)
-      ; MEMO: Overwrite keyword is allowed. So we don't need to check like:
-      ; (make-parse-error (format "Cannot use keyword ~a as variable name" name) location)
-      (make-expr Var (list name) location))
-
-
-; make-app
-;     Create an application expression node
-;  Arguments:
-;     location - Source location
-;     op - The operator to apply (Expr with any head).   
-;     args - The arguments to the operator (list of Expr)
-;  Returns:
-;     An Expr with App head
-(define (make-app location op args)
-  (make-expr App (list op args) location))  
-
-; make-lambda
-;    Create a lambda expression node
-;  Arguments:
-;     location - Source location
-;     args - The arguments to the lambda (Expr with Arg head)
-;     body - The body of the lambda (Expr)
-;  Returns:
-;     An Expr with Lambda head
-(define (make-lambda location args body)
-  (make-expr Lambda (list args body) location))
-
-
-; make-define
-;     Create a define expression node
-; Arguments:
-;     location - Source location
-;     name - The name of the variable or function (string)
-;     value - The value to assign (Expr. If function, head is Lambda)
-;  Returns:
-;     An Expr with Define head
-(define (make-define location name value)
-    (make-expr Define (list name value) location))
-
-; make-nil
-;     Create a nil expression node
-;  Arguments:
-;     location - Source location
-;  Returns:
-;     An Expr with Nil head
-(define (make-nil location)
-  (make-expr Nil '() location))  ; Nil has no arguments
-
-
-; make-single-arg
-;     Create an argument expression node
-;  Arguments:
-;     location - Source location
-;     name - The argument name (string)
-;  Returns:
-;     An Expr with Arg head
-(define (make-single-arg location name)
-      (unless (string? name)
-        (error (format "Expected a string for argument name, got: ~a" name) location))
-
-      (make-expr Arg 
-          (list
-            '() ; no required args
-           name ; single variadic arg
-          )   ;
-      location))
-
-; make-list-arg
-;     Create a list of argument expression nodes
-;  Arguments:
-;     location - Source location
-;     required-args - List of required argument names (strings)
-;     variadic-arg  - The variadic argument name (string)
-;  Returns:
-;     An Expr with Arg head
-(define (make-list-arg location required-args variadic-arg)
-  (unless (and (list? required-args) (andmap string? required-args))
-    (error (format "Expected a list of strings for required args, got: ~a" required-args) location))
-
-  (unless (or (string? variadic-arg) 
-              (eq? variadic-arg '()))
-    (error (format "Expected a string or empty list for variadic arg, got: ~a" variadic-arg) location))
-
-    
-  (make-expr Arg 
-          (list 
-            required-args 
-            variadic-arg
-          ) 
-      location))
-
-
-; make-quote
-;     Create a quote expression node
-;  Arguments:
-;     location - Source location
-;     value - The quoted value (Expr)
-;  Returns:
-;     An Expr with Quote head
-(define (make-quote location value)
-  (make-expr Quote (list value) location))  ; Quote has one argument
-
-
-; make-setbang
-;     Create a set! expression node
-;  Arguments:
-;     location - Source location
-;     name - The variable name to set (string)
-;     value - The value to assign (Expr)
-;  Returns:
-;     An Expr with Set! head
-(define (make-setbang location name value)
-  (make-expr Set! (list name value) location))
-
-
-; make-unnamed-let
-;     Create a let (**not named**) expression node
-;  Arguments:
-;     location - Source location
-;     bindings - binings (Expr with Bindings head)
-;     body - The body of the let (Expr)
-;  Returns:
-;     An Expr with UnNamedLet head
-(define (make-unnamed-let location bindings body)
-  (make-expr UnNamedLet (list bindings body) location))  
-
-; make-named-let
-;     Create a named let expression node
-;  Arguments:
-;     location - Source location
-;     name - The name of the let (string)
-;     bindings - The bindings (Expr with Bindings head)
-;     body - The body of the let (Expr)
-;  Returns:
-;     An Expr with NamedLet head
-(define (make-named-let location name bindings body)
-  (make-expr NamedLet (list name bindings body) location)) 
-
-; make-letstar
-;     Create a let* expression node
-;  Arguments:
-;     location - Source location
-;     bindings - The bindings (Expr with Bindings head)
-;     body - The body of the let* (Expr)
-;  Returns:
-;     An Expr with LetStar head
-(define (make-letstar location bindings body)
-  (make-expr LetStar (list bindings body) location)) 
-
-; make-letrec
-;     Create a letrec expression node
-;  Arguments:
-;     location - Source location
-;     bindings - The bindings (Expr with Bindings head)
-;     body - The body of the letrec (Expr)
-;  Returns:
-;     An Expr with LetRec head
-(define (make-letrec location bindings body)
-  (make-expr LetRec (list bindings body) location)) 
-
-
-; make-ifthen
-;     Create an if expression node without else
-;  Arguments:
-;     location - Source location
-;     test - The test expression (Expr)
-;     then - The then expression (Expr)
-;  Returns:
-;     An Expr with If head
-(define (make-ifthen location test then)
-  (make-expr If (list #f test then) location))
-  ;                   ^^^ no else
-
-; make-ifthenelse
-;     Create an if expression node with else
-;  Arguments:
-;     location - Source location
-;     test - The test expression (Expr)
-;     then - The then expression (Expr)
-;     else - The else expression (Expr)
-;  Returns:
-;     An Expr with If head
-(define (make-ifthenelse location test then else)
-  (make-expr If (list #t test then else) location))
-;                     ^^^ has else
-
-; make-cond-clause
-;     Create a cond clause expression node
-;  Arguments:
-;     location - Source location
-;     test - The test expression (Expr)
-;     body - The body of the cond clause (Expr)
-;  Returns:
-;     An Expr with CondClause head
-(define (make-cond-clause location test body)
-  (make-expr CondClause (list test body) location))
-
-; make-cond-noelse
-;     Create a cond expression node without else
-;  Arguments:
-;     location - Source location
-;     clauses - The list of cond clauses (Expr with CondClause head)
-;  Returns:
-;     An Expr with Cond head
-(define (make-cond-noelse location clauses)
-  (make-expr Cond (list #f clauses) location))
-;                       ^^^ no else
-
-; make-cond-else
-;     Create a cond expression node with else
-;  Arguments:
-;     location - Source location
-;     clauses - The list of cond clauses (Expr with CondClause head)
-;     else - The else expression (Expr)
-;  Returns:
-;     An Expr with Cond head
-(define (make-cond-else location clauses else)
-  (make-expr Cond (list #t clauses else) location))
-;                      ^^^ has else
-
-
-; make-and
-;     Create an and expression node
-;  Arguments:
-;     location - Source location
-;     args - The list of arguments (Expr)
-;  Returns:
-;     An Expr with And head
-(define (make-and location args)
-  (make-expr And args location))
-
-; make-or
-;     Create an or expression node
-;  Arguments:
-;     location - Source location
-;     args - The list of arguments (Expr)
-;  Returns:
-;     An Expr with Or head
-(define (make-or location args)
-  (make-expr Or args location))
-
-; make-begin
-;    Create a begin expression node
-; Arguments:
-;     location - Source location
-;     args - The list of expressions to execute (Expr)
-;  Returns:
-;     An Expr with Begin head
-(define (make-begin location args)
-  (make-expr Begin args location))
-
-; make-do-let
-;     Create a binding expression node for do
-;  Arguments:
-;     location - Source location
-;     name - The name of the variable (string)
-;     init - The initial value (Expr)
-;     step - The step value (Expr)
-;  Returns:
-;     An Expr with DoLet head
-(define (make-do-let location name init step)
-  (make-expr DoLet (list name init step) location))
-
-; make-do-final
-;     Create a final expression node for do
-;  Arguments:
-;     location - Source location
-;     cond - The condition expression (Expr)
-;     body - The body of the do (Expr)
-;  Returns:
-;     An Expr with DoFinal head
-(define (make-do-final location cond body)
-  (make-expr DoFinal (list cond body) location))
-
-
-; make-do
-;     Create a do expression node
-;  Arguments:
-;     location - Source location
-;     do-lets - The list of do-let bindings (Expr with DoLet head)
-;     do-final - The final expression (Expr with DoFinal head)
-;     body - The body of the do (Expr)
-;  Returns:
-;     An Expr with Do head
-(define (make-do location do-lets do-final body)
-  (make-expr Do (list do-lets do-final body) location))
-
-
-; make-body
-;     Create a body expression node
-;  Arguments:
-;     location - Source location
-;     defines - The list of definitions (Expr with Define head)
-;     body - The body of the expression (Expr)
-;  Returns:
-;     An Expr with Body head
-(define (make-body location defines body)
-  (make-expr Body (list defines body) location))
-
-
-; make-bind
-;     Create a binding expression node
-;  Arguments:
-;     location - Source location
-;     name - The name of the variable (string)
-;     value - The value to bind (Expr)
-;  Returns:
-;     An Expr with Bind head
-(define (make-bind location name value)
-  (make-expr Bind (list name value) location))  
-
-
-; make-bindings
-;     Create a bindings expression node
-; Arguments:
-;     location - Source location
-;     bindings - The list of bindings (Expr with Bind head)
-;  Returns:
-;     An Expr with Bindings head
-(define (make-bindings location bindings)
-  (make-expr Bindings bindings location))
-
-
-; make-load
-;     Create a load expression node
-;  Arguments:
-;     location - Source location
-;     filename - The name of the file to load (string)
-;  Returns:
-;     An Expr with Load head
-(define (make-load location filename)
-  (make-expr Load (list filename) location))  
-
-
-; make-sexpr
-;     Create a s-expression node
-;  Arguments:
-;     location - Source location
-;     args - The list of arguments (Expr)
-;  Returns:
-;     An Expr with S-Expr head
-(define (make-sexpr location args)
-  (make-expr S-Expr args location))
-
 ;; ---------- Basic Parser Combinators ----------
 
 
@@ -625,7 +259,7 @@
 ;      A parser function that matches the keyword
 (define (keyword kw)
   (token-pred (lambda (token) 
-                (and (eq? (Token-typ token) Id)
+                (and (eq? (Token-typ token) 'IdToken)
                      (equal? (Token-val token) kw)))
               (format "keyword ~a" kw)))
 
@@ -707,24 +341,24 @@
 
 ;; Left parenthesis parser
 (define lparen
-   (token-type LParen))
+   (token-type 'LParenToken))
 
 ;; Right parenthesis parser
 (define rparen
-  (token-type RParen))
+  (token-type 'RParenToken))
 
 ;; Dot symbol parser
 (define dot-sym
- (token-type DotSym))
+ (token-type 'DotSymToken))
 
 ;; Quote symbol parser
 (define quote-sym
-   (token-type QuoteSym))
+   (token-type 'QuoteSymToken))
 
 ; Num
 (define number
   (map-parser
-   (token-type Num)
+   (token-type 'NumToken)
    (lambda (token)
      (let ([loc (Token-loc token)])
        (make-const loc 'Num (string->number (Token-val token)))))))
@@ -733,7 +367,7 @@
 ; Bool
 (define boolean 
   (map-parser
-   (token-type Bool)
+   (token-type 'BoolToken)
    (lambda (token)
      (let ([loc (Token-loc token)])
        (make-const loc 'Bool (if (equal? (Token-val token) "#t")
@@ -743,7 +377,7 @@
 ; String
 (define string 
   (map-parser
-   (token-type StringToken)
+   (token-type 'StringToken)
    (lambda (token)
      (let ([loc (Token-loc token)])
        (make-const loc 'String (Token-val token))))))
@@ -778,7 +412,7 @@
 ; Id
 (define parse-id 
   (map-parser
-   (token-type Id)
+   (token-type 'IdToken)
    (lambda (token)
      (let ([loc (Token-loc token)])
        (make-var loc (Token-val token))))))
@@ -803,7 +437,7 @@
 
 (define (get-var-name id-expr)
   (if (and (Expr? id-expr)
-           (equal? (Expr-head id-expr) Var))
+           (equal? (Expr-head id-expr) 'VarHead))
       (first (Expr-args id-expr))
       (error "Faild to get var name. Expected Expr with Var head, got: ~a" id-expr)))
 
@@ -868,7 +502,7 @@
 ; SingleId = Id
 (define parse-single-arg 
   (map-parser
-   (token-type Id)
+   (token-type 'IdToken)
    (lambda (token)
      (let ([loc (Token-loc token)])
        (make-single-arg loc (Token-val token))))))
@@ -1338,7 +972,7 @@
           [(cons ast rest-tokens)
            (if (and (not (empty? rest-tokens))
                     (not (and (= (length rest-tokens) 1)
-                              (eq? (Token-typ (first rest-tokens)) EOF))))
+                              (eq? (Token-typ (first rest-tokens)) 'EOFToken))))
                (make-parser-error "Unexpected tokens after parsing" 
                              (tokens-span rest-tokens))
                ast)]))))

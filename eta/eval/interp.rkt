@@ -86,17 +86,17 @@
     (error "Internal error: expr must be an Expr, got: ~a" expr))
 
   (let ([head (Expr-head expr)])
-    (match head
-      [(== Const) (eval-const expr env)]
-      [(== Var) (eval-var expr env)]
-      [(== App) (eval-app expr env)]
-      [(== Lambda) (eval-lambda expr env)]
-      [(== Quote) (eval-quote expr env)]
-      [(== Define) (eval-define expr env)]
-      [(== If) (eval-if expr env)]
-      [(== Set!) (eval-set! expr env)]
-      [(== Nil) (eval-nil expr env)]
-      [(== Body) (eval-body expr env)]
+    (cond
+      [(equal? head 'ConstHead)  (eval-const expr env)]
+      [(equal? head 'VarHead)    (eval-var expr env)]
+      [(equal? head 'AppHead)    (eval-app expr env)]
+      [(equal? head 'LambdaHead) (eval-lambda expr env)]
+      [(equal? head 'QuoteHead)  (eval-quote expr env)]
+      [(equal? head 'DefineHead) (eval-define expr env)]
+      [(equal? head 'IfHead)     (eval-if expr env)]
+      [(equal? head 'SetHead)    (eval-set! expr env)]
+      [(equal? head 'NilHead)    (eval-nil expr env)]
+      [(equal? head 'BodyHead)   (eval-body expr env)]
       [else (error "Internal error: unexpected ExprHead after desugaring: ~a"
                    (ExprHead->name head))])))
 
@@ -109,14 +109,14 @@
 ;     An EtaValue with appropriate tag and value
 (define (eval-const expr env)
   (let* ([const-args (Expr-args expr)]
-         [tag (first const-args)]
+         [const-tag (first const-args)]
          [value (second const-args)])
-    (match tag
-      [(== 'Num) (EtaValue Number value)]
-      [(== 'Bool) (EtaValue Boolean value)]
-      [(== 'String) (EtaValue String value)]
-      [(== 'Void) (EtaValue Void '())]
-      [(== 'Undefined) (EtaValue Undefined 'undefined)])))
+    (cond
+      [(equal? const-tag 'Num) (EtaValue 'NumberTag value)]
+      [(equal? const-tag 'Bool) (EtaValue 'BooleanTag value)]
+      [(equal? const-tag 'String) (EtaValue 'StringTag value)]
+      [(equal? const-tag 'Void) (EtaValue 'VoidTag '())]
+      [(equal? const-tag 'Undefined) (EtaValue 'UndefinedTag 'undefined)])))
 
 ;  eval-var
 ;     Evaluate a variable expression by looking it up in the environment
@@ -149,7 +149,7 @@
 (define (eval-quote expr env)
   (let* ([quote-args (Expr-args expr)]
          [quoted-form (first quote-args)])
-    (make-runtime-value EtaExpr quoted-form)))
+    (make-runtime-value 'EtaExprTag quoted-form)))
 
 ;  convert-to-param-spec
 ;     Convert an Arg expression to a ParamSpec structure
@@ -159,7 +159,7 @@
 ;     A ParamSpec with required and variadic parameters
 (define (convert-to-param-spec arg-expr)
   (unless (and (Expr? arg-expr)
-               (eq? (Expr-head arg-expr) Arg))
+               (eq? (Expr-head arg-expr) 'ArgHead))
     (error "Internal error: expected Arg expression, got: ~a" arg-expr))
 
   (let* ([arg-args (Expr-args arg-expr)]
@@ -182,7 +182,7 @@
          [param-spec (convert-to-param-spec (first lambda-args))]
          [body (second lambda-args)]
          [loc (Expr-loc expr)])
-    (make-runtime-value EtaClosure
+    (make-runtime-value 'EtaClosureTag
                         (make-eta-closure param-spec body env loc))))
 
 
@@ -222,7 +222,7 @@
     (when variadic
       (let ([rest-args (list-tail args (min (length args) (length req-params)))])
         (define-variable! env variadic
-          (EtaValue List rest-args) #f)))
+          (EtaValue 'ListTag rest-args) #f)))
 
     env))
 
@@ -241,12 +241,12 @@
          [else-expr (fourth if-args)])
     (with-successfull-eval (eval-expr test-expr env)
       (lambda (test-result)
-        (if (equal? (EtaValue-tag test-result) Boolean)
+        (if (equal? (EtaValue-tag test-result) 'BooleanTag)
             (if (equal? (EtaValue-value test-result) #t)
                 (eval-expr then-expr env)
                 (if has-else
                     (eval-expr else-expr env)
-                    (EtaValue Void '())))
+                    (EtaValue 'VoidTag '())))
             (make-runtime-error
              (format "Only boolean value is allowed in condition. Given ~a" (EtaValue-tag test-result))
              (Expr-loc test-expr)))))))
@@ -284,8 +284,8 @@
 
     (with-successfull-eval (eval-expr operator-expr env)
       (lambda (operator-value)
-        (if (not (or (equal? (EtaValue-tag operator-value) EtaClosure)
-                     (equal? (EtaValue-tag operator-value) EtaBuiltin)))
+        (if (not (or (equal? (EtaValue-tag operator-value) 'EtaClosureTag)
+                     (equal? (EtaValue-tag operator-value) 'EtaBuiltinTag)))
           (make-runtime-error
            (format "Application of non-function: ~a" (EtaValue-tag operator-value))
            (Expr-loc operator-expr))
@@ -293,7 +293,7 @@
         (with-successfull-eval (eval-each-expr operand-exprs env)
           (lambda (args)
             (let ([result
-                   (if (equal? (EtaValue-tag operator-value) EtaClosure)
+                   (if (equal? (EtaValue-tag operator-value) 'EtaClosureTag)
                        (apply-closure operator-value args env)
                        (apply-builtin operator-value args env))])
 
@@ -396,7 +396,7 @@
     (with-successfull-eval (eval-each-expr defines env)
       (lambda (result)
         (if (null? exps)
-            (make-void)
+            (EtaValue 'VoidTag '())
             (eval-sequence exps env))))))
 
 ;  eval-nil
@@ -407,4 +407,4 @@
 ;  Returns:
 ;     An EtaValue representing the empty list
 (define (eval-nil expr env)
-  (EtaValue NilValue '()))
+  (EtaValue 'NilValueTag '()))

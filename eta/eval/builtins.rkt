@@ -31,37 +31,37 @@
 ;     (number-value? (make-runtime-value String "hello")) ; => #f
 
 (define (number-value? value)
-  (and (EtaValue? value) (eq? (EtaValue-tag value) Number)))
+  (and (EtaValue? value) (equal? (EtaValue-tag value) 'NumberTag)))
 
 (define (string-value? value)
-  (and (EtaValue? value) (eq? (EtaValue-tag value) String)))
+  (and (EtaValue? value) (equal? (EtaValue-tag value) 'StringTag)))
 
 (define (boolean-value? value)
-  (and (EtaValue? value) (eq? (EtaValue-tag value) Boolean)))
+  (and (EtaValue? value) (equal? (EtaValue-tag value) 'BooleanTag)))
 
 (define (nil-value? value)
-  (and (EtaValue? value) (eq? (EtaValue-tag value) NilValue)))
+  (and (EtaValue? value) (equal? (EtaValue-tag value) 'NilValueTag)))
 
 (define (list-value? value)
-  (and (EtaValue? value) (eq? (EtaValue-tag value) List)))
+  (and (EtaValue? value) (equal? (EtaValue-tag value) 'ListTag)))
 
 (define (expr-value? value)
-  (and (EtaValue? value) (eq? (EtaValue-tag value) EtaExpr)))
+  (and (EtaValue? value) (equal? (EtaValue-tag value) 'EtaExprTag)))
 
 (define (builtin-value? value)
-  (and (EtaValue? value) (eq? (EtaValue-tag value) EtaBuiltin)))
+  (and (EtaValue? value) (equal? (EtaValue-tag value) 'EtaBuiltinTag)))
 
 (define (closure-value? value)
-  (and (EtaValue? value) (eq? (EtaValue-tag value) EtaClosure)))
+  (and (EtaValue? value) (equal? (EtaValue-tag value) 'EtaClosureTag)))
 
 (define (struct-value? value)
-  (and (EtaValue? value) (eq? (EtaValue-tag value) EtaStruct)))
+  (and (EtaValue? value) (equal? (EtaValue-tag value) 'EtaStructTag)))
 
 (define (undefined-value? value)
-  (and (EtaValue? value) (eq? (EtaValue-tag value) Undefined)))
+  (and (EtaValue? value) (equal? (EtaValue-tag value) 'UndefinedTag)))
 
 (define (void-value? value)
-  (and (EtaValue? value) (eq? (EtaValue-tag value) Void)))
+  (and (EtaValue? value) (equal? (EtaValue-tag value) 'Void)))
 
 ;  check-args-count
 ;     Validates that the number of arguments matches the expected count
@@ -108,7 +108,7 @@
 ;     (ensure-numbers "+" args) => '(1 2 3)
 (define (ensure-numbers func-name args)
   (map (lambda (arg) 
-         (if (eq? (EtaValue-tag arg) Number)
+         (if (equal? (EtaValue-tag arg) 'NumberTag)
              (EtaValue-value arg)
               (make-runtime-error 
                     (format "~a expects numbers, got: ~a" 
@@ -125,7 +125,7 @@
 ;  Example:
 ;     (check-list-arg "car" (first args))
 (define (check-list-arg func-name arg)
-  (if (eq? (EtaValue-tag arg) List)
+  (if (eq? (EtaValue-tag arg) 'ListTag)
       (EtaValue-value arg)
     (make-runtime-error 
              (format "~a expects a list, got: ~a" 
@@ -150,19 +150,18 @@
 (define (display-impl args env)
   (check-args-count "display" args 1
     (lambda (checked-args)
-      (printf "~a" (EtaValue-value (first checked-args)))
-      (make-runtime-value Void '()))))
       (printf "~a" (runtime-value->string (first checked-args)))
+      (make-runtime-value 'VoidTag '()))))
 
 (define (read-line-impl args env)
   (check-args-count "read-line" args 0
     (lambda (checked-args)
-      (make-runtime-value String (read-line)))))
+      (make-runtime-value 'StringTag (read-line)))))
 
 ;; Arithmetic Operations
 (define (add-impl args env)
   (let ([nums (ensure-numbers "+" args)])
-    (make-runtime-value Number (apply + nums))))
+    (make-runtime-value 'NumberTag (apply + nums))))
 
 ; MEMO: support both 1 and 2 arguments
 (define (subtract-impl args env)
@@ -172,7 +171,7 @@
         [(= 1 (length checked-args))
          (let ([val (EtaValue-value (first checked-args))])
            (if (number? val)
-               (make-runtime-value Number (- 0 val))
+               (make-runtime-value 'NumberTag (- 0 val))
                (make-runtime-error 
                  (format "- expects numbers, got: ~a" 
                          (runtime-value->string (first checked-args))))))]
@@ -180,14 +179,14 @@
          (let* ([vals (ensure-numbers "-" checked-args)]
                 [x (first vals)]
                 [y (second vals)])
-           (make-runtime-value Number (- x y)))]
+           (make-runtime-value 'NumberTag (- x y)))]
         [else
          (make-runtime-error "- expects 1 or 2 arguments")]))))
 
 ; MEMO: support any number of arguments
 (define (multiply-impl args env)
   (let ([nums (ensure-numbers "*" args)])
-    (make-runtime-value Number (apply * nums))))
+    (make-runtime-value 'NumberTag (apply * nums))))
 
 
 ; MEMO: support only 2 arguments. 
@@ -200,7 +199,7 @@
              [y (second vals)])
         (if (= y 0)
             (make-runtime-error "Division by zero")
-            (make-runtime-value Number (exact->inexact (/ x y))))))))
+            (make-runtime-value 'NumberTag (exact->inexact (/ x y))))))))
 
 ;; Comparison Operations
 (define (make-comparison-impl op-name op)
@@ -210,11 +209,11 @@
         (let* ([vals (ensure-numbers op-name checked-args)]
                [result (for/and ([i (in-range (sub1 (length vals)))])
                          (op (list-ref vals i) (list-ref vals (add1 i))))])
-          (make-runtime-value Boolean result))))))
+          (make-runtime-value 'BooleanTag result))))))
 
 ;; List Operations
 (define (list-impl args env)
-  (make-runtime-value List args))
+  (make-runtime-value 'ListTag args))
 
 (define (cons-impl args env)
   (check-args-count "cons" args 2
@@ -222,7 +221,7 @@
       (let ([item (first checked-args)]
             [lst (second checked-args)])
         (let ([lst-val (check-list-arg "cons" lst)])
-          (make-runtime-value List (cons item lst-val)))))))
+          (make-runtime-value 'ListTag (cons item lst-val)))))))
 
 (define (car-impl args env)
   (check-args-count "car" args 1
@@ -238,7 +237,7 @@
       (let ([lst-val (check-list-arg "cdr" (first checked-args))])
         (if (null? lst-val)
            (make-runtime-error "cdr called on empty list")
-            (make-runtime-value List (rest lst-val)))))))
+            (make-runtime-value 'ListTag (rest lst-val)))))))
 
 ;  add-builtins-to-env
 ;     Adds built-in functions to the environment

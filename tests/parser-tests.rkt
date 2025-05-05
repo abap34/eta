@@ -9,11 +9,12 @@
          "../eta/utils/error.rkt")
 
 ;; Helper function to simplify test creation
-(define (test-parse input expected-ast message state output-fn)
+(define (parse-single input)
   (let* ([tokens (tokenize input)]
-         [actual-ast (parse tokens)])
-    (assert-equal actual-ast expected-ast message state 
-                 (make-indented-output-fn output-fn 1))))
+         [expr (parse tokens)])
+    (if (= (length expr) 1)
+        (first expr)
+        (error 'parse-single "Expected a single expression, got: ~v" expr))))
 
 ;; test-constant-parsing
 ;;     Tests for constant parsing (number, string, boolean, nil)
@@ -25,37 +26,32 @@
 
   ;; Number constant
   (let* ([input "42"]
-         [tokens (tokenize input)]
-         [expr (parse tokens)]
-         [expected (make-expr Const (list 'Num 42) (Location 1 1 1 3))])
+         [expr (parse-single input)]
+         [expected (make-expr 'ConstHead (list 'Num 42) (Location 1 1 1 3))])
     (set! state (assert expr expected "Number constant parsing test")))
 
   ;; String constant
   (let* ([input "\"hello\""]
-         [tokens (tokenize input)]
-         [expr (parse tokens)]
-         [expected (make-expr Const (list 'String "hello") (Location 1 1 1 8))])
+         [expr (parse-single input)]
+         [expected (make-expr 'ConstHead (list 'String "hello") (Location 1 1 1 8))])
     (set! state (assert expr expected "String constant parsing test")))
 
   ;; Boolean true constant
   (let* ([input "#t"]
-         [tokens (tokenize input)]
-         [expr (parse tokens)]
-         [expected (make-expr Const (list 'Bool #t) (Location 1 1 1 3))])
+         [expr (parse-single input)]
+         [expected (make-expr 'ConstHead (list 'Bool #t) (Location 1 1 1 3))])
     (set! state (assert expr expected "Boolean true constant parsing test")))
 
   ;; Boolean false constant
   (let* ([input "#f"]
-         [tokens (tokenize input)]
-         [expr (parse tokens)]
-         [expected (make-expr Const (list 'Bool #f) (Location 1 1 1 3))])
+         [expr (parse-single input)]
+         [expected (make-expr 'ConstHead (list 'Bool #f) (Location 1 1 1 3))])
     (set! state (assert expr expected "Boolean false constant parsing test")))
 
   ;; Empty list / nil constant
   (let* ([input "()"]
-         [tokens (tokenize input)]
-         [expr (parse tokens)]
-         [expected (make-expr Nil '() (Location 1 1 1 3))])
+         [expr (parse-single input)]
+         [expected (make-expr 'NilHead '() (Location 1 1 1 3))])
     (set! state (assert expr expected "Nil/empty list parsing test")))
 
   state)
@@ -69,18 +65,18 @@
                    (assert-equal a e m state (make-indented-output-fn output-fn 1))))
   
   ;; Simple variable
-  (set! state (assert (parse (tokenize "x"))
-                      (make-expr Var (list "x") (Location 1 1 1 2))
+  (set! state (assert (parse-single "x")
+                      (make-expr 'VarHead (list "x") (Location 1 1 1 2))
                       "Simple variable parsing test"))
 
   ;; Complex variable name
-  (set! state (assert (parse (tokenize "hello-world!"))
-                      (make-expr Var (list "hello-world!") (Location 1 1 1 13))
+  (set! state (assert (parse-single "hello-world!")
+                      (make-expr 'VarHead (list "hello-world!") (Location 1 1 1 13))
                       "Complex variable name parsing test"))
 
   ;; Symbolic variable
-  (set! state (assert (parse (tokenize "+"))
-                      (make-expr Var (list "+") (Location 1 1 1 2))
+  (set! state (assert (parse-single "+")
+                      (make-expr 'VarHead (list "+") (Location 1 1 1 2))
                       "Symbolic variable parsing test"))
 
   state)
@@ -95,29 +91,29 @@
 
   ;; Quoted variable
   (let* ([input "'x"]
-         [expr (parse (tokenize input))]
-         [expected (make-expr Quote
-                         (list (make-expr Var (list "x") (Location 1 2 1 3)))
+         [expr (parse-single input)]
+         [expected (make-expr 'QuoteHead
+                         (list (make-expr 'VarHead (list "x") (Location 1 2 1 3)))
                          (Location 1 1 1 3))])
     (set! state (assert expr expected "Quoted variable parsing test")))
 
   ;; Quoted number
   (let* ([input "'42"]
-         [expr (parse (tokenize input))]
-         [expected (make-expr Quote
-                         (list (make-expr Const (list 'Num 42) (Location 1 2 1 4)))
+         [expr (parse-single input)]
+         [expected (make-expr 'QuoteHead
+                         (list (make-expr 'ConstHead (list 'Num 42) (Location 1 2 1 4)))
                          (Location 1 1 1 4))])
     (set! state (assert expr expected "Quoted number parsing test")))
 
   ;; Quoted list
   (let* ([input "'(1 2 3)"]
-         [expr (parse (tokenize input))]
-         [expected (make-expr Quote
+         [expr (parse-single input)]
+         [expected (make-expr 'QuoteHead
                          (list 
-                          (make-expr S-Expr
-                             (list (make-expr Const (list 'Num 1) (Location 1 3 1 4))
-                                   (make-expr Const (list 'Num 2) (Location 1 5 1 6))
-                                   (make-expr Const (list 'Num 3) (Location 1 7 1 8)))
+                          (make-expr 'S-ExprHead
+                             (list (make-expr 'ConstHead (list 'Num 1) (Location 1 3 1 4))
+                                   (make-expr 'ConstHead (list 'Num 2) (Location 1 5 1 6))
+                                   (make-expr 'ConstHead (list 'Num 3) (Location 1 7 1 8)))
                              (Location 1 2 1 9))
                          )
          (Location 1 1 1 9))])
@@ -126,9 +122,9 @@
 
   ;; Quote with explicit quote syntax
   (let* ([input "(quote hello)"]
-         [expr (parse (tokenize input))]
-         [expected (make-expr Quote
-                         (list (make-expr Var (list "hello") (Location 1 8 1 13)))
+         [expr (parse-single input)]
+         [expected (make-expr 'QuoteHead
+                         (list (make-expr 'VarHead (list "hello") (Location 1 8 1 13)))
                          (Location 1 1 1 14))])
     (set! state (assert expr expected "Explicit quote syntax parsing test")))
 
@@ -144,48 +140,48 @@
 
   ;; Simple function application
   (let* ([input "(+ 1 2)"]
-         [expr (parse (tokenize input))]
-         [expected (make-expr App 
-                         (list (make-expr Var (list "+") (Location 1 2 1 3))
+         [expr (parse-single input)]
+         [expected (make-expr 'AppHead 
+                         (list (make-expr 'VarHead (list "+") (Location 1 2 1 3))
                                (list 
-                                (make-expr Const (list 'Num 1) (Location 1 4 1 5))
-                                (make-expr Const (list 'Num 2) (Location 1 6 1 7))))
+                                (make-expr 'ConstHead (list 'Num 1) (Location 1 4 1 5))
+                                (make-expr 'ConstHead (list 'Num 2) (Location 1 6 1 7))))
                          (Location 1 1 1 8))])
     (set! state (assert expr expected "Simple function application parsing test")))
 
   ;; No-argument function call
   (let* ([input "(foo)"]
-         [expr (parse (tokenize input))]
-         [expected (make-expr App
-                         (list (make-expr Var (list "foo") (Location 1 2 1 5))
+         [expr (parse-single input)]
+         [expected (make-expr 'AppHead
+                         (list (make-expr 'VarHead (list "foo") (Location 1 2 1 5))
                                '())
                          (Location 1 1 1 6))])
     (set! state (assert expr expected "No-argument function application parsing test")))
 
   ;; Multiple argument types
   (let* ([input "(foo 1 \"bar\" #t)"]
-         [expr (parse (tokenize input))]
-         [expected (make-expr App
-                         (list (make-expr Var (list "foo") (Location 1 2 1 5))
+         [expr (parse-single input)]
+         [expected (make-expr 'AppHead
+                         (list (make-expr 'VarHead (list "foo") (Location 1 2 1 5))
                                (list
-                                (make-expr Const (list 'Num 1) (Location 1 6 1 7))
-                                (make-expr Const (list 'String "bar") (Location 1 8 1 13))
-                                (make-expr Const (list 'Bool #t) (Location 1 14 1 16))))
+                                (make-expr 'ConstHead (list 'Num 1) (Location 1 6 1 7))
+                                (make-expr 'ConstHead (list 'String "bar") (Location 1 8 1 13))
+                                (make-expr 'ConstHead (list 'Bool #t) (Location 1 14 1 16))))
                          (Location 1 1 1 17))])
     (set! state (assert expr expected "Multi-argument function application parsing test")))
 
   ;; Nested function calls
   (let* ([input "(+ 1 (* 2 3))"]
-         [expr (parse (tokenize input))]
-         [expected (make-expr App
-                         (list (make-expr Var (list "+") (Location 1 2 1 3))
+         [expr (parse-single input)]
+         [expected (make-expr 'AppHead
+                         (list (make-expr 'VarHead (list "+") (Location 1 2 1 3))
                                (list
-                                (make-expr Const (list 'Num 1) (Location 1 4 1 5))
-                                (make-expr App
-                                     (list (make-expr Var (list "*") (Location 1 7 1 8))
+                                (make-expr 'ConstHead (list 'Num 1) (Location 1 4 1 5))
+                                (make-expr 'AppHead
+                                     (list (make-expr 'VarHead (list "*") (Location 1 7 1 8))
                                            (list
-                                            (make-expr Const (list 'Num 2) (Location 1 9 1 10))
-                                            (make-expr Const (list 'Num 3) (Location 1 11 1 12))))
+                                            (make-expr 'ConstHead (list 'Num 2) (Location 1 9 1 10))
+                                            (make-expr 'ConstHead (list 'Num 3) (Location 1 11 1 12))))
                                      (Location 1 6 1 13))))
                          (Location 1 1 1 14))])
     (set! state (assert expr expected "Nested function application parsing test")))
@@ -202,33 +198,33 @@
 
   ;; Simple lambda with single argument
   (let* ([input "(lambda (x) x)"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) Lambda "Lambda expression head test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'LambdaHead "Lambda expression head test")))
 
   ;; Lambda with multiple arguments
   (let* ([input "(lambda (x y z) (+ x (* y z)))"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) Lambda "Lambda with multiple args test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'LambdaHead "Lambda with multiple args test")))
 
   ;; Lambda with rest arguments
   (let* ([input "(lambda (x . rest) (cons x rest))"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) Lambda "Lambda with rest args test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'LambdaHead "Lambda with rest args test")))
 
   ;; Lambda with single variable as argument (no parens)
   (let* ([input "(lambda x x)"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) Lambda "Lambda with single variable arg test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'LambdaHead "Lambda with single variable arg test")))
 
   ;; Lambda with empty argument list
   (let* ([input "(lambda () 42)"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) Lambda "Lambda with empty arg list test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'LambdaHead "Lambda with empty arg list test")))
 
   ;; Lambda with internal define
   (let* ([input "(lambda () (define x 1) (+ x 2))"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) Lambda "Lambda with internal define test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'LambdaHead "Lambda with internal define test")))
 
   state)
 
@@ -242,27 +238,27 @@
 
   ;; Simple variable definition
   (let* ([input "(define x 42)"]
-         [expr (parse (tokenize input))]
-         [expected (make-expr Define 
-                         (list (make-expr Var (list "x") (Location 1 9 1 10))
-                               (make-expr Const (list 'Num 42) (Location 1 11 1 13)))
+         [expr (parse-single input)]
+         [expected (make-expr 'DefineHead 
+                         (list (make-expr 'VarHead (list "x") (Location 1 9 1 10))
+                               (make-expr 'ConstHead (list 'Num 42) (Location 1 11 1 13)))
                          (Location 1 1 1 14))])
     (set! state (assert expr expected "Simple variable definition parsing test")))
 
   ;; Function definition - traditional syntax
   (let* ([input "(define (add x y) (+ x y))"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) Define "Function definition parsing test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'DefineHead "Function definition parsing test")))
 
   ;; Function definition with rest arguments
   (let* ([input "(define (foo x . rest) (cons x rest))"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) Define "Function with rest args definition test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'DefineHead "Function with rest args definition test")))
 
   ;; Lambda function definition
   (let* ([input "(define adder (lambda (x) (+ x 1)))"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) Define "Lambda function definition test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'DefineHead "Lambda function definition test")))
 
   state)
 
@@ -276,39 +272,39 @@
 
   ;; If with else branch
   (let* ([input "(if (> x 0) \"positive\" \"non-positive\")"]
-         [expr (parse (tokenize input))]
-         [expected (make-expr If
+         [expr (parse-single input)]
+         [expected (make-expr 'IfHead
                          (list #t
-                               (make-expr App
-                                    (list (make-expr Var (list ">") (Location 1 6 1 7))
+                               (make-expr 'AppHead
+                                    (list (make-expr 'VarHead (list ">") (Location 1 6 1 7))
                                           (list 
-                                           (make-expr Var (list "x") (Location 1 8 1 9))
-                                           (make-expr Const (list 'Num 0) (Location 1 10 1 11))))
+                                           (make-expr 'VarHead (list "x") (Location 1 8 1 9))
+                                           (make-expr 'ConstHead (list 'Num 0) (Location 1 10 1 11))))
                                     (Location 1 5 1 12))
-                               (make-expr Const (list 'String "positive") (Location 1 13 1 23))
-                               (make-expr Const (list 'String "non-positive") (Location 1 24 1 38)))
+                               (make-expr 'ConstHead (list 'String "positive") (Location 1 13 1 23))
+                               (make-expr 'ConstHead (list 'String "non-positive") (Location 1 24 1 38)))
                          (Location 1 1 1 39))])
     (set! state (assert expr expected "If-then-else parsing test")))
 
   ;; If without else branch
   (let* ([input "(if (> x 0) \"positive\")"]
-         [expr (parse (tokenize input))]
-         [expected (make-expr If
+         [expr (parse-single input)]
+         [expected (make-expr 'IfHead
                          (list #f
-                               (make-expr App
-                                    (list (make-expr Var (list ">") (Location 1 6 1 7))
+                               (make-expr 'AppHead
+                                    (list (make-expr 'VarHead (list ">") (Location 1 6 1 7))
                                           (list 
-                                           (make-expr Var (list "x") (Location 1 8 1 9))
-                                           (make-expr Const (list 'Num 0) (Location 1 10 1 11))))
+                                           (make-expr 'VarHead (list "x") (Location 1 8 1 9))
+                                           (make-expr 'ConstHead (list 'Num 0) (Location 1 10 1 11))))
                                     (Location 1 5 1 12))
-                               (make-expr Const (list 'String "positive") (Location 1 13 1 23)))
+                               (make-expr 'ConstHead (list 'String "positive") (Location 1 13 1 23)))
                          (Location 1 1 1 24))])
     (set! state (assert expr expected "If-then (no else) parsing test")))
 
   ;; Nested if expressions
   (let* ([input "(if (> x 0) (if (> x 10) \"big\" \"medium\") \"non-positive\")"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) If "Nested if expressions parsing test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'IfHead "Nested if expressions parsing test")))
 
   state)
 
@@ -322,28 +318,28 @@
 
   ;; Simple let
   (let* ([input "(let ((x 1) (y 2)) (+ x y))"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) UnNamedLet "Simple let parsing test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'UnNamedLetHead "Simple let parsing test")))
 
   ;; Named let (for recursion)
   (let* ([input "(let loop ((i 0)) (if (< i 10) (loop (+ i 1)) i))"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) NamedLet "Named let parsing test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'NamedLetHead "Named let parsing test")))
 
   ;; Let with multiple bindings
   (let* ([input "(let ((a 1) (b 2) (c 3)) (+ a b c))"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) UnNamedLet "Let with multiple bindings test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'UnNamedLetHead "Let with multiple bindings test")))
 
   ;; Let with internal definitions
   (let* ([input "(let ((x 1)) (define y 2) (+ x y))"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) UnNamedLet "Let with internal definitions test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'UnNamedLetHead "Let with internal definitions test")))
 
   ;; Empty bindings
   (let* ([input "(let () (display \"hello\"))"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) UnNamedLet "Let with empty bindings test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'UnNamedLetHead "Let with empty bindings test")))
 
   state)
 
@@ -357,27 +353,27 @@
 
   ;; Simple let*
   (let* ([input "(let* ((x 1) (y (+ x 1))) (+ x y))"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) LetStar "Simple let* parsing test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'LetStarHead "Simple let* parsing test")))
 
   ;; Let* with multiple sequential bindings
   (let* ([input "(let* ((a 1) (b (+ a 1)) (c (+ b 1))) (+ a b c))"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) LetStar "Let* with sequential bindings test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'LetStarHead "Let* with sequential bindings test")))
 
   ;; Simple letrec
   (let* ([input "(letrec ((even? (lambda (n) (if (= n 0) #t (odd? (- n 1))))) 
                           (odd? (lambda (n) (if (= n 0) #f (even? (- n 1)))))) 
                    (even? 10))"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) LetRec "Simple letrec parsing test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'LetRecHead "Simple letrec parsing test")))
 
   ;; Letrec with internal definitions
   (let* ([input "(letrec ((fact (lambda (n) (if (= n 0) 1 (* n (fact (- n 1))))))) 
                    (define x 5) 
                    (fact x))"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) LetRec "Letrec with internal definitions test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'LetRecHead "Letrec with internal definitions test")))
 
   state)
 
@@ -391,18 +387,18 @@
 
   ;; Simple begin
   (let* ([input "(begin (display \"hello\") (display \"world\") (+ 1 2))"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) Begin "Simple begin parsing test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'BeginHead "Simple begin parsing test")))
 
   ;; Empty begin
   (let* ([input "(begin)"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) Begin "Empty begin parsing test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'BeginHead "Empty begin parsing test")))
 
   ;; Begin with various expression types
   (let* ([input "(begin (define x 1) (set! x 2) (if (> x 0) x 0))"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) Begin "Begin with various expressions test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'BeginHead "Begin with various expressions test")))
 
   state)
 
@@ -416,17 +412,17 @@
 
   ;; Simple set!
   (let* ([input "(set! x 42)"]
-         [expr (parse (tokenize input))]
-         [expected (make-expr Set!
-                         (list (make-expr Var (list "x") (Location 1 7 1 8))
-                               (make-expr Const (list 'Num 42) (Location 1 9 1 11)))
+         [expr (parse-single input)]
+         [expected (make-expr 'SetHead
+                         (list (make-expr 'VarHead (list "x") (Location 1 7 1 8))
+                               (make-expr 'ConstHead (list 'Num 42) (Location 1 9 1 11)))
                          (Location 1 1 1 12))])
     (set! state (assert expr expected "Simple set! parsing test")))
 
   ;; Set! with complex expression
   (let* ([input "(set! counter (+ counter 1))"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) Set! "Set! with complex expression test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'SetHead "Set! with complex expression test")))
 
   state)
 
@@ -442,19 +438,19 @@
   (let* ([input "(cond ((< x 0) \"negative\") 
                        ((> x 0) \"positive\") 
                        (else \"zero\"))"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) Cond "Simple cond parsing test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'CondHead "Simple cond parsing test")))
 
   ;; Cond without else
   (let* ([input "(cond ((< x 0) \"negative\") ((> x 0) \"positive\"))"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) Cond "Cond without else parsing test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'CondHead "Cond without else parsing test")))
 
   ;; Cond with multiple expressions in clause
   (let* ([input "(cond ((= n 0) (display \"zero\") 0) 
                        (else (display \"nonzero\") n))"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) Cond "Cond with multiple expressions parsing test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'CondHead "Cond with multiple expressions parsing test")))
 
   state)
 
@@ -468,63 +464,63 @@
 
   ;; Simple and
   (let* ([input "(and (> x 0) (< x 10))"]
-         [expr (parse (tokenize input))]
-         [expected (make-expr And
+         [expr (parse-single input)]
+         [expected (make-expr 'AndHead
                          (list
-                          (make-expr App
-                               (list (make-expr Var (list ">") (Location 1 7 1 8))
+                          (make-expr 'AppHead
+                               (list (make-expr 'VarHead (list ">") (Location 1 7 1 8))
                                      (list
-                                      (make-expr Var (list "x") (Location 1 9 1 10))
-                                      (make-expr Const (list 'Num 0) (Location 1 11 1 12))))
+                                      (make-expr 'VarHead (list "x") (Location 1 9 1 10))
+                                      (make-expr 'ConstHead (list 'Num 0) (Location 1 11 1 12))))
                                (Location 1 6 1 13))
-                          (make-expr App
-                               (list (make-expr Var (list "<") (Location 1 15 1 16))
+                          (make-expr 'AppHead
+                               (list (make-expr 'VarHead (list "<") (Location 1 15 1 16))
                                      (list
-                                      (make-expr Var (list "x") (Location 1 17 1 18))
-                                      (make-expr Const (list 'Num 10) (Location 1 19 1 21))))
+                                      (make-expr 'VarHead (list "x") (Location 1 17 1 18))
+                                      (make-expr 'ConstHead (list 'Num 10) (Location 1 19 1 21))))
                                (Location 1 14 1 22)))
                          (Location 1 1 1 23))])
     (set! state (assert expr expected "Simple and parsing test")))
 
   ;; Empty and
   (let* ([input "(and)"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) And "Empty and parsing test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'AndHead "Empty and parsing test")))
 
   ;; Simple or
   (let* ([input "(or (< x 0) (> x 10))"]
-         [expr (parse (tokenize input))]
-         [expected (make-expr Or
+         [expr (parse-single input)]
+         [expected (make-expr 'OrHead
                          (list
-                          (make-expr App
-                               (list (make-expr Var (list "<") (Location 1 6 1 7))
+                          (make-expr 'AppHead
+                               (list (make-expr 'VarHead (list "<") (Location 1 6 1 7))
                                      (list
-                                      (make-expr Var (list "x") (Location 1 8 1 9))
-                                      (make-expr Const (list 'Num 0) (Location 1 10 1 11))))
+                                      (make-expr 'VarHead (list "x") (Location 1 8 1 9))
+                                      (make-expr 'ConstHead (list 'Num 0) (Location 1 10 1 11))))
                                (Location 1 5 1 12))
-                          (make-expr App
-                               (list (make-expr Var (list ">") (Location 1 14 1 15))
+                          (make-expr 'AppHead
+                               (list (make-expr 'VarHead (list ">") (Location 1 14 1 15))
                                      (list
-                                      (make-expr Var (list "x") (Location 1 16 1 17))
-                                      (make-expr Const (list 'Num 10) (Location 1 18 1 20))))
+                                      (make-expr 'VarHead (list "x") (Location 1 16 1 17))
+                                      (make-expr 'ConstHead (list 'Num 10) (Location 1 18 1 20))))
                                (Location 1 13 1 21)))
                          (Location 1 1 1 22))])
     (set! state (assert expr expected "Simple or parsing test")))
 
   ;; Empty or
   (let* ([input "(or)"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) Or "Empty or parsing test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'OrHead "Empty or parsing test")))
 
   ;; Multiple expressions
   (let* ([input "(and (> x 0) (< x 10) (even? x) #t)"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) And "And with multiple expressions test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'AndHead "And with multiple expressions test")))
 
   ;; Multiple expressions
   (let* ([input "(or (< x 0) (> x 10) (= x 5) #f)"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) Or "Or with multiple expressions test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'OrHead "Or with multiple expressions test")))
 
   state)
 
@@ -540,28 +536,28 @@
   (let* ([input "(do ((i 0 (+ i 1)) (sum 0 (+ sum i)))
                      ((= i 10) sum)
                    (display i))"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) Do "Simple do parsing test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'DoHead "Simple do parsing test")))
 
   ;; Do with empty body
   (let* ([input "(do ((i 0 (+ i 1)))
                      ((> i 10) i))"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) Do "Do with empty body parsing test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'DoHead "Do with empty body parsing test")))
 
   ;; Do with multiple test result expressions
   (let* ([input "(do ((i 0 (+ i 1)))
                      ((> i 10) (display i) i))"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) Do "Do with multiple test results test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'DoHead "Do with multiple test results test")))
 
   ;; Do with multiple body expressions
   (let* ([input "(do ((i 0 (+ i 1)))
                      ((> i 10) i)
                    (display i)
                    (display \"iteration\"))"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) Do "Do with multiple body expressions test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'DoHead "Do with multiple body expressions test")))
 
   state)
 
@@ -575,16 +571,16 @@
 
   ;; Simple load
   (let* ([input "(load \"filename.scm\")"]
-         [expr (parse (tokenize input))]
-         [expected (make-expr Load
-                         (list (make-expr Const (list 'String "filename.scm") (Location 1 7 1 21)))
+         [expr (parse-single input)]
+         [expected (make-expr 'LoadHead
+                         (list (make-expr 'ConstHead (list 'String "filename.scm") (Location 1 7 1 21)))
                          (Location 1 1 1 22))])
     (set! state (assert expr expected "Simple load parsing test")))
 
   ;; Load with path
   (let* ([input "(load \"path/to/file.scm\")"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) Load "Load with path parsing test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'LoadHead "Load with path parsing test")))
 
   state)
 
@@ -617,13 +613,13 @@
 
   ;; Nested function application
   (let* ([input "(+ 1 (* 2 3))"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) App "Nested function application test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'AppHead "Nested function application test")))
 
   ;; Quote and application combination
   (let* ([input "(cons 'a '(b c))"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) App "Quote and application combination test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'AppHead "Quote and application combination test")))
 
   ;; Complex nested expression
   (let* ([input "(let ((x 1)) 
@@ -632,16 +628,16 @@
                          (display \"positive\") 
                          (+ x 1)) 
                        0))"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) UnNamedLet "Complex nested expression test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'UnNamedLetHead "Complex nested expression test")))
 
   ;; Factorial function definition
   (let* ([input "(define (factorial n)
                    (if (= n 0)
                        1
                        (* n (factorial (- n 1)))))"]
-         [expr (parse (tokenize input))])
-    (set! state (assert (Expr-head expr) Define "Factorial function definition test")))
+         [expr (parse-single input)])
+    (set! state (assert (Expr-head expr) 'DefineHead "Factorial function definition test")))
 
   state)
 
