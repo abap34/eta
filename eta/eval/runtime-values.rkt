@@ -1,60 +1,55 @@
 #lang racket
 
-(require rebellion/type/enum  
-        "../parser/ast.rkt")
+(require  "../parser/ast.rkt")
 
 (provide runtime-value->string
+         EtaValue
+         EtaValue?
          make-param-spec
          make-eta-closure
-         make-runtime-value
-         make-void
-         runtime-value->string
-         ParamSpec?
-         Closure
-         Closure?
-         Builtin
-         Builtin?
-         Builtin-proc
-         EtaValue
-         EtaBuiltin
-         EtaValue-tag
-         EtaExpr
-         EtaStruct
          make-builtin
-         Number
-         String
-         Boolean
-         EtaValue-value
-         List
-         NilValue
-         EtaClosure
-         Void
-         Undefined
-         EtaValue?
+         make-runtime-value
          ParamSpec-required
          ParamSpec-variadic
+         Builtin-proc
          Closure-params-spec
          Closure-body
          Closure-captured-env
          Closure-loc
+         EtaValue-tag
+         EtaValue-value
          arity-check
 )
 
 
-(define-enum-type EtaValueTag
-  (Number
-   String
-   Boolean
-   NilValue
-   List
-   EtaExpr
-   EtaBuiltin
-   EtaClosure 
-   EtaStruct
-   Undefined
-   Void
-  )
-)
+(define (RuntimeValueTag? tag)
+  (or (equal? tag 'NumberTag)
+      (equal? tag 'StringTag)
+      (equal? tag 'BooleanTag)
+      (equal? tag 'NilValueTag)
+      (equal? tag 'ListTag)
+      (equal? tag 'EtaExprTag)
+      (equal? tag 'EtaBuiltinTag)
+      (equal? tag 'EtaClosureTag)
+      (equal? tag 'EtaStructTag)
+      (equal? tag 'VoidTag)
+      (equal? tag 'UndefinedTag)))
+
+
+(define (RuntimeValueTag->string tag)
+  (cond
+    [(equal? tag 'NumberTag) "number"]
+    [(equal? tag 'StringTag) "string"]
+    [(equal? tag 'BooleanTag) "boolean"]
+    [(equal? tag 'NilValueTag) "nil"]
+    [(equal? tag 'ListTag) "list"]
+    [(equal? tag 'EtaExprTag) "Expr"]
+    [(equal? tag 'EtaBuiltinTag) "Builtin"]
+    [(equal? tag 'EtaClosureTag) "Closure"]
+    [(equal? tag 'EtaStructTag) "StructInstance"]
+    [(equal? tag 'VoidTag) "void"]
+    [(equal? tag 'UndefinedTag) "undefined"]
+    [else (error (format "Internal error: unknown tag ~a" tag))]))
 
 (define (tag-checker pred tag expect-pass-msg)
   (lambda (tag)
@@ -64,7 +59,6 @@
 
 ; runtime-value definition
 (struct EtaValue (tag value) #:transparent)
-
 
 ; ParamSpec
 ;     A structure to represent the parameter specification of a function
@@ -113,7 +107,7 @@
 (struct Builtin (proc) #:transparent)
 (define (make-builtin proc)
   (if (procedure? proc)
-      (EtaValue EtaBuiltin (Builtin proc))
+      (EtaValue 'EtaBuiltinTag (Builtin proc))
       (error (format "Internal error: proc must be a procedure, but got ~a" proc))))
 
 (struct Closure (params-spec body captured-env loc) #:transparent)
@@ -124,34 +118,33 @@
 
 
 (define (make-runtime-value tag value)
-  (match tag
-    [(== Number) 
-      (tag-checker number? tag "number?")
+  (cond
+    [(equal? tag 'NumberTag) (tag-checker number? tag "number?")
       ]
-    [(== String)
+    [(equal? tag 'StringTag)
       (tag-checker string? tag "string?")]
-    [(== Boolean)
+    [(equal? tag 'BooleanTag)
       (tag-checker boolean? tag "boolean?")]
-    [(== NilValue)
+    [(equal? tag 'NilValueTag)
       (tag-checker null? tag "null?")]
-    [(== List)
+    [(equal? tag 'ListTag)
     ; list? and all elements are EtaValue
       (tag-checker (lambda (x) 
                      (and (list? x) (andmap EtaValue? x)))
                     tag "list?")]
-    [(== EtaExpr)
+    [(equal? tag 'EtaExprTag)
       (tag-checker Expr? tag "Expr?")]
-    [(== EtaBuiltin)
+    [(equal? tag 'EtaBuiltinTag)
       (tag-checker Builtin? tag "Builtin?")]
-    [(== EtaClosure)
+    [(equal? tag 'EtaClosureTag)
       (tag-checker Closure? tag "EtaClosure?")]
-    [(== EtaStruct)
+    [(equal? tag 'EtaStructTag)
       (tag-checker StructInstance? tag "StructInstance?")]
-    [(== Void)
+    [(equal? tag 'VoidTag)
       (tag-checker (lambda (x) 
                      (or (null? x) (equal? x '())))
                     tag "Void")]
-    [(== Undefined)
+    [(equal? tag 'UndefinedTag)
       (tag-checker (lambda (x) 
                      (equal? x 'undefined))
                     tag "Undefined")]
@@ -160,9 +153,6 @@
 
     (EtaValue tag value))
 
-
-(define (make-void) 
-   (make-runtime-value Void '()))
 
 ;  runtime-value->string
 ;     Convert a runtime value into its string representation for REPL display
@@ -181,19 +171,20 @@
 ;      (runtime-value->string (make-compound-procedure params body env))
 ;                                           ⇒ "#<closure lambda>"
 (define (runtime-value->string v)
-  (match v
-    [(EtaValue tag value)
-      (match tag
-       [(== Number) (number->string value)]
-       [(== String) (format "\"~a\"" value)]
-       [(== Boolean) (if value "#t" "#f")]
-       [(== NilValue) "nil"]
-       [(== List) (format "(~a)" (string-join (map runtime-value->string value) " "))]
-       [(== EtaExpr) (format "<Expr: ~a>" value)]
-       [(== EtaBuiltin) (format "<Builtin: ~a>" value)]
-       [(== EtaClosure) (format "<Closure: ~a>" value)]
-       [(== EtaStruct) (format "<StructInstance: ~a>" value)]
-       [(== Undefined) "undefined"]
-       [(== Void) "void"]
-       [else (error "Internal error: unknown tag ~a" tag)])]
-    [else (error (format "Internal error: expected EtaValue, but got ~a" v))]))
+   (if (not (EtaValue? v))
+    (error "Internal error: runtime-value->string expects an EtaValue, but got ~a" v)
+    (let ([tag (EtaValue-tag v)]
+        [value (EtaValue-value v)]) 
+      (cond
+      [(equal? tag 'NumberTag) (number->string value)]
+      [(equal? tag 'StringTag) (format "\"~a\"" value)]
+      [(equal? tag 'BooleanTag) (if value "#t" "#f")]
+      [(equal? tag 'NilValueTag) "nil"]
+      [(equal? tag 'ListTag) (format "(~a)" (string-join (map runtime-value->string value) " "))]
+      [(equal? tag 'EtaExprTag) (format "<Expr: ~a>" value)]
+      [(equal? tag 'EtaBuiltinTag) (format "<Builtin: ~a>" value)]
+      [(equal? tag 'EtaClosureTag) (format "<Closure: ~a>" value)]
+      [(equal? tag 'EtaStructTag) (format "<StructInstance: ~a>" value)]
+      [(equal? tag 'UndefinedTag) "undefined"]
+      [(equal? tag 'VoidTag) "void"]
+      [else (error "Internal error: unknown tag ~a" tag)]))))

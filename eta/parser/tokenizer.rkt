@@ -1,51 +1,49 @@
 #lang racket
 
-(require rebellion/type/enum)
-(require "../utils/location.rkt")
-(require "../utils/error.rkt")
+(require "../utils/location.rkt"
+         "../utils/error.rkt")
 
 (provide tokenize Token Token-typ Token-val Token-loc
          Token? 
-         TokenType
          TokenType?
          Token-loc
          Token-typ
          Token-val
-         LParen RParen DotSym QuoteSym
-         Bool Num StringToken 
          tokens-span
          format-token
-         Id EOF)
+)
 
-(define-enum-type TokenType (LParen RParen DotSym QuoteSym Bool Num StringToken Id EOF))
+(define (TokenType? typ)
+  (or (equal? typ 'LParenToken)
+      (equal? typ 'RParenToken)
+      (equal? typ 'DotSymToken)
+      (equal? typ 'QuoteSymToken)
+      (equal? typ 'BoolToken)
+      (equal? typ 'NumToken)
+      (equal? typ 'StringToken)
+      (equal? typ 'IdToken)
+      (equal? typ 'EOFToken)))
+
 
 ;; Token
 ;;    Represents a token in the source code
 ;; Arguments:
-;;    typ - TokenType enum value
+;;    typ - TokenType 
 ;;    val - StringToken value of the token
 ;;    loc - Location object with position information
-(struct Token (typ val loc)
-  #:transparent
-  #:guard (lambda (typ val loc name)
-            (unless (TokenType? typ)
-              (error 'Token "expected a TokenType value for typ, got: ~v" typ))
-            ;; Check consistency between token type and its value
-            (case typ
-              [(== LParen) (unless (equal? val "(")
-                          (error 'Token "LParen token must have value '(', got: ~v" val))]
-              [(== RParen) (unless (equal? val ")")
-                          (error 'Token "RParen token must have value ')', got: ~v" val))]
-              [(== DotSym) (unless (equal? val ".")
-                           (error 'Token "DotSym token must have value '.', got: ~v" val))]
-              [(== QuoteSym) (unless (equal? val "'")
-                             (error 'Token "QuoteSym token must have value ''', got: ~v" val))]
-              [(== Bool) (unless (or (equal? val "#t") (equal? val "#f"))
-                         (error 'Token "Bool token must have value '#t' or '#f', got: ~v" val))]
-              [(== EOF) (unless (equal? val "")
-                        (error 'Token "EOF token must have empty value, got: ~v" val))]
-              [else (void)]) ; No specific checks for Num, StringToken, and Id
-            (values typ val loc)))
+(struct Token (typ val loc) #:transparent)
+
+(define (make-token typ val loc)
+  (unless (TokenType? typ)
+      (error 'Token "expected a TokenType value for typ, got: ~v" typ))
+  (cond
+      [(equal? typ 'LParenToken) (unless (equal? val "(") (error 'Token "LParen token must have value '(', got: ~v" val))]
+      [(equal? typ 'RParenToken) (unless (equal? val ")") (error 'Token "RParen token must have value ')', got: ~v" val))]
+      [(equal? typ 'DotSymToken) (unless (equal? val ".") (error 'Token "DotSym token must have value '.', got: ~v" val))]
+      [(equal? typ 'QuoteSymToken) (unless (equal? val "'") (error 'Token "QuoteSym token must have value ''', got: ~v" val))]
+      [(equal? typ 'BoolToken) (unless (or (equal? val "#t") (equal? val "#f")) (error 'Token "Bool token must have value '#t' or '#f', got: ~v" val))]
+      [(equal? typ 'EOFToken) (unless (equal? val "") (error 'Token "EOF token must have empty value, got: ~v" val))])
+    (Token typ val loc))
 
 (define (tokens-span tokens)
   (if (empty? tokens)
@@ -59,17 +57,17 @@
                 (Location 0 0 0 0))))))
 
 (define (TokenType->name typ)
-  (match typ
-    [(== RParen)  "RParen"]
-    [(== LParen)  "LParen"]
-    [(== DotSym)  "DotSym"]
-    [(== QuoteSym) "QuoteSym"]
-    [(== Bool)     "Bool"]
-    [(== Num)      "Num"]
-    [(== StringToken)   "StringToken"]
-    [(== Id)       "Id"]
-    [(== EOF)      "EOF"]
-    [_ (error 'TokenType->name "Unknown TokenType: ~v" typ)]))
+  (cond
+    [(equal? typ 'RParenToken)   "RParen"]
+    [(equal? typ 'LParenToken)   "LParen"]
+    [(equal? typ 'DotSymToken)   "DotSym"]
+    [(equal? typ 'QuoteSymToken) "QuoteSym"]
+    [(equal? typ 'BoolToken)     "Bool"]
+    [(equal? typ 'NumToken)      "Num"]
+    [(equal? typ 'StringToken)   "StringToken"]
+    [(equal? typ 'IdToken)       "Id"]
+    [(equal? typ 'EOFToken)      "EOF"]
+    [else (error 'TokenType->name   "Unknown TokenType: ~v" typ)]))
 
 
 (define (format-token token)
@@ -79,6 +77,9 @@
           (location->string (Token-loc token))))
 
 (define (tokenize src)
+  (unless (string? src)
+    (error 'tokenize "expected a string, got: ~v" src))
+
   (define len (string-length src))
 
   (define (finish? pos) (= pos len))
@@ -108,7 +109,7 @@
           (loop (+ p 1))))
     (let* ((end (loop pos))
            (lexeme (substring src pos end)))
-      (values (make-token Id lexeme line col line (+ col (- end pos)))
+      (values (make-token 'IdToken lexeme line col line (+ col (- end pos)))
               end line (+ col (- end pos)))))
 
   (define (read-number pos line col)
@@ -118,7 +119,7 @@
           p))
     (let* ((end (loop pos))
            (lexeme (substring src pos end)))
-      (values (make-token Num lexeme line col line (+ col (- end pos)))
+      (values (make-token 'NumToken lexeme line col line (+ col (- end pos)))
               end line (+ col (- end pos)))))
 
   (define (read-string pos line col)
@@ -128,7 +129,7 @@
           (let ((ch (get-at p)))
             (cond
               [(char=? ch #\")
-               (values (make-token StringToken (list->string (reverse acc)) line col l (+ c 1))
+               (values (make-token 'StringToken (list->string (reverse acc)) line col l (+ c 1))
                        (+ p 1) l (+ c 1))]
               [(char=? ch #\\)
                (if (>= (+ p 1) len)
@@ -158,10 +159,10 @@
         (let ((ch (get-at (+ pos 1))))
           (cond
             [(char=? ch #\t)
-             (values (make-token Bool "#t" line col line (+ col 2))
+             (values (make-token 'BoolToken "#t" line col line (+ col 2))
                      (+ pos 2) line (+ col 2))]
             [(char=? ch #\f)
-             (values (make-token Bool "#f" line col line (+ col 2))
+             (values (make-token 'BoolToken "#f" line col line (+ col 2))
                      (+ pos 2) line (+ col 2))]
             [else
              (values (make-tokenize-error 
@@ -172,15 +173,15 @@
 
   (define (read-next-token pos line col)
     (if (finish? pos)
-        (values (make-token EOF "" line col line col) pos line col)
+        (values (make-token 'EOFToken "" line col line col) pos line col)
         (let-values (((pos1 line1 col1 ch) (advance pos line col)))
           (cond
             [(char-whitespace? ch)
              (read-next-token pos1 line1 col1)]
-            [(char=? ch #\() (values (make-token LParen "(" line col line col1) pos1 line1 col1)]
-            [(char=? ch #\)) (values (make-token RParen ")" line col line col1) pos1 line1 col1)]
-            [(char=? ch #\.) (values (make-token DotSym "." line col line col1) pos1 line1 col1)]
-            [(char=? ch #\') (values (make-token QuoteSym "'" line col line col1) pos1 line1 col1)]
+            [(char=? ch #\() (values (make-token 'LParenToken "(" line col line col1) pos1 line1 col1)]
+            [(char=? ch #\)) (values (make-token 'RParenToken ")" line col line col1) pos1 line1 col1)]
+            [(char=? ch #\.) (values (make-token 'DotSymToken "." line col line col1) pos1 line1 col1)]
+            [(char=? ch #\') (values (make-token 'QuoteSymToken "'" line col line col1) pos1 line1 col1)]
             [(char=? ch #\#) (read-bool pos line col)]
             [(char=? ch #\") (read-string pos line col)]
             [(char-numeric? ch) (read-number pos line col)]
@@ -198,7 +199,7 @@
          (if (null? errors-acc)
              token-or-error  ; Return the first error
              (car errors-acc))]
-        [(eq? (Token-typ token-or-error) EOF)
+        [(eq? (Token-typ token-or-error) 'EOFToken)
          (if (null? errors-acc)
              (reverse (cons token-or-error tokens-acc))  ; Include the EOF token in the result
              (car errors-acc))]
