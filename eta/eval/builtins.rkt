@@ -152,6 +152,7 @@
     (lambda (checked-args)
       (printf "~a" (EtaValue-value (first checked-args)))
       (make-runtime-value Void '()))))
+      (printf "~a" (runtime-value->string (first checked-args)))
 
 (define (read-line-impl args env)
   (check-args-count "read-line" args 0
