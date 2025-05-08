@@ -355,14 +355,21 @@
 (define quote-sym
    (token-type 'QuoteSymToken))
 
-; Num
-(define number
+; Int
+(define integer
   (map-parser
-   (token-type 'NumToken)
+   (token-type 'IntToken)
    (lambda (token)
      (let ([loc (Token-loc token)])
-       (make-const loc 'Num (string->number (Token-val token)))))))
+       (make-const loc 'IntConstNode (string->number (Token-val token)))))))
       
+; Float
+(define float
+  (map-parser
+   (token-type 'FloatToken)
+   (lambda (token)
+     (let ([loc (Token-loc token)])
+       (make-const loc 'FloatConstNode (string->number (Token-val token)))))))
 
 ; Bool
 (define boolean 
@@ -370,7 +377,7 @@
    (token-type 'BoolToken)
    (lambda (token)
      (let ([loc (Token-loc token)])
-       (make-const loc 'Bool (if (equal? (Token-val token) "#t")
+       (make-const loc 'BoolConstNode (if (equal? (Token-val token) "#t")
                                  #t
                                  #f))))))
 
@@ -380,7 +387,7 @@
    (token-type 'StringToken)
    (lambda (token)
      (let ([loc (Token-loc token)])
-       (make-const loc 'String (Token-val token))))))
+       (make-const loc 'StringConstNode (Token-val token))))))
 
 
 ;; ---------- Non-terminal Parsers ----------
@@ -390,7 +397,7 @@
 ;  Const ::= Num | Bool | String
 (define parse-const 
   (any-of
-    (label "Num" number)
+    (label "Num" (any-of integer float))
     (label "Bool" boolean)
     (label "String" string)))
 

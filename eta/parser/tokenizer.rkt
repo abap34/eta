@@ -19,7 +19,8 @@
       (equal? typ 'DotSymToken)
       (equal? typ 'QuoteSymToken)
       (equal? typ 'BoolToken)
-      (equal? typ 'NumToken)
+      (equal? typ 'IntToken)
+      (equal? typ 'FloatToken)
       (equal? typ 'StringToken)
       (equal? typ 'IdToken)
       (equal? typ 'EOFToken)))
@@ -63,7 +64,8 @@
     [(equal? typ 'DotSymToken)   "DotSym"]
     [(equal? typ 'QuoteSymToken) "QuoteSym"]
     [(equal? typ 'BoolToken)     "Bool"]
-    [(equal? typ 'NumToken)      "Num"]
+    [(equal? typ 'IntToken)      "Num"]
+    [(equal? typ 'FloatToken)    "Float"]
     [(equal? typ 'StringToken)   "StringToken"]
     [(equal? typ 'IdToken)       "Id"]
     [(equal? typ 'EOFToken)      "EOF"]
@@ -112,14 +114,28 @@
       (values (make-token 'IdToken lexeme line col line (+ col (- end pos)))
               end line (+ col (- end pos)))))
 
+  ;; read-number
+  ;;   Read a number literal (integer or floating-point) from the source code
+  ;; Arguments:
+  ;;   pos - Current position in the source string
+  ;;   line - Current line number
+  ;;   col - Current column number
+  ;; Returns:
+  ;;   A NumToken for integers or FloatToken for floating-point numbers,
+  ;;   along with the updated position, line, and column
   (define (read-number pos line col)
-    (define (loop p)
+    (define (read-digits p)
       (if (and (< p len) (char-numeric? (get-at p)))
-          (loop (+ p 1))
+          (read-digits (+ p 1))
           p))
-    (let* ((end (loop pos))
-           (lexeme (substring src pos end)))
-      (values (make-token 'NumToken lexeme line col line (+ col (- end pos)))
+    
+    (let* ((int-end (read-digits pos))
+           (has-decimal (and (< int-end len) (char=? (get-at int-end) #\.)))
+           (decimal-start (if has-decimal (+ int-end 1) int-end))
+           (end (if has-decimal (read-digits decimal-start) int-end))
+           (lexeme (substring src pos end))
+           (token-type (if has-decimal 'FloatToken 'IntToken)))
+      (values (make-token token-type lexeme line col line (+ col (- end pos)))
               end line (+ col (- end pos)))))
 
   (define (read-string pos line col)
