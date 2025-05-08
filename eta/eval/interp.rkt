@@ -108,15 +108,17 @@
 ;     An EtaValue with appropriate tag and value
 (define (eval-const expr env)
   (let* ([const-args (Expr-args expr)]
-         [const-tag (first const-args)]
+         [node-typ (first const-args)]
          [value (second const-args)])
     (cond
-      [(equal? const-tag 'Num) (EtaValue 'NumberTag value)]
-      [(equal? const-tag 'Bool) (EtaValue 'BooleanTag value)]
-      [(equal? const-tag 'String) (EtaValue 'StringTag value)]
-      [(equal? const-tag 'Nil) (EtaValue 'NilValueTag '())]
-      [(equal? const-tag 'Void) (EtaValue 'VoidTag '())]
-      [(equal? const-tag 'Undefined) (EtaValue 'UndefinedTag 'undefined)])))
+      [(equal? node-typ 'IntConstNode) (EtaValue 'IntTag value)]
+      [(equal? node-typ 'FloatConstNode) (EtaValue 'FloatTag value)]
+      [(equal? node-typ 'BoolConstNode) (EtaValue 'BooleanTag value)]
+      [(equal? node-typ 'StringConstNode) (EtaValue 'StringTag value)]
+      [(equal? node-typ 'NilConstNode) (EtaValue 'NilValueTag '())]
+      [(equal? node-typ 'VoidConstNode) (EtaValue 'VoidTag '())]
+      [(equal? node-typ 'UndefinedConstNode) (EtaValue 'UndefinedTag 'undefined)]
+      [else (error "Internal error: unexpected ConstNode type: ~a" node-typ)])))
 
 ;  eval-var
 ;     Evaluate a variable expression by looking it up in the environment

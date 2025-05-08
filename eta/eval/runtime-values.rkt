@@ -23,7 +23,8 @@
 
 
 (define (RuntimeValueTag? tag)
-  (or (equal? tag 'NumberTag)
+  (or (equal? tag 'IntTag)
+      (equal? tag 'FloatTag)  
       (equal? tag 'StringTag)
       (equal? tag 'BooleanTag)
       (equal? tag 'NilValueTag)
@@ -38,7 +39,8 @@
 
 (define (RuntimeValueTag->string tag)
   (cond
-    [(equal? tag 'NumberTag) "number"]
+    [(equal? tag 'IntTag) "int"]
+    [(equal? tag 'FloatTag) "float"]
     [(equal? tag 'StringTag) "string"]
     [(equal? tag 'BooleanTag) "boolean"]
     [(equal? tag 'NilValueTag) "nil"]
@@ -119,8 +121,10 @@
 
 (define (make-runtime-value tag value)
   (cond
-    [(equal? tag 'NumberTag) (tag-checker number? tag "number?")
-      ]
+    [(equal? tag 'IntTag) 
+      (tag-checker number? tag "number?")]
+    [(equal? tag 'FloatTag)
+      (tag-checker number? tag "number?")]
     [(equal? tag 'StringTag)
       (tag-checker string? tag "string?")]
     [(equal? tag 'BooleanTag)
@@ -182,7 +186,8 @@
     (let ([tag (EtaValue-tag v)]
           [value (EtaValue-value v)]) 
       (cond
-      [(equal? tag 'NumberTag) (number->string value)]
+      [(equal? tag 'IntTag) (format "~a" value)]
+      [(equal? tag 'FloatTag) (format "~a" value)]
       [(equal? tag 'StringTag) (format "\"~a\"" value)]
       [(equal? tag 'BooleanTag) (if value "#t" "#f")]
       [(equal? tag 'NilValueTag) "'()"]
