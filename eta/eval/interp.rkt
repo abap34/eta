@@ -95,7 +95,6 @@
       [(equal? head 'DefineHead) (eval-define expr env)]
       [(equal? head 'IfHead)     (eval-if expr env)]
       [(equal? head 'SetHead)    (eval-set! expr env)]
-      [(equal? head 'NilHead)    (eval-nil expr env)]
       [(equal? head 'BodyHead)   (eval-body expr env)]
       [else (error "Internal error: unexpected ExprHead after desugaring: ~a"
                    (ExprHead->name head))])))
@@ -115,6 +114,7 @@
       [(equal? const-tag 'Num) (EtaValue 'NumberTag value)]
       [(equal? const-tag 'Bool) (EtaValue 'BooleanTag value)]
       [(equal? const-tag 'String) (EtaValue 'StringTag value)]
+      [(equal? const-tag 'Nil) (EtaValue 'NilValueTag '())]
       [(equal? const-tag 'Void) (EtaValue 'VoidTag '())]
       [(equal? const-tag 'Undefined) (EtaValue 'UndefinedTag 'undefined)])))
 
@@ -398,13 +398,3 @@
         (if (null? exps)
             (EtaValue 'VoidTag '())
             (eval-sequence exps env))))))
-
-;  eval-nil
-;     Evaluate a nil expression (empty list)
-;  Arguments:
-;     expr - A Nil expression
-;     env - The environment (unused for nil)
-;  Returns:
-;     An EtaValue representing the empty list
-(define (eval-nil expr env)
-  (EtaValue 'NilValueTag '()))

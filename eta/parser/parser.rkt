@@ -383,31 +383,16 @@
        (make-const loc 'String (Token-val token))))))
 
 
-; ()
-(define nil
-  (map-parser
-   (sequence
-    (label "LParen" lparen)
-    (label "RParen" rparen))
-    (lambda (result)
-      (let ([loc (create-span-location
-                  (Token-loc (first result))
-                  (Token-loc (last result)))])
-        (make-nil loc)))))
-
-
-
 ;; ---------- Non-terminal Parsers ----------
 
 
 
-;  Const ::= Num | Bool | String | ()
+;  Const ::= Num | Bool | String
 (define parse-const 
   (any-of
     (label "Num" number)
     (label "Bool" boolean)
-    (label "String" string)
-    (label "Nil" nil)))
+    (label "String" string)))
 
 ; Id
 (define parse-id 
@@ -858,29 +843,30 @@
         (make-bind loc name value)))))
 
 
-; S-Exp ::= Const | Id | NestedS-Exp
+; S-Exp ::= Const | Id | (S-Exp* [S-Exp . S-Exp])
 (define parse-s-exp 
   (any-of
     (label "Const" (parser-ref parse-const))
     (label "Id" (parser-ref parse-id))
     (label "NestedS-Exp" (parser-ref parse-nested-s-exp))))
 
-; NestedS-Exp ::= (S-Exp S-Exp*)
-(define parse-nested-s-exp
+; NestedS-Exp ::= (S-Exp* [. S-Exp])
+(define parse-nested-s-exp 
    (map-parser
    (sequence
     (label "LParen" lparen)
-    (label "S-Exp" (parser-ref parse-s-exp))
     (label "S-Exp*" (zero-or-more (parser-ref parse-s-exp)))
+    (label "[S-Exp . S-Exp]" (maybe (sequence dot-sym (parser-ref parse-s-exp))))
     (label "RParen" rparen))
     (lambda (result)
-      (let ([arg (second result)]
-            [args (third result)]
-            [loc (create-span-location
-                  (loc (first result))
-                  (loc (last result)))])
-        (make-sexpr loc (cons arg args))))))
-
+      (let* ([s-exps (second result)]
+             [tail (third result)]
+             [loc (create-span-location
+                    (loc (first result))
+                    (loc (last result)))])
+        (if tail
+            (make-sexpr loc s-exps (second tail))
+            (make-sexpr loc s-exps '()))))))
 
 ; Load ::= (load String)
 ; MEMO: discuss with Load is really needed

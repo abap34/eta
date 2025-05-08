@@ -17,7 +17,7 @@
         (error 'parse-single "Expected a single expression, got: ~v" expr))))
 
 ;; test-constant-parsing
-;;     Tests for constant parsing (number, string, boolean, nil)
+;;     Tests for constant parsing (number, string, boolean)
 (define (test-constant-parsing state output-fn)
   (output-fn "Running test-constant-parsing...")
 
@@ -48,11 +48,6 @@
          [expected (make-expr 'ConstHead (list 'Bool #f) (Location 1 1 1 3))])
     (set! state (assert expr expected "Boolean false constant parsing test")))
 
-  ;; Empty list / nil constant
-  (let* ([input "()"]
-         [expr (parse-single input)]
-         [expected (make-expr 'NilHead '() (Location 1 1 1 3))])
-    (set! state (assert expr expected "Nil/empty list parsing test")))
 
   state)
 

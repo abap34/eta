@@ -154,6 +154,12 @@
     (EtaValue tag value))
 
 
+(define (EtaExpr->string expr)
+  (if (equal? (EtaValue-tag expr) 'EtaExprTag)
+      (format "<Expr: ~a>" (pretty-print-Expr (EtaValue-value expr)))
+      (error "Internal error: EtaExpr->string expects an EtaExpr, but got ~a" expr)))
+    
+
 ;  runtime-value->string
 ;     Convert a runtime value into its string representation for REPL display
 ;  Arguments:
@@ -174,14 +180,14 @@
    (if (not (EtaValue? v))
     (error "Internal error: runtime-value->string expects an EtaValue, but got ~a" v)
     (let ([tag (EtaValue-tag v)]
-        [value (EtaValue-value v)]) 
+          [value (EtaValue-value v)]) 
       (cond
       [(equal? tag 'NumberTag) (number->string value)]
       [(equal? tag 'StringTag) (format "\"~a\"" value)]
       [(equal? tag 'BooleanTag) (if value "#t" "#f")]
-      [(equal? tag 'NilValueTag) "nil"]
+      [(equal? tag 'NilValueTag) "'()"]
       [(equal? tag 'ListTag) (format "(~a)" (string-join (map runtime-value->string value) " "))]
-      [(equal? tag 'EtaExprTag) (format "<Expr: ~a>" value)]
+      [(equal? tag 'EtaExprTag) (EtaExpr->string v)]
       [(equal? tag 'EtaBuiltinTag) (format "<Builtin: ~a>" value)]
       [(equal? tag 'EtaClosureTag) (format "<Closure: ~a>" value)]
       [(equal? tag 'EtaStructTag) (format "<StructInstance: ~a>" value)]

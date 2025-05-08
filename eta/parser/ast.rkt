@@ -17,7 +17,6 @@
          make-var
          make-lambda
          make-define
-         make-nil
          make-single-arg
          make-list-arg
          make-quote
@@ -70,7 +69,6 @@
       (equal? head 'DoHead)          ; Do expression
       (equal? head 'DoLetHead)       ; Let expression inside a Do expression
       (equal? head 'DoFinalHead)     ; Final expression inside a Do expression
-      (equal? head 'NilHead)         ; Nil value
       (equal? head 'BodyHead)        ; Body of a function or block
       (equal? head 'BindHead)        ; Binding expression
       (equal? head 'BindingsHead)    ; list of bindings
@@ -105,7 +103,7 @@
 (define (ExprHead->name head)
   (cond
     [(equal? head 'ConstHead) "Const"]
-    [(equal? head 'IdHead) "Var"]
+    [(equal? head 'IdHead) "Id"]
     [(equal? head 'AppHead) "App"]
     [(equal? head 'LambdaHead) "Lambda"]
     [(equal? head 'QuoteHead) "Quote"]
@@ -125,7 +123,6 @@
     [(equal? head 'DoHead) "Do"]
     [(equal? head 'DoLetHead) "DoLet"]
     [(equal? head 'DoFinalHead) "DoFinal"]
-    [(equal? head 'NilHead) "Nil"]
     [(equal? head 'BodyHead) "Body"]
     [(equal? head 'BindHead) "Bind"]
     [(equal? head 'BindingsHead) "Bindings"]
@@ -249,16 +246,6 @@
 ;     An Expr with Define head
 (define (make-define location name value)
     (make-expr 'DefineHead (list name value) location))
-
-; make-nil
-;     Create a nil expression node
-;  Arguments:
-;     location - Source location
-;  Returns:
-;     An Expr with Nil head
-(define (make-nil location)
-  (make-expr 'NilHead '() location))  ; Nil has no arguments
-
 
 ; make-single-arg
 ;     Create an argument expression node
@@ -542,7 +529,11 @@
 ;  Arguments:
 ;     location - Source location
 ;     args - The list of arguments (Expr)
+;    tail - The tail of the s-expression (Expr)
 ;  Returns:
 ;     An Expr with S-Expr head
-(define (make-sexpr location args)
-  (make-expr 'S-ExprHead args location))
+;  Example:
+;     (a b c) -> (Expr 'S-ExprHead (list (list a b c) '()))
+;     (a b c . d) -> (Expr 'S-ExprHead (list (list a b c) d))
+(define (make-sexpr location args tail)
+  (make-expr 'S-ExprHead (list args tail) location))
