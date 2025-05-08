@@ -77,6 +77,13 @@
       (ParamSpec required variadic)
       (error (format "Internal error: required must be a list of strings, and variadic must be a string or #f. But got ~a" (list required variadic)))))
 
+(define (ParamSpec->string param-spec)
+  (let ([required (ParamSpec-required param-spec)]
+        [variadic (ParamSpec-variadic param-spec)])
+    (if (null? variadic)
+        (format "(~a)" (string-join required ", "))
+        (format "(~a . ~a)" (string-join required ", ") variadic))))
+
 
 (define (has-rest? param-spec)
   (ParamSpec-variadic param-spec))
@@ -112,10 +119,24 @@
       (EtaValue 'EtaBuiltinTag (Builtin proc))
       (error (format "Internal error: proc must be a procedure, but got ~a" proc))))
 
+(define (pretty-print-Builtin builtin)
+  (let ([proc (Builtin-proc builtin)])
+    (if (procedure? proc)
+        proc
+        (error "Internal error: Builtin proc must be a procedure, but got ~a" proc))))  
+
 (struct Closure (params-spec body captured-env loc) #:transparent)
 (define (make-eta-closure param-spec body captured-env loc)
     (Closure param-spec body captured-env  loc))  ; TODO: validation
-      
+
+(define (pretty-print-Closure closure)
+  (let ([params-spec (Closure-params-spec closure)]
+        [body (Closure-body closure)]
+        [captured-env (Closure-captured-env closure)]
+        [loc (Closure-loc closure)])
+    (format "~a -> ~a" (ParamSpec->string params-spec) (pretty-print-Expr body))))
+
+
 (struct StructInstance (name fields) #:transparent)
 
 
@@ -158,12 +179,6 @@
     (EtaValue tag value))
 
 
-(define (EtaExpr->string expr)
-  (if (equal? (EtaValue-tag expr) 'EtaExprTag)
-      (format "<Expr: ~a>" (pretty-print-Expr (EtaValue-value expr)))
-      (error "Internal error: EtaExpr->string expects an EtaExpr, but got ~a" expr)))
-    
-
 ;  runtime-value->string
 ;     Convert a runtime value into its string representation for REPL display
 ;  Arguments:
@@ -192,9 +207,9 @@
       [(equal? tag 'BooleanTag) (if value "#t" "#f")]
       [(equal? tag 'NilValueTag) "'()"]
       [(equal? tag 'ListTag) (format "(~a)" (string-join (map runtime-value->string value) " "))]
-      [(equal? tag 'EtaExprTag) (EtaExpr->string v)]
-      [(equal? tag 'EtaBuiltinTag) (format "<Builtin: ~a>" value)]
-      [(equal? tag 'EtaClosureTag) (format "<Closure: ~a>" value)]
+      [(equal? tag 'EtaExprTag) (format "<expr: ~a>" (pretty-print-Expr value))]
+      [(equal? tag 'EtaBuiltinTag) (format "<builtin: ~a>" (pretty-print-Builtin value))]
+      [(equal? tag 'EtaClosureTag) (format "<closure: ~a>" (pretty-print-Closure value))]
       [(equal? tag 'EtaStructTag) (format "<StructInstance: ~a>" value)]
       [(equal? tag 'UndefinedTag) "undefined"]
       [(equal? tag 'VoidTag) "void"]
