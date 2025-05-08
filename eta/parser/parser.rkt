@@ -437,7 +437,7 @@
 
 (define (get-var-name id-expr)
   (if (and (Expr? id-expr)
-           (equal? (Expr-head id-expr) 'VarHead))
+           (equal? (Expr-head id-expr) 'IdHead))
       (first (Expr-args id-expr))
       (error "Faild to get var name. Expected Expr with Var head, got: ~a" id-expr)))
 

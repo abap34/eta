@@ -88,7 +88,7 @@
   (let ([head (Expr-head expr)])
     (cond
       [(equal? head 'ConstHead)  (eval-const expr env)]
-      [(equal? head 'VarHead)    (eval-var expr env)]
+      [(equal? head 'IdHead)    (eval-var expr env)]
       [(equal? head 'AppHead)    (eval-app expr env)]
       [(equal? head 'LambdaHead) (eval-lambda expr env)]
       [(equal? head 'QuoteHead)  (eval-quote expr env)]

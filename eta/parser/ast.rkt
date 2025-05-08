@@ -50,7 +50,7 @@
 ;    - Some of these head may be deprecated in the future by macros in stdlib.
 (define (ExprHead? head)
   (or (equal? head 'ConstHead)       ; Constant value
-      (equal? head 'VarHead)         ; Variable
+      (equal? head 'IdHead)         ; Variable
       (equal? head 'AppHead)         ; Application
       (equal? head 'LambdaHead)      ; Lambda function
       (equal? head 'QuoteHead)       ; Quoted expression
@@ -105,7 +105,7 @@
 (define (ExprHead->name head)
   (cond
     [(equal? head 'ConstHead) "Const"]
-    [(equal? head 'VarHead) "Var"]
+    [(equal? head 'IdHead) "Var"]
     [(equal? head 'AppHead) "App"]
     [(equal? head 'LambdaHead) "Lambda"]
     [(equal? head 'QuoteHead) "Quote"]
@@ -213,7 +213,7 @@
 (define (make-var location name)
       ; MEMO: Overwrite keyword is allowed. So we don't need to check like:
       ; (make-parse-error (format "Cannot use keyword ~a as variable name" name) location)
-      (make-expr 'VarHead (list name) location))
+      (make-expr 'IdHead (list name) location))
 
 
 ; make-app

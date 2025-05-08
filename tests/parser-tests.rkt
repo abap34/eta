@@ -66,17 +66,17 @@
   
   ;; Simple variable
   (set! state (assert (parse-single "x")
-                      (make-expr 'VarHead (list "x") (Location 1 1 1 2))
+                      (make-expr 'IdHead (list "x") (Location 1 1 1 2))
                       "Simple variable parsing test"))
 
   ;; Complex variable name
   (set! state (assert (parse-single "hello-world!")
-                      (make-expr 'VarHead (list "hello-world!") (Location 1 1 1 13))
+                      (make-expr 'IdHead (list "hello-world!") (Location 1 1 1 13))
                       "Complex variable name parsing test"))
 
   ;; Symbolic variable
   (set! state (assert (parse-single "+")
-                      (make-expr 'VarHead (list "+") (Location 1 1 1 2))
+                      (make-expr 'IdHead (list "+") (Location 1 1 1 2))
                       "Symbolic variable parsing test"))
 
   state)
@@ -93,7 +93,7 @@
   (let* ([input "'x"]
          [expr (parse-single input)]
          [expected (make-expr 'QuoteHead
-                         (list (make-expr 'VarHead (list "x") (Location 1 2 1 3)))
+                         (list (make-expr 'IdHead (list "x") (Location 1 2 1 3)))
                          (Location 1 1 1 3))])
     (set! state (assert expr expected "Quoted variable parsing test")))
 
@@ -124,7 +124,7 @@
   (let* ([input "(quote hello)"]
          [expr (parse-single input)]
          [expected (make-expr 'QuoteHead
-                         (list (make-expr 'VarHead (list "hello") (Location 1 8 1 13)))
+                         (list (make-expr 'IdHead (list "hello") (Location 1 8 1 13)))
                          (Location 1 1 1 14))])
     (set! state (assert expr expected "Explicit quote syntax parsing test")))
 
@@ -142,7 +142,7 @@
   (let* ([input "(+ 1 2)"]
          [expr (parse-single input)]
          [expected (make-expr 'AppHead 
-                         (list (make-expr 'VarHead (list "+") (Location 1 2 1 3))
+                         (list (make-expr 'IdHead (list "+") (Location 1 2 1 3))
                                (list 
                                 (make-expr 'ConstHead (list 'Num 1) (Location 1 4 1 5))
                                 (make-expr 'ConstHead (list 'Num 2) (Location 1 6 1 7))))
@@ -153,7 +153,7 @@
   (let* ([input "(foo)"]
          [expr (parse-single input)]
          [expected (make-expr 'AppHead
-                         (list (make-expr 'VarHead (list "foo") (Location 1 2 1 5))
+                         (list (make-expr 'IdHead (list "foo") (Location 1 2 1 5))
                                '())
                          (Location 1 1 1 6))])
     (set! state (assert expr expected "No-argument function application parsing test")))
@@ -162,7 +162,7 @@
   (let* ([input "(foo 1 \"bar\" #t)"]
          [expr (parse-single input)]
          [expected (make-expr 'AppHead
-                         (list (make-expr 'VarHead (list "foo") (Location 1 2 1 5))
+                         (list (make-expr 'IdHead (list "foo") (Location 1 2 1 5))
                                (list
                                 (make-expr 'ConstHead (list 'Num 1) (Location 1 6 1 7))
                                 (make-expr 'ConstHead (list 'String "bar") (Location 1 8 1 13))
@@ -174,11 +174,11 @@
   (let* ([input "(+ 1 (* 2 3))"]
          [expr (parse-single input)]
          [expected (make-expr 'AppHead
-                         (list (make-expr 'VarHead (list "+") (Location 1 2 1 3))
+                         (list (make-expr 'IdHead (list "+") (Location 1 2 1 3))
                                (list
                                 (make-expr 'ConstHead (list 'Num 1) (Location 1 4 1 5))
                                 (make-expr 'AppHead
-                                     (list (make-expr 'VarHead (list "*") (Location 1 7 1 8))
+                                     (list (make-expr 'IdHead (list "*") (Location 1 7 1 8))
                                            (list
                                             (make-expr 'ConstHead (list 'Num 2) (Location 1 9 1 10))
                                             (make-expr 'ConstHead (list 'Num 3) (Location 1 11 1 12))))
@@ -240,7 +240,7 @@
   (let* ([input "(define x 42)"]
          [expr (parse-single input)]
          [expected (make-expr 'DefineHead 
-                         (list (make-expr 'VarHead (list "x") (Location 1 9 1 10))
+                         (list (make-expr 'IdHead (list "x") (Location 1 9 1 10))
                                (make-expr 'ConstHead (list 'Num 42) (Location 1 11 1 13)))
                          (Location 1 1 1 14))])
     (set! state (assert expr expected "Simple variable definition parsing test")))
@@ -276,9 +276,9 @@
          [expected (make-expr 'IfHead
                          (list #t
                                (make-expr 'AppHead
-                                    (list (make-expr 'VarHead (list ">") (Location 1 6 1 7))
+                                    (list (make-expr 'IdHead (list ">") (Location 1 6 1 7))
                                           (list 
-                                           (make-expr 'VarHead (list "x") (Location 1 8 1 9))
+                                           (make-expr 'IdHead (list "x") (Location 1 8 1 9))
                                            (make-expr 'ConstHead (list 'Num 0) (Location 1 10 1 11))))
                                     (Location 1 5 1 12))
                                (make-expr 'ConstHead (list 'String "positive") (Location 1 13 1 23))
@@ -292,9 +292,9 @@
          [expected (make-expr 'IfHead
                          (list #f
                                (make-expr 'AppHead
-                                    (list (make-expr 'VarHead (list ">") (Location 1 6 1 7))
+                                    (list (make-expr 'IdHead (list ">") (Location 1 6 1 7))
                                           (list 
-                                           (make-expr 'VarHead (list "x") (Location 1 8 1 9))
+                                           (make-expr 'IdHead (list "x") (Location 1 8 1 9))
                                            (make-expr 'ConstHead (list 'Num 0) (Location 1 10 1 11))))
                                     (Location 1 5 1 12))
                                (make-expr 'ConstHead (list 'String "positive") (Location 1 13 1 23)))
@@ -414,7 +414,7 @@
   (let* ([input "(set! x 42)"]
          [expr (parse-single input)]
          [expected (make-expr 'SetHead
-                         (list (make-expr 'VarHead (list "x") (Location 1 7 1 8))
+                         (list (make-expr 'IdHead (list "x") (Location 1 7 1 8))
                                (make-expr 'ConstHead (list 'Num 42) (Location 1 9 1 11)))
                          (Location 1 1 1 12))])
     (set! state (assert expr expected "Simple set! parsing test")))
@@ -468,15 +468,15 @@
          [expected (make-expr 'AndHead
                          (list
                           (make-expr 'AppHead
-                               (list (make-expr 'VarHead (list ">") (Location 1 7 1 8))
+                               (list (make-expr 'IdHead (list ">") (Location 1 7 1 8))
                                      (list
-                                      (make-expr 'VarHead (list "x") (Location 1 9 1 10))
+                                      (make-expr 'IdHead (list "x") (Location 1 9 1 10))
                                       (make-expr 'ConstHead (list 'Num 0) (Location 1 11 1 12))))
                                (Location 1 6 1 13))
                           (make-expr 'AppHead
-                               (list (make-expr 'VarHead (list "<") (Location 1 15 1 16))
+                               (list (make-expr 'IdHead (list "<") (Location 1 15 1 16))
                                      (list
-                                      (make-expr 'VarHead (list "x") (Location 1 17 1 18))
+                                      (make-expr 'IdHead (list "x") (Location 1 17 1 18))
                                       (make-expr 'ConstHead (list 'Num 10) (Location 1 19 1 21))))
                                (Location 1 14 1 22)))
                          (Location 1 1 1 23))])
@@ -493,15 +493,15 @@
          [expected (make-expr 'OrHead
                          (list
                           (make-expr 'AppHead
-                               (list (make-expr 'VarHead (list "<") (Location 1 6 1 7))
+                               (list (make-expr 'IdHead (list "<") (Location 1 6 1 7))
                                      (list
-                                      (make-expr 'VarHead (list "x") (Location 1 8 1 9))
+                                      (make-expr 'IdHead (list "x") (Location 1 8 1 9))
                                       (make-expr 'ConstHead (list 'Num 0) (Location 1 10 1 11))))
                                (Location 1 5 1 12))
                           (make-expr 'AppHead
-                               (list (make-expr 'VarHead (list ">") (Location 1 14 1 15))
+                               (list (make-expr 'IdHead (list ">") (Location 1 14 1 15))
                                      (list
-                                      (make-expr 'VarHead (list "x") (Location 1 16 1 17))
+                                      (make-expr 'IdHead (list "x") (Location 1 16 1 17))
                                       (make-expr 'ConstHead (list 'Num 10) (Location 1 18 1 20))))
                                (Location 1 13 1 21)))
                          (Location 1 1 1 22))])
