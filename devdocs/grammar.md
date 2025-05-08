@@ -22,7 +22,7 @@ Define ::= (define Id Exp)                    ; Variable definition
        | (define (Id Id* [. Id]) Body)        ; Function definition
 
 Exp ::= Const                                 ; Constant
-    | Id                                      ; Variable
+    | Id                                      ; Identifier
     | (lambda Arg Body)                       ; Lambda abstraction
     | (Exp Exp*)                              ; Function application
     | (quote S-Exp)                           ; Quote 
@@ -52,21 +52,17 @@ S-Exp ::= Const                               ; S-expression constant
 Const ::= Num                                 ; Number
       | Bool                                  ; Boolean
       | String                                ; String
-      | ()                                    ; Empty list
 
-Num ::= Decimal                               ; Decimal integer (at minimum)
+Num ::= Int                                   ; Integer 
+     | Float                                  ; Floating-point number
+
+Int ::= [0-9]+                               ; Integer 
+Float ::= [0-9]+.[0-9]*                      ; Floating-point number
 
 Bool ::= #t                                   ; True
      | #f                                     ; False
 
-String ::= "..."                              ; Double-quoted string (Note 2)
+String ::= "..."                              ; Double-quoted string
 
-Id ::= [0-9A-Za-z!$%&*+-./<=>?@^_]+           ; Identifier (Note 3)
+Id ::= [0-9A-Za-z!$%&*+-./<=>?@^_]+           ; Identifier 
 ```
-
-## Notes
-
-1. Strings support backslash `\` escapes.
-2. Identifiers cannot be valid numbers.
-3. `let*` is a distinct construct, not a repetition of `let`.
-4. `cond` must have at least one clause (including possibly an `else` clause), and at most one `else` clause.
