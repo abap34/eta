@@ -47,8 +47,11 @@
 ;   (eval-each-expr (list (make-const 'Num 1) (make-const 'Num 2) (make-const 'Num 3)) env)
 ;   => (1 2 3)
 (define (eval-each-expr expr-list env)
+   (unless (and (list? expr-list)
+                (andmap Expr? expr-list))
+     (error (format "Internal error: expected a list of Expr, got: ~a" expr-list)))
    (let loop ([exprs expr-list]
-                 [result '()])
+              [result '()])
         (if (null? exprs)
             (reverse result)
             (let ([new-result (eval-expr (first exprs) env)])
@@ -96,8 +99,7 @@
       [(equal? head 'IfHead)     (eval-if expr env)]
       [(equal? head 'SetHead)    (eval-set! expr env)]
       [(equal? head 'BodyHead)   (eval-body expr env)]
-      [else (error "Internal error: unexpected ExprHead after desugaring: ~a"
-                   (ExprHead->name head))])))
+      [else (error (format "Internal error: unexpected expression ~a with head ~a" (pretty-print-Expr expr) head))])))
 
 ;  eval-const
 ;     Evaluate a constant expression
@@ -367,7 +369,7 @@
          [var-expr (first set-args)]
          [val-expr (second set-args)]
          [var-name (first (Expr-args var-expr))]
-         [val (eval-expr val-expr env)])
+         [val      (eval-expr val-expr env)])
 
     ; Check if variable exists
     (unless (defined? env var-name)
@@ -392,6 +394,16 @@
 (define (eval-body expr env)
   (let ([defines (first (Expr-args expr))]
         [exps    (second (Expr-args expr))])
+     
+    (unless (and (list? defines)
+                 (andmap Expr? defines))
+      (error 'eval-body
+             "Internal error: expected a list of Expr for defines, got: ~a" defines))
+    (unless (and (list? exps)
+                 (andmap Expr? exps))
+      (error 'eval-body
+              "Internal error: expected a list of Expr for expressions, got: ~a" exps))
+
     (with-successfull-eval (eval-each-expr defines env)
       (lambda (result)
         (if (null? exps)
