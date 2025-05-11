@@ -41,6 +41,9 @@
          make-bindings
          make-load
          make-sexpr 
+
+         assert-expr
+         assert-head
 )
 
 ; ExprHead
@@ -187,33 +190,28 @@
     [else (format "~a" expr)]))
 
 
-(define (assert-expr arg)
+(define (assert-expr arg func-name context)
   (unless (Expr? arg)
-    (error 'assert-expr "Expected an Expr, got: ~a" arg))) 
+    (error func-name (format "Expected an Expr for ~a, got: ~a" context arg))))
 
-(define (assert-head head arg)
-  (assert-expr arg)
+(define (assert-head head arg func-name context)
+  (assert-expr arg func-name context)
   (unless (ExprHead? head)
-    (error 'assert-head "Expected an ExprHead for 'head', got: ~a" head))
-  (unless (equal? (Expr-head arg) head)
-    (error 'assert-head "Expected an Expr with head ~a, got: ~a" head (Expr-head arg))))
+    (error func-name (format "Expected an ExprHead for ~a, got: ~a" context head)))
 
-;  assert-string
-;     Asserts that the given argument is a string
-;  Arguments:
-;     func-name - The name of calling function (for error message)
-;     arg - The argument to check
-;     arg-name - The name of the argument (for error message)
-;  Raises:
-;     exn:fail - If arg is not a string
-(define (assert-string func-name arg arg-name)
+  (unless (equal? head (Expr-head arg))
+    (error func-name (format "Expected ~a for ~a, got: ~a" head context (Expr-head arg)))))
+
+
+(define (assert-string arg func-name context)
   (unless (string? arg)
-    (error func-name (format "Expected a string for ~a, got: ~a" arg-name arg))))
+    (error func-name (format "Expected a string for ~a, got: ~a" context arg))))
 
-(define (assert-list-of-exprs arg)
+(define (assert-list-of-exprs arg func-name context)
   (unless (list? arg)
-    (error 'assert-list-of-exprs "Expected a list of Expr, got: ~a" arg))
-  (map assert-expr arg))
+    (error func-name (format "Expected a list of Expr for ~a, got: ~a" context arg)))
+  (map (lambda (item)
+         (assert-expr item func-name context)) arg))
 
 ;; -- ast builders 
 
@@ -245,7 +243,7 @@
 ;  Returns:
 ;     An Expr with Var head
 (define (make-var location name)
-  (assert-string 'make-var name "variable name")
+  (assert-string name 'make-var "name")
   (unless (not (string=? name ""))
     (error 'make-var "Expected a non-empty string for variable name, got: ~a" name))
 
@@ -263,8 +261,8 @@
 ;  Returns:
 ;     An Expr with App head
 (define (make-app location op args)
-  (assert-expr op)
-  (assert-list-of-exprs args) 
+  (assert-expr op 'make-app "operator")
+  (assert-list-of-exprs args 'make-app "arguments")
   
   (make-expr 'AppHead (list op args) location))  
 
@@ -273,12 +271,12 @@
 ;  Arguments:
 ;     location - Source location
 ;     args - The arguments to the lambda (Expr with Arg head)
-;     body - The body of the lambda (Expr)
+;     body - The body of the lambda (Expr with Body head)
 ;  Returns:
 ;     An Expr with Lambda head
 (define (make-lambda location args body)
-  (assert-head 'ArgHead args)
-  (assert-head 'BodyHead body)
+  (assert-head 'ArgHead args 'make-lambda "arguments")
+  (assert-head 'BodyHead body 'make-lambda "body")
   
   (make-expr 'LambdaHead (list args body) location))
 
@@ -292,8 +290,8 @@
 ;  Returns:
 ;     An Expr with Define head
 (define (make-define location ident value)
-  (assert-head 'IdHead ident)
-  (assert-expr value)
+  (assert-head 'IdHead ident 'make-define "identifier")
+  (assert-expr value 'make-define "value")
 
   (make-expr 'DefineHead (list ident value) location))
 
@@ -305,7 +303,7 @@
 ;  Returns:
 ;     An Expr with Arg head
 (define (make-single-arg location name)
-      (assert-string 'make-single-arg name "argument name")
+      (assert-string name 'make-single-arg "name")
 
       (make-expr 'ArgHead 
           (list
@@ -339,7 +337,8 @@
 ;  Returns:
 ;     An Expr with Quote head
 (define (make-quote location value)
-  (assert-expr value)
+  (assert-expr value 'make-quote "value")
+
   (make-expr 'QuoteHead (list value) location))  ; Quote has one argument
 
 
@@ -347,15 +346,15 @@
 ;     Create a set! expression node
 ;  Arguments:
 ;     location - Source location
-;     name - The variable name to set (string)
+;     ident - The variable ident to set (Expr with Id head)
 ;     value - The value to assign (Expr)
 ;  Returns:
 ;     An Expr with Set! head
-(define (make-setbang location name value)
-  (assert-string 'make-setbang name "name")
-  (assert-expr value)
+(define (make-setbang location ident value)
+  (assert-head 'IdHead ident 'make-setbang "identifier")
+  (assert-expr value 'make-setbang "value")
   
-  (make-expr 'SetHead (list name value) location))
+  (make-expr 'SetHead (list ident value) location))
 
 
 ; make-unnamed-let
@@ -363,12 +362,12 @@
 ;  Arguments:
 ;     location - Source location
 ;     bindings - binings (Expr with Bindings head)
-;     body - The body of the let (Expr)
+;     body - The body of the let (Expr with Body head)
 ;  Returns:
 ;     An Expr with UnNamedLet head
 (define (make-unnamed-let location bindings body)
-  (assert-head 'BindingsHead bindings)
-  (assert-expr body)
+  (assert-head 'BindingsHead bindings 'make-unnamed-let "bindings")
+  (assert-head 'BodyHead body 'make-unnamed-let "body")
   
   (make-expr 'UnNamedLetHead (list bindings body) location))  
 
@@ -378,13 +377,13 @@
 ;     location - Source location
 ;     name - The name of the let (string)
 ;     bindings - The bindings (Expr with Bindings head)
-;     body - The body of the let (Expr)
+;     body - The body of the let (Expr with Body head)
 ;  Returns:
 ;     An Expr with NamedLet head
 (define (make-named-let location name bindings body)
-  (assert-head 'IdHead name)
-  (assert-head 'BindingsHead bindings)
-  (assert-expr body)
+  (assert-head 'IdHead name 'make-named-let "name")
+  (assert-head 'BindingsHead bindings 'make-named-let "bindings")
+  (assert-head 'BodyHead body 'make-named-let "body")
   
   (make-expr 'NamedLetHead (list name bindings body) location))
 
@@ -393,12 +392,12 @@
 ;  Arguments:
 ;     location - Source location
 ;     bindings - The bindings (Expr with Bindings head)
-;     body - The body of the let* (Expr)
+;     body - The body of the let* (Expr with Body head)
 ;  Returns:
 ;     An Expr with LetStar head
 (define (make-letstar location bindings body)
-  (assert-head 'BindingsHead bindings)
-  (assert-expr body)
+  (assert-head 'BindingsHead bindings 'make-letstar "bindings")
+  (assert-head 'BodyHead body 'make-letstar "body")
   
   (make-expr 'LetStarHead (list bindings body) location))
 
@@ -407,12 +406,12 @@
 ;  Arguments:
 ;     location - Source location
 ;     bindings - The bindings (Expr with Bindings head)
-;     body - The body of the letrec (Expr)
+;     body - The body of the letrec (Expr with Body head)
 ;  Returns:
 ;     An Expr with LetRec head
 (define (make-letrec location bindings body)
-  (assert-head 'BindingsHead bindings)
-  (assert-expr body)
+  (assert-head 'BindingsHead bindings 'make-letrec "bindings")
+  (assert-head 'BodyHead body 'make-letrec "body")
   
   (make-expr 'LetRecHead (list bindings body) location)) 
 
@@ -428,8 +427,8 @@
 ;  Note:
 ;     location of else expression is equivalent to the location of the whole if expression.
 (define (make-ifthen location test then)
-  (assert-expr test)
-  (assert-expr then)
+  (assert-expr test 'make-ifthen "test")
+  (assert-expr then 'make-ifthen "then")
   
   (make-expr 'IfHead (list test then (make-voidnode location)) location))
   
@@ -443,9 +442,9 @@
 ;  Returns:
 ;     An Expr with If head
 (define (make-ifthenelse location test then else)
-  (assert-expr test)
-  (assert-expr then)
-  (assert-expr else)
+  (assert-expr test 'make-ifthenelse "test")
+  (assert-expr then 'make-ifthenelse "then")
+  (assert-expr else 'make-ifthenelse "else")
   
   (make-expr 'IfHead (list test then else) location))
 
@@ -454,14 +453,13 @@
 ;  Arguments:
 ;     location - Source location
 ;     test - The test expression (Expr)
-;     body - The body of the cond clause (Expr)
+;     body - The body of the cond clause (list of Expr)
 ;  Returns:
 ;     An Expr with CondClause head
 (define (make-cond-clause location test body)
-  (assert-expr test)
-  (assert-expr body)
-  
-  (make-expr 'CondClauseHead (list test body) location))
+  (assert-expr test 'make-cond-clause "test")
+  (assert-list-of-exprs body 'make-cond-clause "body")
+  (make-expr 'CondClauseHead (list test (make-begin location body)) location))
 
 ; make-cond-noelse
 ;     Create a cond expression node without else
@@ -476,7 +474,7 @@
   (unless (list? clauses)
     (error 'make-cond-noelse "Expected a list of cond clauses, got: ~a" clauses))
   (when (not (null? clauses))
-    (for-each (lambda (clause) (assert-head 'CondClauseHead clause)) clauses))
+    (map (lambda (clause) (assert-head 'CondClauseHead clause 'make-cond-noelse "clause")) clauses))
   
   (make-expr 'CondHead (list clauses (make-voidnode location)) location))
 
@@ -488,14 +486,14 @@
 ;     else - The else expression (Expr)
 ;  Returns:
 ;     An Expr with Cond head
-(define (make-cond-else location clauses else)
+(define (make-cond-else location clauses else-exps)
   (unless (list? clauses)
     (error 'make-cond-else "Expected a list of cond clauses, got: ~a" clauses))
   (when (not (null? clauses))
-    (for-each (lambda (clause) (assert-head 'CondClauseHead clause)) clauses))
-  (assert-expr else)
+    (for-each (lambda (clause) (assert-head 'CondClauseHead clause 'make-cond-else "clause")) clauses))
   
-  (make-expr 'CondHead (list clauses else) location))
+  (assert-expr else-exps 'make-cond-else "else")
+  (make-expr 'CondHead (list clauses (make-begin (Expr-loc else-exps) else-exps)) location))
 
 
 ; make-and
@@ -506,7 +504,7 @@
 ;  Returns:
 ;     An Expr with And head
 (define (make-and location args)
-  (assert-list-of-exprs args)
+  (assert-list-of-exprs args 'make-and "arguments")
   
   (make-expr 'AndHead args location))
 
@@ -518,7 +516,7 @@
 ;  Returns:
 ;     An Expr with Or head
 (define (make-or location args)
-  (assert-list-of-exprs args)
+  (assert-list-of-exprs args 'make-or "arguments")
   
   (make-expr 'OrHead args location))
 
@@ -530,7 +528,7 @@
 ;  Returns:
 ;     An Expr with Begin head
 (define (make-begin location args)
-  (assert-list-of-exprs args)
+  (assert-list-of-exprs args 'make-begin "arguments")
   
   (make-expr 'BeginHead args location))
 
@@ -544,9 +542,9 @@
 ;  Returns:
 ;     An Expr with DoLet head
 (define (make-do-let location name init step)
-  (assert-string 'make-do-let name "name")
-  (assert-expr init)
-  (assert-expr step)
+  (assert-string name 'make-do-let "name")
+  (assert-expr init 'make-do-let "initial value")
+  (assert-expr step 'make-do-let "step value")
   
   (make-expr 'DoLetHead (list name init step) location))
 
@@ -555,13 +553,13 @@
 ;  Arguments:
 ;     location - Source location
 ;     cond - The condition expression (Expr)
-;     body - The body of the do (Expr)
+;     body - The body of the do (list of Expr)
 ;  Returns:
 ;     An Expr with DoFinal head
 (define (make-do-final location cond body)
-  (assert-expr cond)
-  (assert-expr body)
-  
+  (assert-expr cond 'make-do-final "condition")
+  (assert-list-of-exprs body 'make-do-final "body")
+
   (make-expr 'DoFinalHead (list cond body) location))
 
 
@@ -578,9 +576,9 @@
   (unless (list? do-lets)
     (error 'make-do "Expected a list of do-let bindings, got: ~a" do-lets))
   (when (not (null? do-lets))
-    (for-each (lambda (do-let) (assert-head 'DoLetHead do-let)) do-lets))
-  (assert-head 'DoFinalHead do-final)
-  (assert-expr body)
+    (for-each (lambda (do-let) (assert-head 'DoLetHead do-let 'make-do "do-let binding")) do-lets))
+  (assert-head 'DoFinalHead do-final 'make-do "do-final")
+  (assert-expr body 'make-do "body")
   
   (make-expr 'DoHead (list do-lets do-final body) location))
 
@@ -594,13 +592,13 @@
 ;  Returns:
 ;     An Expr with Body head
 (define (make-body location defines body)
-  (unless (list? defines)
+  (unless (and (list? defines) 
+               (andmap (lambda (define) 
+                         (assert-head 'DefineHead define 'make-body "definition")) 
+                       defines))
     (error 'make-body "Expected a list of definitions, got: ~a" defines))
 
-  (when (not (null? defines))
-    (for-each (lambda (define) (assert-head 'DefineHead define)) defines))
-
-  (assert-list-of-exprs body)
+  (assert-list-of-exprs body 'make-body "body")
 
   (make-expr 'BodyHead (list defines body) location))
 
@@ -614,8 +612,8 @@
 ;  Returns:
 ;     An Expr with Bind head
 (define (make-bind location ident value)
-  (assert-head 'IdHead ident)
-  (assert-expr value)
+  (assert-head 'IdHead ident 'make-bind "identifier")
+  (assert-expr value 'make-bind "value")
   
   (make-expr 'BindHead (list ident value) location))  
 
@@ -631,7 +629,7 @@
   (unless (list? bindings)
     (error 'make-bindings "Expected a list of bindings, got: ~a" bindings))
   (when (not (null? bindings))
-    (for-each (lambda (bind) (assert-head 'BindHead bind)) bindings))
+    (for-each (lambda (bind) (assert-head 'BindHead bind 'make-bindings "binding")) bindings))
   
   (make-expr 'BindingsHead bindings location))
 
@@ -644,7 +642,7 @@
 ;  Returns:
 ;     An Expr with Load head
 (define (make-load location filename)
-  (assert-string 'make-load filename "filename")
+  (assert-string filename make-load "filename")
   
   (make-expr 'LoadHead (list filename) location))  
 
