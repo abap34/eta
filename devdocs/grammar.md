@@ -56,8 +56,10 @@ Const ::= Num                                 ; Number
 Num ::= Int                                   ; Integer 
      | Float                                  ; Floating-point number
 
-Int ::= [0-9]+                               ; Integer 
+Int ::= [0-9]+                               ; Integer
+     | -[0-9]+                               ; Negative integer
 Float ::= [0-9]+.[0-9]*                      ; Floating-point number
+        | -[0-9]+.[0-9]*                     ; Negative floating-point number
 
 Bool ::= #t                                   ; True
      | #f                                     ; False
@@ -65,4 +67,3 @@ Bool ::= #t                                   ; True
 String ::= "..."                              ; Double-quoted string
 
 Id ::= [0-9A-Za-z!$%&*+-./<=>?@^_]+           ; Identifier 
-```

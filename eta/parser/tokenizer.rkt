@@ -120,6 +120,7 @@
 
   ;; read-number
   ;;   Read a number literal (integer or floating-point) from the source code
+  ;;   Handles both positive and negative numbers
   ;; Arguments:
   ;;   pos - Current position in the source string
   ;;   line - Current line number
@@ -133,14 +134,29 @@
           (read-digits (+ p 1))
           p))
     
-    (let* ((int-end (read-digits pos))
-           (has-decimal (and (< int-end len) (char=? (get-at int-end) #\.)))
+    ; Check if the number starts with a minus sign
+    (define is-negative (and (< pos len) (char=? (get-at pos) #\-)))
+    
+    ; Adjust the starting position if we have a negative sign
+    (define num-start (if is-negative (+ pos 1) pos))
+    
+    (let* ((int-end (read-digits num-start))
+           ; If we moved past the starting digit position, we have valid digits
+           (has-valid-digits (> int-end num-start))
+           ; Only treat as negative number if digits follow the minus sign
+           (effective-pos (if (and is-negative has-valid-digits) pos num-start))
+           (has-decimal (and has-valid-digits (< int-end len) (char=? (get-at int-end) #\.)))
            (decimal-start (if has-decimal (+ int-end 1) int-end))
            (end (if has-decimal (read-digits decimal-start) int-end))
-           (lexeme (substring src pos end))
+           ; Only proceed with number parsing if we have valid digits
+           (lexeme (if has-valid-digits (substring src effective-pos end) (substring src pos pos)))
            (token-type (if has-decimal 'FloatToken 'IntToken)))
-      (values (make-token token-type lexeme line col line (+ col (- end pos)))
-              end line (+ col (- end pos)))))
+      
+      ; If no valid digits were found after a minus sign, treat as symbol instead
+      (if (and is-negative (not has-valid-digits))
+          (read-symbol pos line col)  ; Fall back to symbol parsing
+          (values (make-token token-type lexeme line col line (+ col (- end effective-pos)))
+                end line (+ col (- end effective-pos))))))
 
   (define (read-string pos line col)
     (define (loop p acc l c)
@@ -205,6 +221,11 @@
             [(char=? ch #\#) (read-bool pos line col)]
             [(char=? ch #\") (read-string pos line col)]
             [(char-numeric? ch) (read-number pos line col)]
+            ;; Handle negative numbers: check if current char is - and next is a digit
+            [(and (char=? ch #\-) 
+                  (< pos1 len) 
+                  (char-numeric? (get-at pos1)))
+             (read-number pos line col)]
             [(symbol-char? ch) (read-symbol pos line col)]
             [else (values (make-tokenize-error 
                           (format "Unexpected character: ~a" ch)
