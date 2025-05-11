@@ -22,6 +22,19 @@
   (set! gen-counter (add1 gen-counter))
   (make-var loc (format "~a-~a" prefix gen-counter)))
 
+;  wrap-body
+;     Ensures that an expression is wrapped in a BodyHead expression.
+;  Arguments:
+;     expr - The expression to check/wrap
+;     loc - Location information for the expression
+;  Returns:
+;     An Expr with BodyHead, either the original expr if it already has BodyHead,
+;     or a new BodyHead expression containing expr
+(define (wrap-body expr loc)
+  (if (equal? (Expr-head expr) 'BodyHead)
+        expr
+        (make-body loc '() (list expr))))
+
 ;  get-bind-name
 ;     Extracts the name from a binding expression.
 ;  Arguments:
@@ -86,7 +99,15 @@
 ;  Returns:
 ;     A desugared if expression
 (define (desugar-if expr)
-  expr)
+   (let* ([args (Expr-args expr)]
+          [test (first args)]
+          [then-expr (second args)]
+          [else-expr (third args)]
+          [loc (Expr-loc expr)])
+     (make-ifthenelse loc
+                      (desugar test)
+                      (desugar then-expr)
+                      (desugar else-expr))))
 
 ;  desugar-cond
 ;     Desugars a cond expression into nested if expressions.
@@ -107,7 +128,7 @@
 ;     Helper function to desugar cond clauses into nested ifs.
 ;  Arguments:
 ;     clauses - List of cond clauses
-;     else-expr - The else expression
+;     else-expr - The else expression 
 ;     loc - Location info
 ;  Returns:
 ;     A desugared expression with nested if expressions
@@ -119,9 +140,9 @@
              [test (first (Expr-args first-clause))]
              [body (second (Expr-args first-clause))])
         (make-ifthenelse loc
-                         (desugar test)
-                         (desugar body)
-                         (desugar-cond-clauses rest-clauses else-expr loc)))))
+          (desugar test)
+          (desugar body)
+          (desugar-cond-clauses rest-clauses else-expr loc)))))
 
 ;  desugar-cond-clause
 ;     Desugars a single cond clause.
@@ -136,15 +157,15 @@
     (make-cond-clause loc (desugar test) (desugar body))))
 
 ;  desugar-begin
-;     Desugars a begin expression.
+;     Desugars a begin expression into a body expression.
 ;  Arguments:
 ;     expr - An Expr with BeginHead
 ;  Returns:
-;     A desugared begin expression
+;     A desugared body expression
 (define (desugar-begin expr)
   (let ([exprs (Expr-args expr)]
         [loc (Expr-loc expr)])
-    (make-begin loc (map desugar exprs))))
+    (make-body loc '() (map desugar exprs))))
 
 ;  desugar-unnamed-let
 ;     Desugars an unnamed let expression into a lambda application.
@@ -170,11 +191,12 @@
 (define (desugar-let-to-lambda bind-list body loc)
   (let ([names (map get-bind-name bind-list)]
         [values (map get-bind-value bind-list)])
-    (make-app loc
-              (make-lambda loc
-                           (make-list-arg loc names '())
-                           (desugar body))
-              values)))
+    (let ([body-expr (wrap-body (desugar body) loc)])
+      (make-app loc
+                (make-lambda loc
+                    (make-list-arg loc names '())
+                    body-expr)
+                values))))
 
 ;  desugar-named-let
 ;     Desugars a named let expression into a letrec with function application.
@@ -202,12 +224,17 @@
 (define (desugar-named-let-to-letrec name bind-list body loc)
   (let ([param-names (map get-bind-name bind-list)]
         [arg-values (map get-bind-value bind-list)])
-    (let ([func (make-lambda loc
-                             (make-list-arg loc param-names '())
-                             (desugar body))])
-      (desugar (make-letrec loc
-                            (make-bindings loc (list (make-bind loc name func)))
-                            (make-app loc name arg-values))))))
+    (let ([body-expr (wrap-body body loc)])
+      (let ([func (make-lambda loc
+                               (make-list-arg loc param-names '())
+                               body-expr)])
+        ; Create app expression for the function call
+        (let ([app-expr (make-app loc name arg-values)])
+          ; Ensure the application is wrapped in BodyHead for the letrec body
+          (let ([letrec-body (wrap-body app-expr loc)])
+            (desugar (make-letrec loc
+                                 (make-bindings loc (list (make-bind loc name func)))
+                                 letrec-body))))))))
 
 ;  desugar-letrec
 ;     Desugars a letrec expression into a let with set! expressions.
@@ -231,12 +258,16 @@
 ;  Returns:
 ;     A let with set! expressions
 (define (desugar-letrec-to-let-set bind-list body loc)
-  (let ([undefined-binds (make-undefined-bindings bind-list loc)]
-        [set-exprs (make-set-expressions bind-list loc)])
+  (let* ([undefined-binds (make-undefined-bindings bind-list loc)]
+        [set-exprs (make-set-expressions bind-list loc)]
+        [body-expr (wrap-body body loc)]
+        [unnamed-let-exprs (append set-exprs (list body-expr))])
+
     (desugar (make-unnamed-let loc
-                               (make-bindings loc undefined-binds)
-                               (make-begin loc
-                                          (append set-exprs (list body)))))))
+                              (make-bindings loc undefined-binds)
+                              (make-body loc
+                                '()
+                                unnamed-let-exprs))))) 
 
 ;  make-undefined-bindings
 ;     Creates bindings initialized to undefined.
@@ -265,7 +296,7 @@
          (let ([name (first (Expr-args bind))]
                [value (second (Expr-args bind))])
            (make-setbang loc 
-                         (first (Expr-args name))
+                         name
                          (desugar value))))
        bind-list))
 
@@ -280,7 +311,7 @@
         [body (second (Expr-args expr))]
         [loc (Expr-loc expr)])
     (let ([bind-list (Expr-args bindings)])
-      (desugar-letstar-to-nested-lets bind-list body loc))))
+      (desugar-letstar-to-nested-lets bind-list (wrap-body body loc) loc))))
 
 ;  desugar-letstar-to-nested-lets
 ;     Helper function to convert a let* to nested lets.
@@ -292,15 +323,17 @@
 ;     Nested let expressions
 (define (desugar-letstar-to-nested-lets bind-list body loc)
   (if (null? bind-list)
-      (desugar body)
-      (desugar (make-unnamed-let 
-                    loc                
-                    (make-bindings loc (list (first bind-list)))
-                    (if (null? (rest bind-list))
-                        body
-                        (make-letstar loc
-                                    (make-bindings loc (rest bind-list))
-                                    body))))))
+      (wrap-body body loc)
+      (wrap-body 
+       (desugar 
+        (make-unnamed-let 
+          loc                
+          (make-bindings loc (list (first bind-list)))
+          (if (null? (rest bind-list))
+              body
+              (desugar (make-letstar loc
+                          (make-bindings loc (rest bind-list))
+                           body ))))) loc )))
 
 ;  desugar-and
 ;     Desugars an and expression into nested if expressions.
@@ -357,14 +390,16 @@
     (desugar (make-unnamed-let loc
                 (make-bindings loc 
                     (list (make-bind loc 
-                                temp-var 
-                                (first args))))
-                (make-ifthenelse loc
+                            temp-var 
+                            (first args))))
+                (wrap-body
+                  (make-ifthenelse loc
                     temp-var
                     temp-var
                     (if (null? (rest (rest args)))
-                        (second args)
-                        (make-or loc (rest args))))))))
+                        (wrap-body (second args) loc)
+                        (desugar (make-or loc (rest args)))))
+                   loc)))))
 
 ;  desugar-set
 ;     Desugars a set! expression.
