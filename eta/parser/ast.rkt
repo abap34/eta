@@ -360,9 +360,7 @@
 ;  Returns:
 ;     An Expr with If head
 (define (make-ifthen location test then)
-  (make-expr 'IfHead (list #f test then) location))
-  ;                        ^^^ no else
-
+  (make-expr 'IfHead (list test then (make-voidnode location)) location))
 ; make-ifthenelse
 ;     Create an if expression node with else
 ;  Arguments:
@@ -373,8 +371,7 @@
 ;  Returns:
 ;     An Expr with If head
 (define (make-ifthenelse location test then else)
-  (make-expr 'IfHead (list #t test then else) location))
-;                          ^^^ has else
+  (make-expr 'IfHead (list test then else) location))
 
 ; make-cond-clause
 ;     Create a cond clause expression node
@@ -395,8 +392,7 @@
 ;  Returns:
 ;     An Expr with Cond head
 (define (make-cond-noelse location clauses)
-  (make-expr 'CondHead (list #f clauses) location))
-;                            ^^^ no else
+  (make-expr 'CondHead (list clauses (make-voidnode location)) location))
 
 ; make-cond-else
 ;     Create a cond expression node with else
@@ -407,8 +403,7 @@
 ;  Returns:
 ;     An Expr with Cond head
 (define (make-cond-else location clauses else)
-  (make-expr 'CondHead (list #t clauses else) location))
-;                            ^^^ has else
+  (make-expr 'CondHead (list clauses else) location))
 
 
 ; make-and
