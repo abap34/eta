@@ -9,6 +9,7 @@
          "../parser/tokenizer.rkt"
          "../parser/parser.rkt"
          "../parser/ast.rkt"
+         "../desugar/desugar.rkt"
 )
 
 (provide init-basic-env
@@ -96,7 +97,7 @@
   (let ([tokens (tokenize source)])
     (if (EtaError? tokens)
         (EvalResult #f tokens)
-        (let ([parsed-result (parse tokens)])
+        (let ([parsed-result (desugar (parse tokens))])
           (if (EtaError? parsed-result)
               (EvalResult #f parsed-result)
               (let ([result (generic-eval env parsed-result)])
