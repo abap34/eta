@@ -88,7 +88,7 @@
   (let ([head (Expr-head expr)])
     (cond
       [(equal? head 'ConstHead)  (eval-const expr env)]
-      [(equal? head 'IdHead)    (eval-var expr env)]
+      [(equal? head 'IdHead)     (eval-var expr env)]
       [(equal? head 'AppHead)    (eval-app expr env)]
       [(equal? head 'LambdaHead) (eval-lambda expr env)]
       [(equal? head 'QuoteHead)  (eval-quote expr env)]
@@ -111,12 +111,12 @@
          [node-typ (first const-args)]
          [value (second const-args)])
     (cond
-      [(equal? node-typ 'IntConstNode) (EtaValue 'IntTag value)]
-      [(equal? node-typ 'FloatConstNode) (EtaValue 'FloatTag value)]
-      [(equal? node-typ 'BoolConstNode) (EtaValue 'BooleanTag value)]
-      [(equal? node-typ 'StringConstNode) (EtaValue 'StringTag value)]
-      [(equal? node-typ 'NilConstNode) (EtaValue 'NilValueTag '())]
-      [(equal? node-typ 'VoidConstNode) (EtaValue 'VoidTag '())]
+      [(equal? node-typ 'IntConstNode)       (EtaValue 'IntTag value)]
+      [(equal? node-typ 'FloatConstNode)     (EtaValue 'FloatTag value)]
+      [(equal? node-typ 'BoolConstNode)      (EtaValue 'BooleanTag value)]
+      [(equal? node-typ 'StringConstNode)    (EtaValue 'StringTag value)]
+      [(equal? node-typ 'NilConstNode)       (EtaValue 'NilValueTag '())]
+      [(equal? node-typ 'VoidConstNode)      (EtaValue 'VoidTag '())]
       [(equal? node-typ 'UndefinedConstNode) (EtaValue 'UndefinedTag 'undefined)]
       [else (error "Internal error: unexpected ConstNode type: ~a" node-typ)])))
 

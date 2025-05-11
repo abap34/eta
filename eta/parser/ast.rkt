@@ -102,33 +102,33 @@
 ;      (ExprHead->name 'ConstHead) ; => "Const"
 (define (ExprHead->name head)
   (cond
-    [(equal? head 'ConstHead) "Const"]
-    [(equal? head 'IdHead) "Id"]
-    [(equal? head 'AppHead) "App"]
-    [(equal? head 'LambdaHead) "Lambda"]
-    [(equal? head 'QuoteHead) "Quote"]
-    [(equal? head 'DefineHead) "Define"]
-    [(equal? head 'IfHead) "If"]
-    [(equal? head 'BeginHead) "Begin"]
+    [(equal? head 'ConstHead)      "Const"]
+    [(equal? head 'IdHead)         "Id"]
+    [(equal? head 'AppHead)        "App"]
+    [(equal? head 'LambdaHead)     "Lambda"]
+    [(equal? head 'QuoteHead)      "Quote"]
+    [(equal? head 'DefineHead)     "Define"]
+    [(equal? head 'IfHead)         "If"]
+    [(equal? head 'BeginHead)      "Begin"]
     [(equal? head 'UnNamedLetHead) "UnNamedLet"]
-    [(equal? head 'NamedLetHead) "NamedLet"]
-    [(equal? head 'LetRecHead) "LetRec"]
-    [(equal? head 'LetStarHead) "LetStar"]
-    [(equal? head 'CondHead) "Cond"]
+    [(equal? head 'NamedLetHead)   "NamedLet"]
+    [(equal? head 'LetRecHead)     "LetRec"]
+    [(equal? head 'LetStarHead)    "LetStar"]
+    [(equal? head 'CondHead)       "Cond"]
     [(equal? head 'CondClauseHead) "CondClause"]
-    [(equal? head 'AndHead) "And"]
-    [(equal? head 'OrHead) "Or"]
-    [(equal? head 'LoadHead) "Load"]
-    [(equal? head 'SetHead) "Set!"]
-    [(equal? head 'DoHead) "Do"]
-    [(equal? head 'DoLetHead) "DoLet"]
-    [(equal? head 'DoFinalHead) "DoFinal"]
-    [(equal? head 'BodyHead) "Body"]
-    [(equal? head 'BindHead) "Bind"]
-    [(equal? head 'BindingsHead) "Bindings"]
-    [(equal? head 'ArgHead) "Arg"]
-    [(equal? head 'S-ExprHead) "S-Expr"]
-    [else (error 'ExprHead->name "Unknown ExprHead: ~a" head)]))
+    [(equal? head 'AndHead)        "And"]
+    [(equal? head 'OrHead)         "Or"]
+    [(equal? head 'LoadHead)       "Load"]
+    [(equal? head 'SetHead)        "Set!"]
+    [(equal? head 'DoHead)         "Do"]
+    [(equal? head 'DoLetHead)      "DoLet"]
+    [(equal? head 'DoFinalHead)    "DoFinal"]
+    [(equal? head 'BodyHead)       "Body"]
+    [(equal? head 'BindHead)       "Bind"]
+    [(equal? head 'BindingsHead)   "Bindings"]
+    [(equal? head 'ArgHead)        "Arg"]
+    [(equal? head 'S-ExprHead)     "S-Expr"]
+    [else (error 'ExprHead->name   "Unknown ExprHead: ~a" head)]))
 
 ;  pretty-print-Expr
 ;     Formats an Expr instance for readable display with appropriate line breaks.
@@ -382,7 +382,7 @@
 ;  Returns:
 ;     An Expr with NamedLet head
 (define (make-named-let location name bindings body)
-  (assert-string 'make-named-let name "name")
+  (assert-head 'IdHead name)
   (assert-head 'BindingsHead bindings)
   (assert-expr body)
   
@@ -614,7 +614,7 @@
 ;  Returns:
 ;     An Expr with Bind head
 (define (make-bind location name value)
-  (assert-string 'make-bind name "name")
+  (assert-head 'IdHead name)
   (assert-expr value)
   
   (make-expr 'BindHead (list name value) location))  

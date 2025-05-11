@@ -39,19 +39,19 @@
 
 (define (RuntimeValueTag->string tag)
   (cond
-    [(equal? tag 'IntTag) "int"]
-    [(equal? tag 'FloatTag) "float"]
-    [(equal? tag 'StringTag) "string"]
-    [(equal? tag 'BooleanTag) "boolean"]
-    [(equal? tag 'NilValueTag) "nil"]
-    [(equal? tag 'ListTag) "list"]
-    [(equal? tag 'EtaExprTag) "Expr"]
+    [(equal? tag 'IntTag)        "int"]
+    [(equal? tag 'FloatTag)      "float"]
+    [(equal? tag 'StringTag)     "string"]
+    [(equal? tag 'BooleanTag)    "boolean"]
+    [(equal? tag 'NilValueTag)   "nil"]
+    [(equal? tag 'ListTag)       "list"]
+    [(equal? tag 'EtaExprTag)    "Expr"]
     [(equal? tag 'EtaBuiltinTag) "Builtin"]
     [(equal? tag 'EtaClosureTag) "Closure"]
-    [(equal? tag 'EtaStructTag) "StructInstance"]
-    [(equal? tag 'VoidTag) "void"]
-    [(equal? tag 'UndefinedTag) "undefined"]
-    [else (error (format "Internal error: unknown tag ~a" tag))]))
+    [(equal? tag 'EtaStructTag)  "StructInstance"]
+    [(equal? tag 'VoidTag)       "void"]
+    [(equal? tag 'UndefinedTag)  "undefined"]
+    [else                        (error (format "Internal error: unknown tag ~a" tag))]))
 
 (define (tag-checker pred tag expect-pass-msg)
   (lambda (tag)
@@ -142,41 +142,22 @@
 
 (define (make-runtime-value tag value)
   (cond
-    [(equal? tag 'IntTag) 
-      (tag-checker number? tag "number?")]
-    [(equal? tag 'FloatTag)
-      (tag-checker number? tag "number?")]
-    [(equal? tag 'StringTag)
-      (tag-checker string? tag "string?")]
-    [(equal? tag 'BooleanTag)
-      (tag-checker boolean? tag "boolean?")]
-    [(equal? tag 'NilValueTag)
-      (tag-checker null? tag "null?")]
-    [(equal? tag 'ListTag)
-    ; list? and all elements are EtaValue
-      (tag-checker (lambda (x) 
-                     (and (list? x) (andmap EtaValue? x)))
-                    tag "list?")]
-    [(equal? tag 'EtaExprTag)
-      (tag-checker Expr? tag "Expr?")]
-    [(equal? tag 'EtaBuiltinTag)
-      (tag-checker Builtin? tag "Builtin?")]
-    [(equal? tag 'EtaClosureTag)
-      (tag-checker Closure? tag "EtaClosure?")]
-    [(equal? tag 'EtaStructTag)
-      (tag-checker StructInstance? tag "StructInstance?")]
-    [(equal? tag 'VoidTag)
-      (tag-checker (lambda (x) 
-                     (or (null? x) (equal? x '())))
-                    tag "Void")]
-    [(equal? tag 'UndefinedTag)
-      (tag-checker (lambda (x) 
-                     (equal? x 'undefined))
-                    tag "Undefined")]
+    [(equal? tag 'IntTag)        (tag-checker number? tag "number?")]
+    [(equal? tag 'FloatTag)      (tag-checker number? tag "number?")]
+    [(equal? tag 'StringTag)     (tag-checker string? tag "string?")]
+    [(equal? tag 'BooleanTag)    (tag-checker boolean? tag "boolean?")]
+    [(equal? tag 'NilValueTag)   (tag-checker null? tag "null?")]
+    [(equal? tag 'ListTag)       (tag-checker (lambda (x) (and (list? x) (andmap EtaValue? x))) tag "list?")]
+    [(equal? tag 'EtaExprTag)    (tag-checker Expr? tag "Expr?")]
+    [(equal? tag 'EtaBuiltinTag) (tag-checker Builtin? tag "Builtin?")]
+    [(equal? tag 'EtaClosureTag) (tag-checker Closure? tag "EtaClosure?")]
+    [(equal? tag 'EtaStructTag)  (tag-checker StructInstance? tag "StructInstance?")]
+    [(equal? tag 'VoidTag)       (tag-checker (lambda (x) (or (null? x) (equal? x '()))) tag "Void")]
+    [(equal? tag 'UndefinedTag)  (tag-checker (lambda (x) (equal? x 'undefined)) tag "Undefined")]
     [else (error "Internal error: unknown tag ~a" tag)]
     )
-
-    (EtaValue tag value))
+    
+  (EtaValue tag value))
 
 
 ;  runtime-value->string
@@ -201,16 +182,16 @@
     (let ([tag (EtaValue-tag v)]
           [value (EtaValue-value v)]) 
       (cond
-      [(equal? tag 'IntTag) (format "~a" value)]
-      [(equal? tag 'FloatTag) (format "~a" value)]
-      [(equal? tag 'StringTag) (format "\"~a\"" value)]
-      [(equal? tag 'BooleanTag) (if value "#t" "#f")]
-      [(equal? tag 'NilValueTag) "'()"]
-      [(equal? tag 'ListTag) (format "(~a)" (string-join (map runtime-value->string value) " "))]
-      [(equal? tag 'EtaExprTag) (format "<expr: ~a>" (pretty-print-Expr value))]
+      [(equal? tag 'IntTag)        (format "~a" value)]
+      [(equal? tag 'FloatTag)      (format "~a" value)]
+      [(equal? tag 'StringTag)     (format "\"~a\"" value)]
+      [(equal? tag 'BooleanTag)    (if value "#t" "#f")]
+      [(equal? tag 'NilValueTag)   "'()"]
+      [(equal? tag 'ListTag)       (format "(~a)" (string-join (map runtime-value->string value) " "))]
+      [(equal? tag 'EtaExprTag)    (format "<expr: ~a>" (pretty-print-Expr value))]
       [(equal? tag 'EtaBuiltinTag) (format "<builtin: ~a>" (pretty-print-Builtin value))]
       [(equal? tag 'EtaClosureTag) (format "<closure: ~a>" (pretty-print-Closure value))]
-      [(equal? tag 'EtaStructTag) (format "<StructInstance: ~a>" value)]
-      [(equal? tag 'UndefinedTag) "undefined"]
-      [(equal? tag 'VoidTag) "void"]
-      [else (error "Internal error: unknown tag ~a" tag)]))))
+      [(equal? tag 'EtaStructTag)  (format "<StructInstance: ~a>" value)]
+      [(equal? tag 'UndefinedTag)  "undefined"]
+      [(equal? tag 'VoidTag)       "void"]
+      [else                        (error "Internal error: unknown tag ~a" tag)]))))

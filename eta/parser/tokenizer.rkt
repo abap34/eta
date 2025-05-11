@@ -3,7 +3,11 @@
 (require "../utils/location.rkt"
          "../utils/error.rkt")
 
-(provide tokenize Token Token-typ Token-val Token-loc
+(provide tokenize 
+         Token 
+         Token-typ 
+         Token-val 
+         Token-loc
          Token? 
          TokenType?
          Token-loc
@@ -59,17 +63,17 @@
 
 (define (TokenType->name typ)
   (cond
-    [(equal? typ 'RParenToken)   "RParen"]
-    [(equal? typ 'LParenToken)   "LParen"]
-    [(equal? typ 'DotSymToken)   "DotSym"]
-    [(equal? typ 'QuoteSymToken) "QuoteSym"]
-    [(equal? typ 'BoolToken)     "Bool"]
-    [(equal? typ 'IntToken)      "Num"]
-    [(equal? typ 'FloatToken)    "Float"]
-    [(equal? typ 'StringToken)   "StringToken"]
-    [(equal? typ 'IdToken)       "Id"]
-    [(equal? typ 'EOFToken)      "EOF"]
-    [else (error 'TokenType->name   "Unknown TokenType: ~v" typ)]))
+    [(equal? typ 'RParenToken)     "RParen"]
+    [(equal? typ 'LParenToken)     "LParen"]
+    [(equal? typ 'DotSymToken)     "DotSym"]
+    [(equal? typ 'QuoteSymToken)   "QuoteSym"]
+    [(equal? typ 'BoolToken)       "Bool"]
+    [(equal? typ 'IntToken)        "Num"]
+    [(equal? typ 'FloatToken)      "Float"]
+    [(equal? typ 'StringToken)     "StringToken"]
+    [(equal? typ 'IdToken)         "Id"]
+    [(equal? typ 'EOFToken)        "EOF"]
+    [else (error 'TokenType->name  "Unknown TokenType: ~v" typ)]))
 
 
 (define (format-token token)
@@ -204,8 +208,7 @@
             [(symbol-char? ch) (read-symbol pos line col)]
             [else (values (make-tokenize-error 
                           (format "Unexpected character: ~a" ch)
-                          (make-location line col col)
-                          )
+                          (make-location line col col))
                           pos1 line1 col1)]))))
 
   (define (tokenize-loop pos line col tokens-acc errors-acc)
@@ -224,7 +227,6 @@
                        (cons token-or-error tokens-acc)
                        errors-acc)])))
 
-  (tokenize-loop 0 1 1 '() '())
-)
+  (tokenize-loop 0 1 1 '() '()))
 
 
