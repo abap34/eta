@@ -635,8 +635,8 @@
     (label "Body" (parser-ref parse-body))
     (label "RParen" rparen))
     (lambda (result)
-      (let ([bindings (second result)]
-            [body (third result)]
+      (let ([bindings (third result)]
+            [body (fourth result)]
             [loc (create-span-location
                   (loc (first result))
                   (loc (last result)))])
@@ -674,8 +674,8 @@
     (label "Else" (maybe (sequence (keyword "else") (one-or-more (parser-ref parse-exp)))))
     (label "RParen" rparen))
     (lambda (result)
-      (let ([clauses (second result)]
-            [else-exps (third result)]
+      (let ([clauses (third result)]
+            [else-exps (fourth result)]
             [loc (create-span-location
                   (Token-loc (first result))
                   (Token-loc (last result)))])
@@ -759,9 +759,9 @@
     (label "Body" (parser-ref parse-body))
     (label "RParen" rparen))
     (lambda (result)
-      (let ([do-lets (second result)]
-            [do-final (third result)]
-            [body (fourth result)]
+      (let ([do-lets (third result)]
+            [do-final (fourth result)]
+            [body (fifth result)]
             [loc (create-span-location
                   (loc (first result))
                   (loc (last result)))])
@@ -882,10 +882,10 @@
    (sequence
     (label "LParen" lparen)
     (label "load" (keyword "load"))
-    (label "String" string)
+    (label "String" (token-type 'StringToken)) ; Note: not `string`. 
     (label "RParen" rparen))
     (lambda (result)
-      (let ([filename (third result)]
+      (let ([filename (Token-val (third result))]  ; Extract the filename  
             [loc (create-span-location
                   (loc (first result))
                   (loc (last result)))])
@@ -932,13 +932,13 @@
 
 
 ; Toplevel ::= 
+;            | Load
 ;            | Define
 ;            | Exp
-;            | Load
 (define parse-toplevel
   (any-of
-    (label "Define" parse-define)
     (label "Load" parse-load)
+    (label "Define" parse-define)
     (label "Exp" parse-exp)))
 
 
@@ -958,6 +958,10 @@
 ;  Notes:
 ;     This allows testing specific parser components directly
 (define (parse-as tokens parser-fn)
+  (unless (and (list? tokens)
+               (andmap Token? tokens))
+    (error 'parse-as "Expected a list of tokens, but got: ~s" tokens))
+
   (let* ([result (parser-fn tokens)])
     (if (EtaError? result)
         result
