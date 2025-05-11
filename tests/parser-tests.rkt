@@ -288,7 +288,7 @@
   (let* ([input "(if (> x 0) \"positive\" \"non-positive\")"]
          [expr (parse-single input)]
          [expected (make-expr 'IfHead
-                         (list #t
+                         (list 
                                (make-expr 'AppHead
                                     (list (make-expr 'IdHead (list ">") (Location 1 6 1 7))
                                           (list 
@@ -304,15 +304,17 @@
   (let* ([input "(if (> x 0) \"positive\")"]
          [expr (parse-single input)]
          [expected (make-expr 'IfHead
-                         (list #f
+                         (list 
                                (make-expr 'AppHead
                                     (list (make-expr 'IdHead (list ">") (Location 1 6 1 7))
                                           (list 
                                            (make-expr 'IdHead (list "x") (Location 1 8 1 9))
                                            (make-expr 'ConstHead (list 'IntConstNode 0) (Location 1 10 1 11))))
                                     (Location 1 5 1 12))
-                               (make-expr 'ConstHead (list 'StringConstNode "positive") (Location 1 13 1 23)))
-                         (Location 1 1 1 24))])
+                               (make-expr 'ConstHead (list 'StringConstNode "positive") (Location 1 13 1 23))
+                               (make-expr 'ConstHead (list 'VoidConstNode          '()) (Location 1 1 1 24)))
+                         (Location 1 1 1 24)      
+                      )])
     (set! state (assert expr expected "If-then (no else) parsing test")))
 
   ;; Nested if expressions
@@ -587,7 +589,7 @@
   (let* ([input "(load \"filename.scm\")"]
          [expr (parse-single input)]
          [expected (make-expr 'LoadHead
-                         (list (make-expr 'ConstHead (list 'StringConstNode "filename.scm") (Location 1 7 1 21)))
+                         (list "filename.scm")
                          (Location 1 1 1 22))])
     (set! state (assert expr expected "Simple load parsing test")))
 
