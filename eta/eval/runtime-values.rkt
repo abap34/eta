@@ -184,7 +184,7 @@
       (cond
       [(equal? tag 'IntTag)        (format "~a" value)]
       [(equal? tag 'FloatTag)      (format "~a" value)]
-      [(equal? tag 'StringTag)     (format "\"~a\"" value)]
+      [(equal? tag 'StringTag)     (format "~a" value)]
       [(equal? tag 'BooleanTag)    (if value "#t" "#f")]
       [(equal? tag 'NilValueTag)   "'()"]
       [(equal? tag 'ListTag)       (format "(~a)" (string-join (map runtime-value->string value) " "))]
