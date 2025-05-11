@@ -377,7 +377,7 @@
        ))
 
     ; Set the variable
-    (define-variable! env var-name val)
+    (define-variable! env var-name val #t)
 
     ; Return the value
     val))
