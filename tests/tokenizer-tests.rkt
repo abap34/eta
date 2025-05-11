@@ -179,6 +179,40 @@
                               "Numbers in expression test"
                               state
                               (make-indented-output-fn output-fn 1))))
+                              
+  ; Test for negative integer
+  (let* ([input "-123"]
+         [tokens (tokenize-without-eof input)]
+         [expected (list (Token 'IntToken "-123" (Location 1 1 1 5)))])
+    (set! state (assert-equal tokens expected
+                              "Negative integer token test"
+                              state
+                              (make-indented-output-fn output-fn 1))))
+                              
+  ; Test for negative number in expression
+  (let* ([input "(+ -1 2)"]
+         [tokens (tokenize-without-eof input)]
+         [expected (list
+                    (Token 'LParenToken "(" (Location 1 1 1 2))
+                    (Token 'IdToken "+" (Location 1 2 1 3))
+                    (Token 'IntToken "-1" (Location 1 4 1 6))
+                    (Token 'IntToken "2" (Location 1 7 1 8))
+                    (Token 'RParenToken ")" (Location 1 8 1 9)))])
+    (set! state (assert-equal tokens expected
+                              "Negative number in expression test"
+                              state
+                              (make-indented-output-fn output-fn 1))))
+                              
+  ; Test for minus symbol followed by space (should be an identifier, not a negative number)
+  (let* ([input "- 123"]
+         [tokens (tokenize-without-eof input)]
+         [expected (list
+                    (Token 'IdToken "-" (Location 1 1 1 2))
+                    (Token 'IntToken "123" (Location 1 3 1 6)))])
+    (set! state (assert-equal tokens expected
+                              "Minus symbol followed by space test"
+                              state
+                              (make-indented-output-fn output-fn 1))))
 
   state)
 
@@ -213,6 +247,29 @@
          [expected (list (Token 'FloatToken "3.14159" (Location 1 1 1 8)))])
     (set! state (assert-equal tokens expected
                               "Pi approximation float token test"
+                              state
+                              (make-indented-output-fn output-fn 1))))
+                              
+  ; Test for negative float
+  (let* ([input "-3.14"]
+         [tokens (tokenize-without-eof input)]
+         [expected (list (Token 'FloatToken "-3.14" (Location 1 1 1 6)))])
+    (set! state (assert-equal tokens expected
+                              "Negative float token test"
+                              state
+                              (make-indented-output-fn output-fn 1))))
+                              
+  ; Test for negative float in expression
+  (let* ([input "(+ -1.5 2.7)"]
+         [tokens (tokenize-without-eof input)]
+         [expected (list
+                    (Token 'LParenToken "(" (Location 1 1 1 2))
+                    (Token 'IdToken "+" (Location 1 2 1 3))
+                    (Token 'FloatToken "-1.5" (Location 1 4 1 8))
+                    (Token 'FloatToken "2.7" (Location 1 9 1 12))
+                    (Token 'RParenToken ")" (Location 1 12 1 13)))])
+    (set! state (assert-equal tokens expected
+                              "Negative float in expression test"
                               state
                               (make-indented-output-fn output-fn 1))))
 
