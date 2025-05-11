@@ -618,8 +618,8 @@
     (label "Body" (parser-ref parse-body))
     (label "RParen" rparen))
     (lambda (result)
-      (let ([bindings (second result)]
-            [body (third result)]
+      (let ([bindings (third result)]
+            [body (fourth result)]
             [loc (create-span-location
                   (loc (first result))
                   (loc (last result)))])
