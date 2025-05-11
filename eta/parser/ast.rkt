@@ -609,15 +609,15 @@
 ;     Create a binding expression node
 ;  Arguments:
 ;     location - Source location
-;     name - The name of the variable (string)
+;     ident - The ident of the variable (Expr with Id head)
 ;     value - The value to bind (Expr)
 ;  Returns:
 ;     An Expr with Bind head
-(define (make-bind location name value)
-  (assert-head 'IdHead name)
+(define (make-bind location ident value)
+  (assert-head 'IdHead ident)
   (assert-expr value)
   
-  (make-expr 'BindHead (list name value) location))  
+  (make-expr 'BindHead (list ident value) location))  
 
 
 ; make-bindings

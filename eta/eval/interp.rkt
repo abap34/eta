@@ -237,18 +237,15 @@
 ;     The result of evaluating the selected branch or a RuntimeError
 (define (eval-if expr env)
   (let* ([if-args   (Expr-args expr)]
-         [has-else  (first if-args)]
-         [test-expr (second if-args)]
-         [then-expr (third if-args)]
-         [else-expr (fourth if-args)])
+         [test-expr (first if-args)]
+         [then-expr (second if-args)]
+         [else-expr (third if-args)])
     (with-successfull-eval (eval-expr test-expr env)
       (lambda (test-result)
         (if (equal? (EtaValue-tag test-result) 'BooleanTag)
             (if (equal? (EtaValue-value test-result) #t)
                 (eval-expr then-expr env)
-                (if has-else
-                    (eval-expr else-expr env)
-                    (EtaValue 'VoidTag '())))
+                (eval-expr else-expr env))
             (make-runtime-error
              (format "Only boolean value is allowed in condition. Given ~a" (EtaValue-tag test-result))
              (Expr-loc test-expr)))))))
