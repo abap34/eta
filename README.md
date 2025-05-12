@@ -16,9 +16,10 @@ eta/
 ├── eta/           ; Main source code
 ├── tests/         ; Unit tests
 ├── examples/      ; Example programs
+├── devdocs/       ; Developer documentation
 ├── tools/         ; Utility scripts
 ├── Makefile       ; Build and test 
-└── main.scm       ; Main entry point
+└── main.rkt       ; Main entry point
 ```
 
 ---
@@ -28,7 +29,7 @@ eta/
 ### Requirements
 
 Scheme implementation that supports R6RS.
-I built and tested with: (Rackets)[https://docs.racket-lang.org/].
+I built and tested with: [Rackets](https://docs.racket-lang.org/).
 
 ### Installation
 
@@ -46,7 +47,7 @@ $ eta
 ### Run a file
 
 ```
-$ eta <filename>
+$ eta --script <filename>
 ```
 
 ### Run tests
@@ -54,7 +55,6 @@ $ eta <filename>
 ```
 $ make test
 ```
-
 
 ## License
 
