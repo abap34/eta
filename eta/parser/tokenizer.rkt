@@ -15,6 +15,7 @@
          Token-val
          tokens-span
          format-token
+         eta-keyword?
 )
 
 (define (TokenType? typ)
@@ -27,6 +28,7 @@
       (equal? typ 'FloatToken)
       (equal? typ 'StringToken)
       (equal? typ 'IdToken)
+      (equal? typ 'KeywordToken)
       (equal? typ 'EOFToken)))
 
 
@@ -72,9 +74,24 @@
     [(equal? typ 'FloatToken)      "Float"]
     [(equal? typ 'StringToken)     "StringToken"]
     [(equal? typ 'IdToken)         "Id"]
+    [(equal? typ 'KeywordToken)    "Keyword"]
     [(equal? typ 'EOFToken)        "EOF"]
     [else (error 'TokenType->name  "Unknown TokenType: ~v" typ)]))
 
+
+;; List of eta language keywords
+(define eta-keywords
+  '("define" "lambda" "quote" "set!" "let" "let*" "letrec"
+    "if" "cond" "else" "and" "or" "begin" "do" "load"))
+
+;; keyword?
+;;   Check if a string is an eta language keyword
+;; Arguments:
+;;   s - String to check
+;; Returns:
+;;   #t if s is a keyword, #f otherwise
+(define (eta-keyword? s)
+  (member s eta-keywords))
 
 (define (format-token token)
   (format "~a: ~a at ~a"
@@ -114,8 +131,10 @@
           p
           (loop (+ p 1))))
     (let* ((end (loop pos))
-           (lexeme (substring src pos end)))
-      (values (make-token 'IdToken lexeme line col line (+ col (- end pos)))
+           (lexeme (substring src pos end))
+           ;; Check if the lexeme is a keyword
+           (token-type (if (eta-keyword? lexeme) 'KeywordToken 'IdToken)))
+      (values (make-token token-type lexeme line col line (+ col (- end pos)))
               end line (+ col (- end pos)))))
 
   ;; read-number

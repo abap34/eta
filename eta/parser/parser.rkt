@@ -257,9 +257,12 @@
 ;      keyword - Keyword to match (as a string)
 ;  Returns:
 ;      A parser function that matches the keyword
-(define (keyword kw)
+ (define (keyword kw)
+  (unless (eta-keyword? kw)
+    (error 'keyword "Expected a keyword, but got: ~a" kw))
+
   (token-pred (lambda (token) 
-                (and (eq? (Token-typ token) 'IdToken)
+                (and (eq? (Token-typ token) 'KeywordToken)
                      (equal? (Token-val token) kw)))
               (format "keyword ~a" kw)))
 
@@ -671,7 +674,11 @@
     (label "LParen" lparen)
     (label "cond" (keyword "cond"))
     (label "CondClauses" (zero-or-more (parser-ref parse-cond-clause)))
-    (label "Else" (maybe (sequence (keyword "else") (one-or-more (parser-ref parse-exp)))))
+    (label "Else" (maybe (sequence 
+                             (label "LParen" lparen)
+                             (keyword "else") 
+                             (one-or-more (parser-ref parse-exp))
+                             (label "RParen" rparen))))
     (label "RParen" rparen))
     (lambda (result)
       (let ([clauses (third result)]
@@ -680,7 +687,7 @@
                   (Token-loc (first result))
                   (Token-loc (last result)))])
         (if else-exps
-            (make-cond-else loc clauses else-exps)
+            (make-cond-else loc clauses (third else-exps))
             (make-cond-noelse loc clauses))))))
 
 
