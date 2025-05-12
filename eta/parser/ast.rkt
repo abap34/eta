@@ -1,6 +1,7 @@
 #lang racket
 
-(require "tokenizer.rkt")
+(require "tokenizer.rkt"
+         "../utils/location.rkt")
 
 (provide Expr             
          make-expr        
@@ -11,6 +12,7 @@
          Expr?
          ExprHead?     
          ExprHead->name
+         span-of-exprs
 
          make-const
          make-app
@@ -94,6 +96,23 @@
   (unless (ExprHead? head)
     (error 'make-expr "Expected an ExprHead for 'head', got: ~a" head))
   (Expr head args loc))
+
+; span-of-exprs
+;     Returns the span of a list of expressions.
+;  Arguments:
+;      exprs - List of expressions
+;  Returns:
+;      A location object representing the span of the expressions
+(define (span-of-exprs exprs)
+  (if (null? exprs)
+      (make-location 0 0 0)
+      (let loop ([exprs exprs]
+                 [start-loc (Expr-loc (car exprs))])
+        (if (null? (cdr exprs))
+            start-loc
+            (loop (cdr exprs) 
+                  (create-span-location start-loc 
+                                         (Expr-loc (car exprs))))))))
 
 ;  ExprHead->name
 ;     Converts an ExprHead symbol to its string representation.
@@ -492,8 +511,8 @@
   (when (not (null? clauses))
     (for-each (lambda (clause) (assert-head 'CondClauseHead clause 'make-cond-else "clause")) clauses))
   
-  (assert-expr else-exps 'make-cond-else "else")
-  (make-expr 'CondHead (list clauses (make-begin (Expr-loc else-exps) else-exps)) location))
+  (assert-list-of-exprs else-exps 'make-cond-else "else")
+  (make-expr 'CondHead (list clauses (make-begin (span-of-exprs else-exps) else-exps)) location))
 
 
 ; make-and
