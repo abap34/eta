@@ -412,7 +412,7 @@
     (set! state (assert (Expr-head expr) 'BeginHead "Empty begin parsing test")))
 
   ;; Begin with various expression types
-  (let* ([input "(begin (define x 1) (set! x 2) (if (> x 0) x 0))"]
+  (let* ([input "(begin (+ x 1) (set! x 2) (if (> x 0) x 0))"]
          [expr (parse-single input)])
     (set! state (assert (Expr-head expr) 'BeginHead "Begin with various expressions test")))
 
