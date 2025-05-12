@@ -461,37 +461,39 @@
 ;  Notes:
 ;     `devdocs/desugar.md` contains the desugaring rules.
 (define (desugar expr)
-   (if (list? expr)
-     (map desugar expr)
-      (begin
-        (unless (Expr? expr)
-          (error (format "desugar: expected Expr, got ~a" expr)))
-        (let ([head (Expr-head expr)])
-          (cond
-            [(equal? head 'ConstHead)       expr]    
-            [(equal? head 'IdHead)          expr]
-            [(equal? head 'AppHead)         (desugar-app expr)]
-            [(equal? head 'LambdaHead)      (desugar-lambda expr)]
-            [(equal? head 'QuoteHead)       expr]
-            [(equal? head 'DefineHead)      (desugar-define expr)]
-            [(equal? head 'IfHead)          (desugar-if expr)]
-            [(equal? head 'CondHead)        (desugar-cond expr)]
-            [(equal? head 'CondClauseHead)  (desugar-cond-clause expr)]
-            [(equal? head 'BeginHead)       (desugar-begin expr)]
-            [(equal? head 'UnNamedLetHead)  (desugar-unnamed-let expr)]
-            [(equal? head 'NamedLetHead)    (desugar-named-let expr)]
-            [(equal? head 'LetRecHead)      (desugar-letrec expr)]
-            [(equal? head 'LetStarHead)     (desugar-letstar expr)]
-            [(equal? head 'AndHead)         (desugar-and expr)]
-            [(equal? head 'OrHead)          (desugar-or expr)]
-            [(equal? head 'LoadHead)        expr]
-            [(equal? head 'SetHead)         (desugar-set expr)]
-            [(equal? head 'DoHead)          (error "Do expressions not yet implemented")]
-            [(equal? head 'DoLetHead)       (error "DoLet expressions not yet implemented")]
-            [(equal? head 'DoFinalHead)     (error "DoFinal expressions not yet implemented")]
-            [(equal? head 'BodyHead)        (desugar-body expr)]
-            [(equal? head 'BindHead)        (desugar-bind expr)]
-            [(equal? head 'BindingsHead)    (desugar-bindings expr)]
-            [(equal? head 'ArgHead)         expr]
-            [(equal? head 'S-ExprHead)      expr]
-            [else (error (format "desugar: unknown expression type ~a" head))])))))
+  (if (EtaError? expr)
+      expr
+    (if (list? expr)
+      (map desugar expr)
+        (begin
+          (unless (Expr? expr)
+            (error (format "desugar: expected Expr, got ~a" expr)))
+          (let ([head (Expr-head expr)])
+            (cond
+              [(equal? head 'ConstHead)       expr]    
+              [(equal? head 'IdHead)          expr]
+              [(equal? head 'AppHead)         (desugar-app expr)]
+              [(equal? head 'LambdaHead)      (desugar-lambda expr)]
+              [(equal? head 'QuoteHead)       expr]
+              [(equal? head 'DefineHead)      (desugar-define expr)]
+              [(equal? head 'IfHead)          (desugar-if expr)]
+              [(equal? head 'CondHead)        (desugar-cond expr)]
+              [(equal? head 'CondClauseHead)  (desugar-cond-clause expr)]
+              [(equal? head 'BeginHead)       (desugar-begin expr)]
+              [(equal? head 'UnNamedLetHead)  (desugar-unnamed-let expr)]
+              [(equal? head 'NamedLetHead)    (desugar-named-let expr)]
+              [(equal? head 'LetRecHead)      (desugar-letrec expr)]
+              [(equal? head 'LetStarHead)     (desugar-letstar expr)]
+              [(equal? head 'AndHead)         (desugar-and expr)]
+              [(equal? head 'OrHead)          (desugar-or expr)]
+              [(equal? head 'LoadHead)        expr]
+              [(equal? head 'SetHead)         (desugar-set expr)]
+              [(equal? head 'DoHead)          (error "Do expressions not yet implemented")]
+              [(equal? head 'DoLetHead)       (error "DoLet expressions not yet implemented")]
+              [(equal? head 'DoFinalHead)     (error "DoFinal expressions not yet implemented")]
+              [(equal? head 'BodyHead)        (desugar-body expr)]
+              [(equal? head 'BindHead)        (desugar-bind expr)]
+              [(equal? head 'BindingsHead)    (desugar-bindings expr)]
+              [(equal? head 'ArgHead)         expr]
+              [(equal? head 'S-ExprHead)      expr]
+              [else (error (format "desugar: unknown expression type ~a" head))]))))))
