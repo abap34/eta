@@ -10,14 +10,14 @@
 
 (define color-codes
   (list
-    (cons 'black (string-append esc "[30m"))
-    (cons 'red (string-append esc "[31m"))
-    (cons 'green (string-append esc "[32m"))
-    (cons 'yellow (string-append esc "[33m"))
-    (cons 'blue (string-append esc "[34m"))
+    (cons 'black   (string-append esc "[30m"))
+    (cons 'red     (string-append esc "[31m"))
+    (cons 'green   (string-append esc "[32m"))
+    (cons 'yellow  (string-append esc "[33m"))
+    (cons 'blue    (string-append esc "[34m"))
     (cons 'magenta (string-append esc "[35m"))
-    (cons 'cyan (string-append esc "[36m"))
-    (cons 'white (string-append esc "[37m"))
+    (cons 'cyan    (string-append esc "[36m"))
+    (cons 'white   (string-append esc "[37m"))
   ))
 
 ;  get-color-code

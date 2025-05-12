@@ -127,9 +127,9 @@
          [tokens (tokenize-without-eof input)]
          [expected (list
                     (Token 'LParenToken "(" (Location 1 1 1 2))
-                    (Token 'IdToken "if" (Location 1 2 1 4))
+                    (Token 'KeywordToken "if" (Location 1 2 1 4))
                     (Token 'BoolToken "#t" (Location 1 5 1 7))
-                    (Token 'NumToken "1" (Location 1 8 1 9))
+                    (Token 'IntToken "1" (Location 1 8 1 9))
                     (Token 'BoolToken "#f" (Location 1 10 1 12))
                     (Token 'RParenToken ")" (Location 1 12 1 13)))])
     (set! state (assert-equal tokens expected
@@ -151,7 +151,7 @@
 
   (let* ([input "123"]
          [tokens (tokenize-without-eof input)]
-         [expected (list (Token 'NumToken "123" (Location 1 1 1 4)))])
+         [expected (list (Token 'IntToken "123" (Location 1 1 1 4)))])
     (set! state (assert-equal tokens expected
                               "Simple number token test"
                               state
@@ -160,8 +160,8 @@
   (let* ([input "123 456"]
          [tokens (tokenize-without-eof input)]
          [expected (list
-                    (Token 'NumToken "123" (Location 1 1 1 4))
-                    (Token 'NumToken "456" (Location 1 5 1 8)))])
+                    (Token 'IntToken "123" (Location 1 1 1 4))
+                    (Token 'IntToken "456" (Location 1 5 1 8)))])
     (set! state (assert-equal tokens expected
                               "Multiple number token test"
                               state
@@ -172,11 +172,130 @@
          [expected (list
                     (Token 'LParenToken "(" (Location 1 1 1 2))
                     (Token 'IdToken "+" (Location 1 2 1 3))
-                    (Token 'NumToken "1" (Location 1 4 1 5))
-                    (Token 'NumToken "2" (Location 1 6 1 7))
+                    (Token 'IntToken "1" (Location 1 4 1 5))
+                    (Token 'IntToken "2" (Location 1 6 1 7))
                     (Token 'RParenToken ")" (Location 1 7 1 8)))])
     (set! state (assert-equal tokens expected
                               "Numbers in expression test"
+                              state
+                              (make-indented-output-fn output-fn 1))))
+                              
+  ; Test for negative integer
+  (let* ([input "-123"]
+         [tokens (tokenize-without-eof input)]
+         [expected (list (Token 'IntToken "-123" (Location 1 1 1 5)))])
+    (set! state (assert-equal tokens expected
+                              "Negative integer token test"
+                              state
+                              (make-indented-output-fn output-fn 1))))
+                              
+  ; Test for negative number in expression
+  (let* ([input "(+ -1 2)"]
+         [tokens (tokenize-without-eof input)]
+         [expected (list
+                    (Token 'LParenToken "(" (Location 1 1 1 2))
+                    (Token 'IdToken "+" (Location 1 2 1 3))
+                    (Token 'IntToken "-1" (Location 1 4 1 6))
+                    (Token 'IntToken "2" (Location 1 7 1 8))
+                    (Token 'RParenToken ")" (Location 1 8 1 9)))])
+    (set! state (assert-equal tokens expected
+                              "Negative number in expression test"
+                              state
+                              (make-indented-output-fn output-fn 1))))
+                              
+  ; Test for minus symbol followed by space (should be an identifier, not a negative number)
+  (let* ([input "- 123"]
+         [tokens (tokenize-without-eof input)]
+         [expected (list
+                    (Token 'IdToken "-" (Location 1 1 1 2))
+                    (Token 'IntToken "123" (Location 1 3 1 6)))])
+    (set! state (assert-equal tokens expected
+                              "Minus symbol followed by space test"
+                              state
+                              (make-indented-output-fn output-fn 1))))
+
+  state)
+
+;  test-float-tokens
+;     Tests floating point number token recognition.
+;  Arguments:
+;      state - The current test state.
+;      output-fn - Function to display output.
+;  Returns:
+;      Updated test state.
+(define (test-float-tokens state output-fn)
+  (output-fn "Running test-float-tokens...")
+
+  (let* ([input "123.45"]
+         [tokens (tokenize-without-eof input)]
+         [expected (list (Token 'FloatToken "123.45" (Location 1 1 1 7)))])
+    (set! state (assert-equal tokens expected
+                              "Simple float token test"
+                              state
+                              (make-indented-output-fn output-fn 1))))
+
+  (let* ([input "0.5"]
+         [tokens (tokenize-without-eof input)]
+         [expected (list (Token 'FloatToken "0.5" (Location 1 1 1 4)))])
+    (set! state (assert-equal tokens expected
+                              "Zero point float token test"
+                              state
+                              (make-indented-output-fn output-fn 1))))
+                              
+  (let* ([input "3.14159"]
+         [tokens (tokenize-without-eof input)]
+         [expected (list (Token 'FloatToken "3.14159" (Location 1 1 1 8)))])
+    (set! state (assert-equal tokens expected
+                              "Pi approximation float token test"
+                              state
+                              (make-indented-output-fn output-fn 1))))
+                              
+  ; Test for negative float
+  (let* ([input "-3.14"]
+         [tokens (tokenize-without-eof input)]
+         [expected (list (Token 'FloatToken "-3.14" (Location 1 1 1 6)))])
+    (set! state (assert-equal tokens expected
+                              "Negative float token test"
+                              state
+                              (make-indented-output-fn output-fn 1))))
+                              
+  ; Test for negative float in expression
+  (let* ([input "(+ -1.5 2.7)"]
+         [tokens (tokenize-without-eof input)]
+         [expected (list
+                    (Token 'LParenToken "(" (Location 1 1 1 2))
+                    (Token 'IdToken "+" (Location 1 2 1 3))
+                    (Token 'FloatToken "-1.5" (Location 1 4 1 8))
+                    (Token 'FloatToken "2.7" (Location 1 9 1 12))
+                    (Token 'RParenToken ")" (Location 1 12 1 13)))])
+    (set! state (assert-equal tokens expected
+                              "Negative float in expression test"
+                              state
+                              (make-indented-output-fn output-fn 1))))
+
+  (let* ([input "(+ 1.5 2.7)"]
+         [tokens (tokenize-without-eof input)]
+         [expected (list
+                    (Token 'LParenToken "(" (Location 1 1 1 2))
+                    (Token 'IdToken "+" (Location 1 2 1 3))
+                    (Token 'FloatToken "1.5" (Location 1 4 1 7))
+                    (Token 'FloatToken "2.7" (Location 1 8 1 11))
+                    (Token 'RParenToken ")" (Location 1 11 1 12)))])
+    (set! state (assert-equal tokens expected
+                              "Floats in expression test"
+                              state
+                              (make-indented-output-fn output-fn 1))))
+
+  (let* ([input "(* 3 4.25)"]
+         [tokens (tokenize-without-eof input)]
+         [expected (list
+                    (Token 'LParenToken "(" (Location 1 1 1 2))
+                    (Token 'IdToken "*" (Location 1 2 1 3))
+                    (Token 'IntToken "3" (Location 1 4 1 5))
+                    (Token 'FloatToken "4.25" (Location 1 6 1 10))
+                    (Token 'RParenToken ")" (Location 1 10 1 11)))])
+    (set! state (assert-equal tokens expected
+                              "Mixed integer and float in expression test"
                               state
                               (make-indented-output-fn output-fn 1))))
 
@@ -232,7 +351,7 @@
   state)
 
 ;  test-keyword-tokens
-;     Tests identifiers that were previously treated as keywords.
+;     Tests keyword token recognition (define, lambda, if etc).
 ;  Arguments:
 ;      state - The current test state.
 ;      output-fn - Function to display output.
@@ -243,38 +362,38 @@
 
   (let* ([input "define"]
          [tokens (tokenize-without-eof input)]
-         [expected (list (Token 'IdToken "define" (Location 1 1 1 7)))])
+         [expected (list (Token 'KeywordToken "define" (Location 1 1 1 7)))])
     (set! state (assert-equal tokens expected
-                              "define identifier test"
+                              "define keyword test"
                               state
                               (make-indented-output-fn output-fn 1))))
 
   (let* ([input "lambda"]
          [tokens (tokenize-without-eof input)]
-         [expected (list (Token 'IdToken "lambda" (Location 1 1 1 7)))])
+         [expected (list (Token 'KeywordToken "lambda" (Location 1 1 1 7)))])
     (set! state (assert-equal tokens expected
-                              "lambda identifier test"
+                              "lambda keyword test"
                               state
                               (make-indented-output-fn output-fn 1))))
 
   (let* ([input "let let* letrec if cond quote set! and or begin do load else"]
          [tokens (tokenize-without-eof input)]
          [expected (list
-                    (Token 'IdToken "let" (Location 1 1 1 4))
-                    (Token 'IdToken "let*" (Location 1 5 1 9))
-                    (Token 'IdToken "letrec" (Location 1 10 1 16))
-                    (Token 'IdToken "if" (Location 1 17 1 19))
-                    (Token 'IdToken "cond" (Location 1 20 1 24))
-                    (Token 'IdToken "quote" (Location 1 25 1 30))
-                    (Token 'IdToken "set!" (Location 1 31 1 35))
-                    (Token 'IdToken "and" (Location 1 36 1 39))
-                    (Token 'IdToken "or" (Location 1 40 1 42))
-                    (Token 'IdToken "begin" (Location 1 43 1 48))
-                    (Token 'IdToken "do" (Location 1 49 1 51))
-                    (Token 'IdToken "load" (Location 1 52 1 56))
-                    (Token 'IdToken "else" (Location 1 57 1 61)))])
+                    (Token 'KeywordToken "let" (Location 1 1 1 4))
+                    (Token 'KeywordToken "let*" (Location 1 5 1 9))
+                    (Token 'KeywordToken "letrec" (Location 1 10 1 16))
+                    (Token 'KeywordToken "if" (Location 1 17 1 19))
+                    (Token 'KeywordToken "cond" (Location 1 20 1 24))
+                    (Token 'KeywordToken "quote" (Location 1 25 1 30))
+                    (Token 'KeywordToken "set!" (Location 1 31 1 35))
+                    (Token 'KeywordToken "and" (Location 1 36 1 39))
+                    (Token 'KeywordToken "or" (Location 1 40 1 42))
+                    (Token 'KeywordToken "begin" (Location 1 43 1 48))
+                    (Token 'KeywordToken "do" (Location 1 49 1 51))
+                    (Token 'KeywordToken "load" (Location 1 52 1 56))
+                    (Token 'KeywordToken "else" (Location 1 57 1 61)))])
     (set! state (assert-equal tokens expected
-                              "All keywords now as identifiers test"
+                              "All keywords test"
                               state
                               (make-indented-output-fn output-fn 1))))
 
@@ -282,12 +401,38 @@
          [tokens (tokenize-without-eof input)]
          [expected (list
                     (Token 'LParenToken "(" (Location 1 1 1 2))
-                    (Token 'IdToken "define" (Location 1 2 1 8))
+                    (Token 'KeywordToken "define" (Location 1 2 1 8))
                     (Token 'IdToken "x" (Location 1 9 1 10))
-                    (Token 'NumToken "10" (Location 1 11 1 13))
+                    (Token 'IntToken "10" (Location 1 11 1 13))
                     (Token 'RParenToken ")" (Location 1 13 1 14)))])
     (set! state (assert-equal tokens expected
-                              "Special form in expression test"
+                              "Keyword in expression test"
+                              state
+                              (make-indented-output-fn output-fn 1))))
+
+  (let* ([input "(if #t (lambda (x) x) (define-syntax macro '()))"]
+         [tokens (tokenize-without-eof input)]
+         [expected (list
+                    (Token 'LParenToken "(" (Location 1 1 1 2))
+                    (Token 'KeywordToken "if" (Location 1 2 1 4))
+                    (Token 'BoolToken "#t" (Location 1 5 1 7))
+                    (Token 'LParenToken "(" (Location 1 8 1 9))
+                    (Token 'KeywordToken "lambda" (Location 1 9 1 15))
+                    (Token 'LParenToken "(" (Location 1 16 1 17))
+                    (Token 'IdToken "x" (Location 1 17 1 18))
+                    (Token 'RParenToken ")" (Location 1 18 1 19))
+                    (Token 'IdToken "x" (Location 1 20 1 21))
+                    (Token 'RParenToken ")" (Location 1 21 1 22))
+                    (Token 'LParenToken "(" (Location 1 23 1 24))
+                    (Token 'IdToken "define-syntax" (Location 1 24 1 37))
+                    (Token 'IdToken "macro" (Location 1 38 1 43))
+                    (Token 'QuoteSymToken "'" (Location 1 44 1 45))
+                    (Token 'LParenToken "(" (Location 1 45 1 46))
+                    (Token 'RParenToken ")" (Location 1 46 1 47))
+                    (Token 'RParenToken ")" (Location 1 47 1 48))
+                    (Token 'RParenToken ")" (Location 1 48 1 49)))])
+    (set! state (assert-equal tokens expected
+                              "Mixed keywords and identifiers test"
                               state
                               (make-indented-output-fn output-fn 1))))
 
@@ -380,14 +525,14 @@
          [tokens (tokenize-without-eof input)]
          [expected (list
                     (Token 'LParenToken "(" (Location 1 1 1 2))
-                    (Token 'IdToken "lambda" (Location 1 2 1 8))
+                    (Token 'KeywordToken "lambda" (Location 1 2 1 8))
                     (Token 'LParenToken "(" (Location 1 9 1 10))
                     (Token 'IdToken "x" (Location 1 10 1 11))
                     (Token 'RParenToken ")" (Location 1 11 1 12))
                     (Token 'LParenToken "(" (Location 1 13 1 14))
                     (Token 'IdToken "+" (Location 1 14 1 15))
                     (Token 'IdToken "x" (Location 1 16 1 17))
-                    (Token 'NumToken "1" (Location 1 18 1 19))
+                    (Token 'IntToken "1" (Location 1 18 1 19))
                     (Token 'RParenToken ")" (Location 1 19 1 20))
                     (Token 'RParenToken ")" (Location 1 20 1 21)))])
     (set! state (assert-equal tokens expected
@@ -399,15 +544,15 @@
          [tokens (tokenize-without-eof input)]
          [expected (list
                     (Token 'LParenToken "(" (Location 1 1 1 2))
-                    (Token 'IdToken "let" (Location 1 2 1 5))
+                    (Token 'KeywordToken "let" (Location 1 2 1 5))
                     (Token 'LParenToken "(" (Location 1 6 1 7))
                     (Token 'LParenToken "(" (Location 1 7 1 8))
                     (Token 'IdToken "x" (Location 1 8 1 9))
-                    (Token 'NumToken "1" (Location 1 10 1 11))
+                    (Token 'IntToken "1" (Location 1 10 1 11))
                     (Token 'RParenToken ")" (Location 1 11 1 12))
                     (Token 'LParenToken "(" (Location 1 13 1 14))
                     (Token 'IdToken "y" (Location 1 14 1 15))
-                    (Token 'NumToken "2" (Location 1 16 1 17))
+                    (Token 'IntToken "2" (Location 1 16 1 17))
                     (Token 'RParenToken ")" (Location 1 17 1 18))
                     (Token 'RParenToken ")" (Location 1 18 1 19))
                     (Token 'LParenToken "(" (Location 1 20 1 21))
@@ -426,9 +571,9 @@
          [expected (list
                     (Token 'QuoteSymToken "'" (Location 1 1 1 2))
                     (Token 'LParenToken "(" (Location 1 2 1 3))
-                    (Token 'NumToken "1" (Location 1 3 1 4))
-                    (Token 'NumToken "2" (Location 1 5 1 6))
-                    (Token 'NumToken "3" (Location 1 7 1 8))
+                    (Token 'IntToken "1" (Location 1 3 1 4))
+                    (Token 'IntToken "2" (Location 1 5 1 6))
+                    (Token 'IntToken "3" (Location 1 7 1 8))
                     (Token 'RParenToken ")" (Location 1 8 1 9)))])
     (set! state (assert-equal tokens expected
                               "Quoted list test"
@@ -439,19 +584,19 @@
          [tokens (tokenize-without-eof input)]
          [expected (list
                     (Token 'LParenToken "(" (Location 1 1 1 2))
-                    (Token 'IdToken "define" (Location 1 2 1 8))
+                    (Token 'KeywordToken "define" (Location 1 2 1 8))
                     (Token 'LParenToken "(" (Location 1 9 1 10))
                     (Token 'IdToken "fact" (Location 1 10 1 14))
                     (Token 'IdToken "n" (Location 1 15 1 16))
                     (Token 'RParenToken ")" (Location 1 16 1 17))
                     (Token 'LParenToken "(" (Location 1 18 1 19))
-                    (Token 'IdToken "if" (Location 1 19 1 21))
+                    (Token 'KeywordToken "if" (Location 1 19 1 21))
                     (Token 'LParenToken "(" (Location 1 22 1 23))
                     (Token 'IdToken "=" (Location 1 23 1 24))
                     (Token 'IdToken "n" (Location 1 25 1 26))
-                    (Token 'NumToken "0" (Location 1 27 1 28))
+                    (Token 'IntToken "0" (Location 1 27 1 28))
                     (Token 'RParenToken ")" (Location 1 28 1 29))
-                    (Token 'NumToken "1" (Location 1 30 1 31))
+                    (Token 'IntToken "1" (Location 1 30 1 31))
                     (Token 'LParenToken "(" (Location 1 32 1 33))
                     (Token 'IdToken "*" (Location 1 33 1 34))
                     (Token 'IdToken "n" (Location 1 35 1 36))
@@ -460,7 +605,7 @@
                     (Token 'LParenToken "(" (Location 1 43 1 44))
                     (Token 'IdToken "-" (Location 1 44 1 45))
                     (Token 'IdToken "n" (Location 1 46 1 47))
-                    (Token 'NumToken "1" (Location 1 48 1 49))
+                    (Token 'IntToken "1" (Location 1 48 1 49))
                     (Token 'RParenToken ")" (Location 1 49 1 50))
                     (Token 'RParenToken ")" (Location 1 50 1 51))
                     (Token 'RParenToken ")" (Location 1 51 1 52))
@@ -475,7 +620,7 @@
          [tokens (tokenize-without-eof input)]
          [expected (list
                     (Token 'LParenToken "(" (Location 1 1 1 2))
-                    (Token 'IdToken "define" (Location 1 2 1 8))
+                    (Token 'KeywordToken "define" (Location 1 2 1 8))
                     (Token 'LParenToken "(" (Location 1 9 1 10))
                     (Token 'IdToken "square" (Location 1 10 1 16))
                     (Token 'IdToken "x" (Location 1 17 1 18))
@@ -488,6 +633,37 @@
                     (Token 'RParenToken ")" (Location 2 10 2 11)))])
     (set! state (assert-equal tokens expected
                               "Multi-line code test"
+                              state
+                              (make-indented-output-fn output-fn 1))))
+
+  (let* ([input "(cond ((= x 0) 1) ((> x 0) x) (else 0))"]
+         [tokens (tokenize-without-eof input)]
+         [expected (list
+                    (Token 'LParenToken "(" (Location 1 1 1 2))
+                    (Token 'KeywordToken "cond" (Location 1 2 1 6))
+                    (Token 'LParenToken "(" (Location 1 7 1 8))
+                    (Token 'LParenToken "(" (Location 1 8 1 9))
+                    (Token 'IdToken "=" (Location 1 9 1 10))
+                    (Token 'IdToken "x" (Location 1 11 1 12))
+                    (Token 'IntToken "0" (Location 1 13 1 14))
+                    (Token 'RParenToken ")" (Location 1 14 1 15))
+                    (Token 'IntToken "1" (Location 1 16 1 17))
+                    (Token 'RParenToken ")" (Location 1 17 1 18))
+                    (Token 'LParenToken "(" (Location 1 19 1 20))
+                    (Token 'LParenToken "(" (Location 1 20 1 21))
+                    (Token 'IdToken ">" (Location 1 21 1 22))
+                    (Token 'IdToken "x" (Location 1 23 1 24))
+                    (Token 'IntToken "0" (Location 1 25 1 26))
+                    (Token 'RParenToken ")" (Location 1 26 1 27))
+                    (Token 'IdToken "x" (Location 1 28 1 29))
+                    (Token 'RParenToken ")" (Location 1 29 1 30))
+                    (Token 'LParenToken "(" (Location 1 31 1 32))
+                    (Token 'KeywordToken "else" (Location 1 32 1 36))
+                    (Token 'IntToken "0" (Location 1 37 1 38))
+                    (Token 'RParenToken ")" (Location 1 38 1 39))
+                    (Token 'RParenToken ")" (Location 1 39 1 40)))])
+    (set! state (assert-equal tokens expected
+                              "Cond expression test"
                               state
                               (make-indented-output-fn output-fn 1))))
 
@@ -571,31 +747,37 @@
                        child-output-fn)])
           (let ([state (with-error-handling
                            (lambda ()
-                             (test-string-tokens state child-output-fn))
-                         "test-string-tokens"
+                             (test-float-tokens state child-output-fn))
+                         "test-float-tokens"
                          state
                          child-output-fn)])
             (let ([state (with-error-handling
                              (lambda ()
-                               (test-keyword-tokens state child-output-fn))
-                           "test-keyword-tokens"
+                               (test-string-tokens state child-output-fn))
+                           "test-string-tokens"
                            state
                            child-output-fn)])
               (let ([state (with-error-handling
                                (lambda ()
-                                 (test-identifier-tokens state child-output-fn))
-                             "test-identifier-tokens"
+                                 (test-keyword-tokens state child-output-fn))
+                             "test-keyword-tokens"
                              state
                              child-output-fn)])
                 (let ([state (with-error-handling
                                  (lambda ()
-                                   (test-tokenizer-errors state child-output-fn))
-                               "test-tokenizer-errors"
+                                   (test-identifier-tokens state child-output-fn))
+                               "test-identifier-tokens"
                                state
                                child-output-fn)])
-                  (with-error-handling
-                      (lambda ()
-                        (test-complex-expressions state child-output-fn))
-                    "test-complex-expressions"
-                    state
-                    child-output-fn))))))))))
+                  (let ([state (with-error-handling
+                                   (lambda ()
+                                     (test-tokenizer-errors state child-output-fn))
+                                 "test-tokenizer-errors"
+                                 state
+                                 child-output-fn)])
+                    (with-error-handling
+                        (lambda ()
+                          (test-complex-expressions state child-output-fn))
+                      "test-complex-expressions"
+                      state
+                      child-output-fn)))))))))))

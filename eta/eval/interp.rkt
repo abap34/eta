@@ -47,8 +47,11 @@
 ;   (eval-each-expr (list (make-const 'Num 1) (make-const 'Num 2) (make-const 'Num 3)) env)
 ;   => (1 2 3)
 (define (eval-each-expr expr-list env)
+   (unless (and (list? expr-list)
+                (andmap Expr? expr-list))
+     (error (format "Internal error: expected a list of Expr, got: ~a" expr-list)))
    (let loop ([exprs expr-list]
-                 [result '()])
+              [result '()])
         (if (null? exprs)
             (reverse result)
             (let ([new-result (eval-expr (first exprs) env)])
@@ -88,17 +91,15 @@
   (let ([head (Expr-head expr)])
     (cond
       [(equal? head 'ConstHead)  (eval-const expr env)]
-      [(equal? head 'VarHead)    (eval-var expr env)]
+      [(equal? head 'IdHead)     (eval-var expr env)]
       [(equal? head 'AppHead)    (eval-app expr env)]
       [(equal? head 'LambdaHead) (eval-lambda expr env)]
       [(equal? head 'QuoteHead)  (eval-quote expr env)]
       [(equal? head 'DefineHead) (eval-define expr env)]
       [(equal? head 'IfHead)     (eval-if expr env)]
       [(equal? head 'SetHead)    (eval-set! expr env)]
-      [(equal? head 'NilHead)    (eval-nil expr env)]
       [(equal? head 'BodyHead)   (eval-body expr env)]
-      [else (error "Internal error: unexpected ExprHead after desugaring: ~a"
-                   (ExprHead->name head))])))
+      [else (error (format "Internal error: unexpected expression ~a with head ~a" (pretty-print-Expr expr) head))])))
 
 ;  eval-const
 ;     Evaluate a constant expression
@@ -109,14 +110,17 @@
 ;     An EtaValue with appropriate tag and value
 (define (eval-const expr env)
   (let* ([const-args (Expr-args expr)]
-         [const-tag (first const-args)]
+         [node-typ (first const-args)]
          [value (second const-args)])
     (cond
-      [(equal? const-tag 'Num) (EtaValue 'NumberTag value)]
-      [(equal? const-tag 'Bool) (EtaValue 'BooleanTag value)]
-      [(equal? const-tag 'String) (EtaValue 'StringTag value)]
-      [(equal? const-tag 'Void) (EtaValue 'VoidTag '())]
-      [(equal? const-tag 'Undefined) (EtaValue 'UndefinedTag 'undefined)])))
+      [(equal? node-typ 'IntConstNode)       (EtaValue 'IntTag value)]
+      [(equal? node-typ 'FloatConstNode)     (EtaValue 'FloatTag value)]
+      [(equal? node-typ 'BoolConstNode)      (EtaValue 'BooleanTag value)]
+      [(equal? node-typ 'StringConstNode)    (EtaValue 'StringTag value)]
+      [(equal? node-typ 'NilConstNode)       (EtaValue 'NilValueTag '())]
+      [(equal? node-typ 'VoidConstNode)      (EtaValue 'VoidTag '())]
+      [(equal? node-typ 'UndefinedConstNode) (EtaValue 'UndefinedTag 'undefined)]
+      [else (error "Internal error: unexpected ConstNode type: ~a" node-typ)])))
 
 ;  eval-var
 ;     Evaluate a variable expression by looking it up in the environment
@@ -235,18 +239,15 @@
 ;     The result of evaluating the selected branch or a RuntimeError
 (define (eval-if expr env)
   (let* ([if-args   (Expr-args expr)]
-         [has-else  (first if-args)]
-         [test-expr (second if-args)]
-         [then-expr (third if-args)]
-         [else-expr (fourth if-args)])
+         [test-expr (first if-args)]
+         [then-expr (second if-args)]
+         [else-expr (third if-args)])
     (with-successfull-eval (eval-expr test-expr env)
       (lambda (test-result)
         (if (equal? (EtaValue-tag test-result) 'BooleanTag)
             (if (equal? (EtaValue-value test-result) #t)
                 (eval-expr then-expr env)
-                (if has-else
-                    (eval-expr else-expr env)
-                    (EtaValue 'VoidTag '())))
+                (eval-expr else-expr env))
             (make-runtime-error
              (format "Only boolean value is allowed in condition. Given ~a" (EtaValue-tag test-result))
              (Expr-loc test-expr)))))))
@@ -368,7 +369,7 @@
          [var-expr (first set-args)]
          [val-expr (second set-args)]
          [var-name (first (Expr-args var-expr))]
-         [val (eval-expr val-expr env)])
+         [val      (eval-expr val-expr env)])
 
     ; Check if variable exists
     (unless (defined? env var-name)
@@ -378,7 +379,7 @@
        ))
 
     ; Set the variable
-    (define-variable! env var-name val)
+    (define-variable! env var-name val #t)
 
     ; Return the value
     val))
@@ -393,18 +394,18 @@
 (define (eval-body expr env)
   (let ([defines (first (Expr-args expr))]
         [exps    (second (Expr-args expr))])
+     
+    (unless (and (list? defines)
+                 (andmap Expr? defines))
+      (error 'eval-body
+             "Internal error: expected a list of Expr for defines, got: ~a" defines))
+    (unless (and (list? exps)
+                 (andmap Expr? exps))
+      (error 'eval-body
+              "Internal error: expected a list of Expr for expressions, got: ~a" exps))
+
     (with-successfull-eval (eval-each-expr defines env)
       (lambda (result)
         (if (null? exps)
             (EtaValue 'VoidTag '())
             (eval-sequence exps env))))))
-
-;  eval-nil
-;     Evaluate a nil expression (empty list)
-;  Arguments:
-;     expr - A Nil expression
-;     env - The environment (unused for nil)
-;  Returns:
-;     An EtaValue representing the empty list
-(define (eval-nil expr env)
-  (EtaValue 'NilValueTag '()))

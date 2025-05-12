@@ -3,7 +3,11 @@
 (require "../utils/location.rkt"
          "../utils/error.rkt")
 
-(provide tokenize Token Token-typ Token-val Token-loc
+(provide tokenize 
+         Token 
+         Token-typ 
+         Token-val 
+         Token-loc
          Token? 
          TokenType?
          Token-loc
@@ -11,6 +15,7 @@
          Token-val
          tokens-span
          format-token
+         eta-keyword?
 )
 
 (define (TokenType? typ)
@@ -19,9 +24,11 @@
       (equal? typ 'DotSymToken)
       (equal? typ 'QuoteSymToken)
       (equal? typ 'BoolToken)
-      (equal? typ 'NumToken)
+      (equal? typ 'IntToken)
+      (equal? typ 'FloatToken)
       (equal? typ 'StringToken)
       (equal? typ 'IdToken)
+      (equal? typ 'KeywordToken)
       (equal? typ 'EOFToken)))
 
 
@@ -58,17 +65,33 @@
 
 (define (TokenType->name typ)
   (cond
-    [(equal? typ 'RParenToken)   "RParen"]
-    [(equal? typ 'LParenToken)   "LParen"]
-    [(equal? typ 'DotSymToken)   "DotSym"]
-    [(equal? typ 'QuoteSymToken) "QuoteSym"]
-    [(equal? typ 'BoolToken)     "Bool"]
-    [(equal? typ 'NumToken)      "Num"]
-    [(equal? typ 'StringToken)   "StringToken"]
-    [(equal? typ 'IdToken)       "Id"]
-    [(equal? typ 'EOFToken)      "EOF"]
-    [else (error 'TokenType->name   "Unknown TokenType: ~v" typ)]))
+    [(equal? typ 'RParenToken)     "RParen"]
+    [(equal? typ 'LParenToken)     "LParen"]
+    [(equal? typ 'DotSymToken)     "DotSym"]
+    [(equal? typ 'QuoteSymToken)   "QuoteSym"]
+    [(equal? typ 'BoolToken)       "Bool"]
+    [(equal? typ 'IntToken)        "Num"]
+    [(equal? typ 'FloatToken)      "Float"]
+    [(equal? typ 'StringToken)     "StringToken"]
+    [(equal? typ 'IdToken)         "Id"]
+    [(equal? typ 'KeywordToken)    "Keyword"]
+    [(equal? typ 'EOFToken)        "EOF"]
+    [else (error 'TokenType->name  "Unknown TokenType: ~v" typ)]))
 
+
+;; List of eta language keywords
+(define eta-keywords
+  '("define" "lambda" "quote" "set!" "let" "let*" "letrec"
+    "if" "cond" "else" "and" "or" "begin" "do" "load"))
+
+;; keyword?
+;;   Check if a string is an eta language keyword
+;; Arguments:
+;;   s - String to check
+;; Returns:
+;;   #t if s is a keyword, #f otherwise
+(define (eta-keyword? s)
+  (member s eta-keywords))
 
 (define (format-token token)
   (format "~a: ~a at ~a"
@@ -108,19 +131,51 @@
           p
           (loop (+ p 1))))
     (let* ((end (loop pos))
-           (lexeme (substring src pos end)))
-      (values (make-token 'IdToken lexeme line col line (+ col (- end pos)))
+           (lexeme (substring src pos end))
+           ;; Check if the lexeme is a keyword
+           (token-type (if (eta-keyword? lexeme) 'KeywordToken 'IdToken)))
+      (values (make-token token-type lexeme line col line (+ col (- end pos)))
               end line (+ col (- end pos)))))
 
+  ;; read-number
+  ;;   Read a number literal (integer or floating-point) from the source code
+  ;;   Handles both positive and negative numbers
+  ;; Arguments:
+  ;;   pos - Current position in the source string
+  ;;   line - Current line number
+  ;;   col - Current column number
+  ;; Returns:
+  ;;   A NumToken for integers or FloatToken for floating-point numbers,
+  ;;   along with the updated position, line, and column
   (define (read-number pos line col)
-    (define (loop p)
+    (define (read-digits p)
       (if (and (< p len) (char-numeric? (get-at p)))
-          (loop (+ p 1))
+          (read-digits (+ p 1))
           p))
-    (let* ((end (loop pos))
-           (lexeme (substring src pos end)))
-      (values (make-token 'NumToken lexeme line col line (+ col (- end pos)))
-              end line (+ col (- end pos)))))
+    
+    ; Check if the number starts with a minus sign
+    (define is-negative (and (< pos len) (char=? (get-at pos) #\-)))
+    
+    ; Adjust the starting position if we have a negative sign
+    (define num-start (if is-negative (+ pos 1) pos))
+    
+    (let* ((int-end (read-digits num-start))
+           ; If we moved past the starting digit position, we have valid digits
+           (has-valid-digits (> int-end num-start))
+           ; Only treat as negative number if digits follow the minus sign
+           (effective-pos (if (and is-negative has-valid-digits) pos num-start))
+           (has-decimal (and has-valid-digits (< int-end len) (char=? (get-at int-end) #\.)))
+           (decimal-start (if has-decimal (+ int-end 1) int-end))
+           (end (if has-decimal (read-digits decimal-start) int-end))
+           ; Only proceed with number parsing if we have valid digits
+           (lexeme (if has-valid-digits (substring src effective-pos end) (substring src pos pos)))
+           (token-type (if has-decimal 'FloatToken 'IntToken)))
+      
+      ; If no valid digits were found after a minus sign, treat as symbol instead
+      (if (and is-negative (not has-valid-digits))
+          (read-symbol pos line col)  ; Fall back to symbol parsing
+          (values (make-token token-type lexeme line col line (+ col (- end effective-pos)))
+                end line (+ col (- end effective-pos))))))
 
   (define (read-string pos line col)
     (define (loop p acc l c)
@@ -185,11 +240,15 @@
             [(char=? ch #\#) (read-bool pos line col)]
             [(char=? ch #\") (read-string pos line col)]
             [(char-numeric? ch) (read-number pos line col)]
+            ;; Handle negative numbers: check if current char is - and next is a digit
+            [(and (char=? ch #\-) 
+                  (< pos1 len) 
+                  (char-numeric? (get-at pos1)))
+             (read-number pos line col)]
             [(symbol-char? ch) (read-symbol pos line col)]
             [else (values (make-tokenize-error 
                           (format "Unexpected character: ~a" ch)
-                          (make-location line col col)
-                          )
+                          (make-location line col col))
                           pos1 line1 col1)]))))
 
   (define (tokenize-loop pos line col tokens-acc errors-acc)
@@ -208,7 +267,6 @@
                        (cons token-or-error tokens-acc)
                        errors-acc)])))
 
-  (tokenize-loop 0 1 1 '() '())
-)
+  (tokenize-loop 0 1 1 '() '()))
 
 

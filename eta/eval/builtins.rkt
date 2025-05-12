@@ -6,7 +6,8 @@
 
 (provide 
   get-builtin-names
-  number-value?
+  int-value?
+  float-value?
   string-value?
   boolean-value?
   nil-value?
@@ -30,8 +31,11 @@
 ;     (number-value? (make-runtime-value Number 42)) ; => #t
 ;     (number-value? (make-runtime-value String "hello")) ; => #f
 
-(define (number-value? value)
-  (and (EtaValue? value) (equal? (EtaValue-tag value) 'NumberTag)))
+(define (int-value? value)
+  (and (EtaValue? value) (equal? (EtaValue-tag value) 'IntTag)))
+
+(define (float-value? value)
+  (and (EtaValue? value) (equal? (EtaValue-tag value) 'FloatTag)))
 
 (define (string-value? value)
   (and (EtaValue? value) (equal? (EtaValue-tag value) 'StringTag)))
@@ -97,6 +101,22 @@
             (proc args)
                   ))])))
 
+;  determine-number-tag
+;     Determines the appropriate tag for a numeric result
+;  Arguments:
+;     result - A numeric value
+;     arg-values - Original numeric values used in the computation
+;  Returns:
+;     'IntTag if the result is an integer, 'FloatTag otherwise
+;  Example:
+;     (determine-number-tag 5 (list 2 3)) => 'IntTag
+;     (determine-number-tag 2.5 (list 5 2)) => 'FloatTag
+(define (determine-number-tag result arg-values)
+  (cond
+    [(or (inexact? result) (ormap inexact? arg-values)) 'FloatTag]
+    [(integer? result) 'IntTag]
+    [else 'FloatTag]))
+
 ;  ensure-numbers
 ;     Ensures all arguments are numbers and extracts their values
 ;  Arguments:
@@ -108,7 +128,7 @@
 ;     (ensure-numbers "+" args) => '(1 2 3)
 (define (ensure-numbers func-name args)
   (map (lambda (arg) 
-         (if (equal? (EtaValue-tag arg) 'NumberTag)
+         (if (or (int-value? arg) (float-value? arg))
              (EtaValue-value arg)
               (make-runtime-error 
                     (format "~a expects numbers, got: ~a" 
@@ -160,8 +180,10 @@
 
 ;; Arithmetic Operations
 (define (add-impl args env)
-  (let ([nums (ensure-numbers "+" args)])
-    (make-runtime-value 'NumberTag (apply + nums))))
+  (let* ([nums (ensure-numbers "+" args)]
+         [result (apply + nums)]
+         [tag (determine-number-tag result nums)])
+    (make-runtime-value tag result)))
 
 ; MEMO: support both 1 and 2 arguments
 (define (subtract-impl args env)
@@ -169,24 +191,30 @@
     (lambda (checked-args)
       (cond
         [(= 1 (length checked-args))
-         (let ([val (EtaValue-value (first checked-args))])
+         (let* ([val (EtaValue-value (first checked-args))]
+                [result (- 0 val)]
+                [tag (determine-number-tag result (list val))])
            (if (number? val)
-               (make-runtime-value 'NumberTag (- 0 val))
+               (make-runtime-value tag result)
                (make-runtime-error 
                  (format "- expects numbers, got: ~a" 
                          (runtime-value->string (first checked-args))))))]
         [(= 2 (length checked-args))
          (let* ([vals (ensure-numbers "-" checked-args)]
                 [x (first vals)]
-                [y (second vals)])
-           (make-runtime-value 'NumberTag (- x y)))]
+                [y (second vals)]
+                [result (- x y)]
+                [tag (determine-number-tag result vals)])
+           (make-runtime-value tag result))]
         [else
          (make-runtime-error "- expects 1 or 2 arguments")]))))
 
 ; MEMO: support any number of arguments
 (define (multiply-impl args env)
-  (let ([nums (ensure-numbers "*" args)])
-    (make-runtime-value 'NumberTag (apply * nums))))
+  (let* ([nums (ensure-numbers "*" args)]
+         [result (apply * nums)]
+         [tag (determine-number-tag result nums)])
+    (make-runtime-value tag result)))
 
 
 ; MEMO: support only 2 arguments. 
@@ -199,7 +227,7 @@
              [y (second vals)])
         (if (= y 0)
             (make-runtime-error "Division by zero")
-            (make-runtime-value 'NumberTag (exact->inexact (/ x y))))))))
+            (make-runtime-value 'FloatTag (exact->inexact (/ x y))))))))
 
 ;; Comparison Operations
 (define (make-comparison-impl op-name op)

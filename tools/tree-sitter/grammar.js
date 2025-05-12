@@ -69,7 +69,7 @@ const PREC = {
   
       empty_list: $ => prec(PREC.EMPTY_LIST, seq('(', ')')),
   
-      number: $ => /\d+(\.\d+)?/,
+      number: $ => /[+-]?\d+(\.\d+)?/,
       bool:   $ => choice('#t', '#f'),
       string: $ => /"([^"\\]|\\.)*"/,
   
@@ -123,7 +123,7 @@ const PREC = {
   
       bindings: $ => seq('(', repeat(seq($.id, $.exp)), ')'),
   
-      // ---- S-Expression ----
+
       s_expr: $ => prec(PREC.S_EXPR, choice(
         $.const,
         $.id,

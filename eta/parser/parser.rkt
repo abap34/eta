@@ -257,9 +257,12 @@
 ;      keyword - Keyword to match (as a string)
 ;  Returns:
 ;      A parser function that matches the keyword
-(define (keyword kw)
+ (define (keyword kw)
+  (unless (eta-keyword? kw)
+    (error 'keyword "Expected a keyword, but got: ~a" kw))
+
   (token-pred (lambda (token) 
-                (and (eq? (Token-typ token) 'IdToken)
+                (and (eq? (Token-typ token) 'KeywordToken)
                      (equal? (Token-val token) kw)))
               (format "keyword ~a" kw)))
 
@@ -355,14 +358,21 @@
 (define quote-sym
    (token-type 'QuoteSymToken))
 
-; Num
-(define number
+; Int
+(define integer
   (map-parser
-   (token-type 'NumToken)
+   (token-type 'IntToken)
    (lambda (token)
      (let ([loc (Token-loc token)])
-       (make-const loc 'Num (string->number (Token-val token)))))))
+       (make-const loc 'IntConstNode (string->number (Token-val token)))))))
       
+; Float
+(define float
+  (map-parser
+   (token-type 'FloatToken)
+   (lambda (token)
+     (let ([loc (Token-loc token)])
+       (make-const loc 'FloatConstNode (string->number (Token-val token)))))))
 
 ; Bool
 (define boolean 
@@ -370,7 +380,7 @@
    (token-type 'BoolToken)
    (lambda (token)
      (let ([loc (Token-loc token)])
-       (make-const loc 'Bool (if (equal? (Token-val token) "#t")
+       (make-const loc 'BoolConstNode (if (equal? (Token-val token) "#t")
                                  #t
                                  #f))))))
 
@@ -380,34 +390,19 @@
    (token-type 'StringToken)
    (lambda (token)
      (let ([loc (Token-loc token)])
-       (make-const loc 'String (Token-val token))))))
-
-
-; ()
-(define nil
-  (map-parser
-   (sequence
-    (label "LParen" lparen)
-    (label "RParen" rparen))
-    (lambda (result)
-      (let ([loc (create-span-location
-                  (Token-loc (first result))
-                  (Token-loc (last result)))])
-        (make-nil loc)))))
-
+       (make-const loc 'StringConstNode (Token-val token))))))
 
 
 ;; ---------- Non-terminal Parsers ----------
 
 
 
-;  Const ::= Num | Bool | String | ()
+;  Const ::= Num | Bool | String
 (define parse-const 
   (any-of
-    (label "Num" number)
+    (label "Num" (any-of integer float))
     (label "Bool" boolean)
-    (label "String" string)
-    (label "Nil" nil)))
+    (label "String" string)))
 
 ; Id
 (define parse-id 
@@ -437,7 +432,7 @@
 
 (define (get-var-name id-expr)
   (if (and (Expr? id-expr)
-           (equal? (Expr-head id-expr) 'VarHead))
+           (equal? (Expr-head id-expr) 'IdHead))
       (first (Expr-args id-expr))
       (error "Faild to get var name. Expected Expr with Var head, got: ~a" id-expr)))
 
@@ -626,8 +621,8 @@
     (label "Body" (parser-ref parse-body))
     (label "RParen" rparen))
     (lambda (result)
-      (let ([bindings (second result)]
-            [body (third result)]
+      (let ([bindings (third result)]
+            [body (fourth result)]
             [loc (create-span-location
                   (loc (first result))
                   (loc (last result)))])
@@ -643,8 +638,8 @@
     (label "Body" (parser-ref parse-body))
     (label "RParen" rparen))
     (lambda (result)
-      (let ([bindings (second result)]
-            [body (third result)]
+      (let ([bindings (third result)]
+            [body (fourth result)]
             [loc (create-span-location
                   (loc (first result))
                   (loc (last result)))])
@@ -679,16 +674,20 @@
     (label "LParen" lparen)
     (label "cond" (keyword "cond"))
     (label "CondClauses" (zero-or-more (parser-ref parse-cond-clause)))
-    (label "Else" (maybe (sequence (keyword "else") (one-or-more (parser-ref parse-exp)))))
+    (label "Else" (maybe (sequence 
+                             (label "LParen" lparen)
+                             (keyword "else") 
+                             (one-or-more (parser-ref parse-exp))
+                             (label "RParen" rparen))))
     (label "RParen" rparen))
     (lambda (result)
-      (let ([clauses (second result)]
-            [else-exps (third result)]
+      (let ([clauses (third result)]
+            [else-exps (fourth result)]
             [loc (create-span-location
                   (Token-loc (first result))
                   (Token-loc (last result)))])
         (if else-exps
-            (make-cond-else loc clauses else-exps)
+            (make-cond-else loc clauses (third else-exps))
             (make-cond-noelse loc clauses))))))
 
 
@@ -767,9 +766,9 @@
     (label "Body" (parser-ref parse-body))
     (label "RParen" rparen))
     (lambda (result)
-      (let ([do-lets (second result)]
-            [do-final (third result)]
-            [body (fourth result)]
+      (let ([do-lets (third result)]
+            [do-final (fourth result)]
+            [body (fifth result)]
             [loc (create-span-location
                   (loc (first result))
                   (loc (last result)))])
@@ -858,29 +857,30 @@
         (make-bind loc name value)))))
 
 
-; S-Exp ::= Const | Id | NestedS-Exp
+; S-Exp ::= Const | Id | (S-Exp* [S-Exp . S-Exp])
 (define parse-s-exp 
   (any-of
     (label "Const" (parser-ref parse-const))
     (label "Id" (parser-ref parse-id))
     (label "NestedS-Exp" (parser-ref parse-nested-s-exp))))
 
-; NestedS-Exp ::= (S-Exp S-Exp*)
-(define parse-nested-s-exp
+; NestedS-Exp ::= (S-Exp* [. S-Exp])
+(define parse-nested-s-exp 
    (map-parser
    (sequence
     (label "LParen" lparen)
-    (label "S-Exp" (parser-ref parse-s-exp))
     (label "S-Exp*" (zero-or-more (parser-ref parse-s-exp)))
+    (label "[S-Exp . S-Exp]" (maybe (sequence dot-sym (parser-ref parse-s-exp))))
     (label "RParen" rparen))
     (lambda (result)
-      (let ([arg (second result)]
-            [args (third result)]
-            [loc (create-span-location
-                  (loc (first result))
-                  (loc (last result)))])
-        (make-sexpr loc (cons arg args))))))
-
+      (let* ([s-exps (second result)]
+             [tail (third result)]
+             [loc (create-span-location
+                    (loc (first result))
+                    (loc (last result)))])
+        (if tail
+            (make-sexpr loc s-exps (second tail))
+            (make-sexpr loc s-exps '()))))))
 
 ; Load ::= (load String)
 ; MEMO: discuss with Load is really needed
@@ -889,10 +889,10 @@
    (sequence
     (label "LParen" lparen)
     (label "load" (keyword "load"))
-    (label "String" string)
+    (label "String" (token-type 'StringToken)) ; Note: not `string`. 
     (label "RParen" rparen))
     (lambda (result)
-      (let ([filename (third result)]
+      (let ([filename (Token-val (third result))]  ; Extract the filename  
             [loc (create-span-location
                   (loc (first result))
                   (loc (last result)))])
@@ -939,13 +939,13 @@
 
 
 ; Toplevel ::= 
+;            | Load
 ;            | Define
 ;            | Exp
-;            | Load
 (define parse-toplevel
   (any-of
-    (label "Define" parse-define)
     (label "Load" parse-load)
+    (label "Define" parse-define)
     (label "Exp" parse-exp)))
 
 
@@ -965,6 +965,10 @@
 ;  Notes:
 ;     This allows testing specific parser components directly
 (define (parse-as tokens parser-fn)
+  (unless (and (list? tokens)
+               (andmap Token? tokens))
+    (error 'parse-as "Expected a list of tokens, but got: ~s" tokens))
+
   (let* ([result (parser-fn tokens)])
     (if (EtaError? result)
         result

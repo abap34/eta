@@ -3,6 +3,7 @@
 (require "test-utils.rkt"
          "parser-tests.rkt"
          "tokenizer-tests.rkt"
+         "desugar-tests.rkt"
          "../eta/utils/console.rkt")
 
 ;  available-tests
@@ -15,6 +16,7 @@
   (list
     (cons "tokenizer" run-tokenizer-tests)
     (cons "parser" run-parser-tests)
+    (cons "desugar" run-desugar-tests)
   ))
 
 ;  print-help
