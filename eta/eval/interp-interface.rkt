@@ -65,24 +65,6 @@
   (add-builtins-to-env (init-toplevel-env)))
 
 
-; generic-eval
-;     Main entry point for evaluating expressions
-;  Arguments:
-;     env - The environment in which to evaluate
-;     expr - The expression to evaluate
-;  Returns:
-;     An EtaValue representing the result of evaluation
-;  Example:
-;     (generic-eval env (Expr-literal 42)) ; => 42
-(define (generic-eval env expr)
-  (cond
-    [(Expr? expr) (eval-expr expr env)]
-    [(list? expr) (eval-each-expr expr env)]
-    [else
-     (make-runtime-error
-      (format "Cannot evaluate non-expression: ~a" expr)
-      (Expr-loc expr))]))
-
 ; eta-eval
 ;   Evaluates an expression in the given environment.
 ; Arguments:
@@ -100,7 +82,7 @@
         (let ([parsed-result (desugar (parse tokens))])
           (if (EtaError? parsed-result)
               (EvalResult #f parsed-result)
-              (let ([result (generic-eval env parsed-result)])
+              (let ([result (eval-each-expr parsed-result env)])
                 (if (RuntimeError? result)
                     (EvalResult #f result)
                     (EvalResult #t result))))))))
