@@ -21,6 +21,35 @@
   add-builtins-to-env
 )
 
+;  with-error-handling
+;     A utility function that handles runtime errors properly
+;  Arguments:
+;     result - The result of a computation that might be a RuntimeError
+;     proc - A function to apply to the result if it's not an error
+;  Returns:
+;     The RuntimeError if result is a RuntimeError, otherwise (proc result)
+;  Example:
+;     (with-error-handling nums (lambda (n) (apply + n)))
+(define (with-error-handling result proc)
+  (if (RuntimeError? result)
+      result  ; Pass the error through
+      (proc result)))
+
+;  with-value-check
+;     Checks if a value matches the expected type and extracts its value or returns an error
+;  Arguments:
+;     value - The value to check
+;     type-pred - A predicate function that checks if the value is of the expected type
+;     error-msg - A function that generates an error message if the check fails
+;  Returns:
+;     The extracted value or a RuntimeError
+;  Example:
+;     (with-value-check arg list-value? (lambda (v) (format "Expected a list, got: ~a" v)))
+(define (with-value-check value type-pred error-msg)
+  (if (type-pred value)
+      (EtaValue-value value)
+      (make-runtime-error (error-msg (runtime-value->string value)))))
+
 ;  Type checking functions
 ;     Check if an EtaValue has a specific tag
 ;  Arguments:
@@ -123,17 +152,22 @@
 ;     func-name - Name of the function for error messages
 ;     args - The argument list to check
 ;  Returns:
-;     A list of numeric values
+;     A list of numeric values or a RuntimeError if any argument is not a number
 ;  Example:
 ;     (ensure-numbers "+" args) => '(1 2 3)
+;     (ensure-numbers "+" (list num-value string-value)) => RuntimeError
 (define (ensure-numbers func-name args)
-  (map (lambda (arg) 
-         (if (or (int-value? arg) (float-value? arg))
-             (EtaValue-value arg)
+  (let loop ([remaining args]
+             [result '()])
+    (cond
+      [(null? remaining) (reverse result)]
+      [else
+        (let ([val (car remaining)])
+          (if (or (int-value? val) (float-value? val))
+              (loop (cdr remaining) (cons (EtaValue-value val) result))
               (make-runtime-error 
                     (format "~a expects numbers, got: ~a" 
-                           func-name (runtime-value->string arg)))))
-       args))
+                           func-name (runtime-value->string val)))))])))
 
 ;  check-list-arg
 ;     Ensures an argument is a list and returns its value
@@ -141,15 +175,12 @@
 ;     func-name - Name of the function for error messages
 ;     arg - The argument to check
 ;  Returns:
-;     The list value or raises an error
+;     The list value or a RuntimeError if the argument is not a list
 ;  Example:
 ;     (check-list-arg "car" (first args))
 (define (check-list-arg func-name arg)
-  (if (eq? (EtaValue-tag arg) 'ListTag)
-      (EtaValue-value arg)
-    (make-runtime-error 
-             (format "~a expects a list, got: ~a" 
-                    func-name (runtime-value->string arg)))))
+  (with-value-check arg list-value?
+                   (lambda (v) (format "~a expects a list, got: ~a" func-name v))))
 
 ;  define-builtin!
 ;     Defines a built-in function in the given environment
@@ -180,10 +211,11 @@
 
 ;; Arithmetic Operations
 (define (add-impl args env)
-  (let* ([nums (ensure-numbers "+" args)]
-         [result (apply + nums)]
-         [tag (determine-number-tag result nums)])
-    (make-runtime-value tag result)))
+  (with-error-handling (ensure-numbers "+" args)
+    (lambda (nums)
+      (let* ([result (apply + nums)]
+             [tag (determine-number-tag result nums)])
+        (make-runtime-value tag result)))))
 
 ; MEMO: support both 1 and 2 arguments
 (define (subtract-impl args env)
@@ -191,30 +223,29 @@
     (lambda (checked-args)
       (cond
         [(= 1 (length checked-args))
-         (let* ([val (EtaValue-value (first checked-args))]
-                [result (- 0 val)]
-                [tag (determine-number-tag result (list val))])
-           (if (number? val)
-               (make-runtime-value tag result)
-               (make-runtime-error 
-                 (format "- expects numbers, got: ~a" 
-                         (runtime-value->string (first checked-args))))))]
+         (with-value-check (first checked-args) 
+                          (lambda (v) (or (int-value? v) (float-value? v)))
+                          (lambda (v) (format "- expects numbers, got: ~a" v))
+           (lambda (val)
+             (let* ([result (- 0 val)]
+                    [tag (determine-number-tag result (list val))])
+               (make-runtime-value tag result))))]
         [(= 2 (length checked-args))
-         (let* ([vals (ensure-numbers "-" checked-args)]
-                [x (first vals)]
-                [y (second vals)]
-                [result (- x y)]
-                [tag (determine-number-tag result vals)])
-           (make-runtime-value tag result))]
-        [else
-         (make-runtime-error "- expects 1 or 2 arguments")]))))
+         (with-error-handling (ensure-numbers "-" checked-args)
+           (lambda (vals)
+             (let* ([x (first vals)]
+                    [y (second vals)]
+                    [result (- x y)]
+                    [tag (determine-number-tag result vals)])
+               (make-runtime-value tag result))))]))))
 
 ; MEMO: support any number of arguments
 (define (multiply-impl args env)
-  (let* ([nums (ensure-numbers "*" args)]
-         [result (apply * nums)]
-         [tag (determine-number-tag result nums)])
-    (make-runtime-value tag result)))
+  (with-error-handling (ensure-numbers "*" args)
+    (lambda (nums)
+      (let* ([result (apply * nums)]
+             [tag (determine-number-tag result nums)])
+        (make-runtime-value tag result)))))
 
 
 ; MEMO: support only 2 arguments. 
@@ -222,22 +253,23 @@
 (define (divide-impl args env)
   (check-args-count "/" args 2
     (lambda (checked-args)
-      (let* ([vals (ensure-numbers "/" checked-args)]
-             [x (first vals)]
-             [y (second vals)])
-        (if (= y 0)
-            (make-runtime-error "Division by zero")
-            (make-runtime-value 'FloatTag (exact->inexact (/ x y))))))))
+      (with-error-handling (ensure-numbers "/" checked-args)
+        (lambda (vals)
+          (let ([x (first vals)]
+                [y (second vals)])
+            (if (= y 0)
+                (make-runtime-error "Division by zero")
+                (make-runtime-value 'FloatTag (exact->inexact (/ x y))))))))))
 
 ;; Comparison Operations
 (define (make-comparison-impl op-name op)
   (lambda (args env)
-    (check-args-count op-name args '(2)
+    (check-args-count op-name args 2
       (lambda (checked-args)
-        (let* ([vals (ensure-numbers op-name checked-args)]
-               [result (for/and ([i (in-range (sub1 (length vals)))])
-                         (op (list-ref vals i) (list-ref vals (add1 i))))])
-          (make-runtime-value 'BooleanTag result))))))
+        (with-error-handling (ensure-numbers op-name checked-args)
+          (lambda (vals)
+            (let ([result (op (first vals) (second vals))])
+              (make-runtime-value 'BooleanTag result))))))))
 
 ;; List Operations
 (define (list-impl args env)
@@ -248,24 +280,27 @@
     (lambda (checked-args)
       (let ([item (first checked-args)]
             [lst (second checked-args)])
-        (let ([lst-val (check-list-arg "cons" lst)])
-          (make-runtime-value 'ListTag (cons item lst-val)))))))
+        (with-error-handling (check-list-arg "cons" lst)
+          (lambda (lst-val)
+            (make-runtime-value 'ListTag (cons item lst-val))))))))
 
 (define (car-impl args env)
   (check-args-count "car" args 1
     (lambda (checked-args)
-      (let ([lst-val (check-list-arg "car" (first checked-args))])
-        (if (null? lst-val)
-            (make-runtime-error "car called on empty list")
-            (first lst-val))))))
+      (with-error-handling (check-list-arg "car" (first checked-args))
+        (lambda (lst-val)
+          (if (null? lst-val)
+              (make-runtime-error "car called on empty list")
+              (first lst-val)))))))
 
 (define (cdr-impl args env)
   (check-args-count "cdr" args 1
     (lambda (checked-args)
-      (let ([lst-val (check-list-arg "cdr" (first checked-args))])
-        (if (null? lst-val)
-           (make-runtime-error "cdr called on empty list")
-            (make-runtime-value 'ListTag (rest lst-val)))))))
+      (with-error-handling (check-list-arg "cdr" (first checked-args))
+        (lambda (lst-val)
+          (if (null? lst-val)
+             (make-runtime-error "cdr called on empty list")
+              (make-runtime-value 'ListTag (rest lst-val))))))))
 
 ;  add-builtins-to-env
 ;     Adds built-in functions to the environment
