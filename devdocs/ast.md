@@ -69,7 +69,7 @@ The following table summarizes the structure of the `args` field for each `ExprH
 | 'CondClauseHead | `(list bindings body)`               | `bindings`: Expr (Bindings)<br>`body`: Expr (Body)                                                                                                               |
 | 'BeginHead      | `(list name bindings body)`          | `name`: Expr (Var)<br>`bindings`: Expr (Bindings)<br>`body`: Expr (Body)                                                                                         |
 | 'UnNamedLetHead | `(list bindings body)`               | `bindings`: Expr (Bindings)<br>`body`: Expr (Body)                                                                                                               |
-| 'NamedLetHead   | `(list name bindings body)`               | `name`: name (String) <br> `bindings`: Expr (Bindings)<br>`body`: Expr (Body)                                                                                                               |
+| 'NamedLetHead   | `(list name bindings body)`          | `name`: name (String) <br> `bindings`: Expr (Bindings)<br>`body`: Expr (Body)                                                                                    |
 | 'LetRecHead     | `(list clauses [else-expr])`         | `has-else?`: Boolean - #t if else exists<br>`clauses`: List of Expr (CondClause)<br>`else-expr`: List of Expr (optional)                                         |
 | 'LetStarHead    | `(list test body)`                   | `test`: Expr - condition<br>`body`: List of Expr - expressions if condition is true                                                                              |
 | 'AndHead        | List of expressions                  | List of Expr objects to be AND-ed                                                                                                                                |
@@ -82,7 +82,7 @@ The following table summarizes the structure of the `args` field for each `ExprH
 | 'BodyHead       | `(list defines expressions)`         | `defines`: List of Expr (Define)<br>`expressions`: List of Expr - body expressions                                                                               |
 | 'BindHead       | `(list name value)`                  | `name`: Expr (Var)<br>`value`: Expr - bound value                                                                                                                |
 | 'BindingsHead   | List of binding expressions          | List of Expr (Bind) objects                                                                                                                                      |
-| 'ArgHead        | `(list required-args variadic-args)` | `required-args`: List of required arguments<br>`variadic-args`: List of variadic args                                                                            |
+| 'ArgHead        | `(list required-args variadic-args)` | `required-args`: List of required arguments<br>`variadic-args`: string of variadic variable. if no variadic, empty list                                                                  |
 | 'S-ExprHead     | List of S-expressions                | List of Expr objects representing nested S-expressions                                                                                                           |
 
 

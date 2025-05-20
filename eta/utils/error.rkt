@@ -150,13 +150,6 @@
 ;;    source - The source code string where the error occurred
 ;; Returns:
 ;;    A formatted string with error message and visual markers
-;; Example:
-;;    (format-error-with-source 
-;;       (make-eta-error 'runtime "Unexpected token" (Location 1 10 1 15))
-;;       "(define (f x) (+ x 1")
-;;    ; => "RuntimeError at line 1, column 10: Unexpected token"
-;;    ;     (define (f x) (+ x 1
-;;    ;                ^^^^^
 (define (format-error-with-source error source)
   (let* ([message (colorize (eta-error->string error) 'red)]
          [location (EtaError-location error)])
@@ -166,18 +159,42 @@
                [sline (Location-sline location)]
                [scol (Location-scol location)]
                [eline (Location-eline location)]
-               [ecol (Location-ecol location)])
+               [ecol (Location-ecol location)]
+               [nlines (length lines)]
+               [line-num-str (number->string sline)]
+               [line-num-len (string-length line-num-str)]
+
+               [prefix
+                (lambda (lnum)
+                  (colorize (string-append "    " (number->string lnum) " | ") 'blue))]
+
+               [get-line
+                (lambda (i)
+                  (if (and (<= 1 i) (<= i nlines))
+                      (list-ref lines (- i 1))
+                      ""))]
+                      
+               [range
+                (lambda (start end)
+                  (if (> start end)
+                      '()
+                      (cons start (range (+ start 1) end))))]
+
+               [join-lines
+                (lambda (nums)
+                  (apply string-append
+                         (map (lambda (i)
+                                (string-append (prefix i) (get-line i) "\n"))
+                              nums)))]
+
+               [before-lines (join-lines (range (max 1 (- sline 2)) (- sline 1)))]
+               [error-line (get-line sline)]
+               [code-line (string-append (prefix sline) error-line "\n")]
+               [marker-padding (make-string (+ 4 line-num-len 3 (max 0 (- scol 1))) #\space)]
+               [marker (make-string (max 1 (- ecol scol)) #\^)]
+               [marker-line (string-append marker-padding (colorize marker 'red) "\n")]
+               [after-lines (join-lines (range (+ sline 1) (min nlines (+ eline 2))))])
           
-          (if (and (>= sline 1) (<= sline (length lines)))
-              (let* ([error-line (list-ref lines (- sline 1))]
-                     [line-num-str (number->string sline)]
-                     [line-num (colorize (string-append "    " line-num-str " | ") 'blue)]
-                     [code-line (string-append line-num error-line "\n")]
-                     [marker-padding (make-string (+ 4 (string-length line-num-str) 3 (max 0 (- scol 1))) #\space)]
-                     [marker (make-string (max 1 (- ecol scol)) #\^)]
-                     [marker-line (string-append marker-padding (colorize marker 'red) "\n")])
-                (string-append "\n" code-line marker-line message))
-              
-              (string-append message "Error location out of bounds\n")))
+          (string-append "\n" before-lines code-line marker-line after-lines message))
         
         message)))

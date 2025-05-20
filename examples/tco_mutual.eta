@@ -1,0 +1,27 @@
+(define (even? n)
+  (if (= n 0)
+      #t
+      (odd? (- n 1))))
+
+(define (odd? n)
+  (if (= n 0)
+      #f
+      (even? (- n 1))))
+
+(define (not x)
+  (if x #f #t))
+  
+(define (even-without-tco n)
+  (if (= n 0)
+      #t
+      (not (even-without-tco (- n 1)))))
+
+(display "100000 is even? with tco    : ")
+(display (even? 100000))
+(display "\n")
+
+
+(display "100000 is even? without tco : ")
+(display (even-without-tco 100000))
+(display "\n")
+

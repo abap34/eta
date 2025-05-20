@@ -1,0 +1,31 @@
+(define (fact-with-tco n)
+  (define (fact-iter n acc)
+    (if (= n 1)
+        acc
+        (fact-iter (- n 1) (* n acc))))
+  (fact-iter n 1))
+
+
+(define (fact-without-tco n)
+    (if (= n 1)
+        1
+        (* n (fact-without-tco (- n 1)))))
+
+
+(display "10!  with tco    : ")
+(display (fact-with-tco 10))
+(display "\n")
+
+
+(display "10!  without tco : ")
+(display (fact-without-tco 10))
+(display "\n")
+
+(display "100! with tco    : ")
+(display (fact-with-tco 1000))
+(display "\n")
+
+(display "100! without tco : ")
+(display (fact-without-tco 1000))
+(display "\n")
+
