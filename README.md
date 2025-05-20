@@ -4,8 +4,8 @@
 
 **eta** is a toy Scheme interpreter written in Scheme. 
 
-- [ ] Tail Call Optimization (TCO)
-- [ ] First-class Continuations (`call/cc`)
+- [x] Tail Call Optimization 
+- [x] First-class Continuations (`call/cc`)
 - [ ] Hygienic Macros
 
 

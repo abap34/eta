@@ -1,0 +1,9 @@
+(define result
+   (call/cc
+      (lambda (k)
+         (display "This is first-class ")
+         (display k)
+         (k "!") 
+         (display 100))))
+
+(display result)

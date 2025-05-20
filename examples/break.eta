@@ -1,0 +1,10 @@
+(define (loop-until target)
+  (call/cc
+   (lambda (break)
+     (let loop ((i 0))
+       (if (= i target)
+         (break 'done))
+       (display i)
+       (loop (+ i 1))))))
+
+(loop-until 34)

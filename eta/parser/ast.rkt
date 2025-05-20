@@ -42,7 +42,8 @@
          make-bind
          make-bindings
          make-load
-         make-sexpr 
+         make-sexpr
+         make-call/cc
 
          assert-expr
          assert-head
@@ -78,7 +79,8 @@
       (equal? head 'BindHead)        ; Binding expression
       (equal? head 'BindingsHead)    ; list of bindings
       (equal? head 'ArgHead)         ; Argument expression
-      (equal? head 'S-ExprHead)))    ; S-expression
+      (equal? head 'S-ExprHead)      ; S-expression
+      (equal? head 'CallCCHead)))    ; Call with current continuation
 
 (struct Expr (head args loc) #:transparent)
 
@@ -150,6 +152,7 @@
     [(equal? head 'BindingsHead)   "Bindings"]
     [(equal? head 'ArgHead)        "Arg"]
     [(equal? head 'S-ExprHead)     "S-Expr"]
+    [(equal? head 'CallCCHead)     "CallCC"]
     [else (error 'ExprHead->name   "Unknown ExprHead: ~a" head)]))
 
 ;  pretty-print-Expr
@@ -679,3 +682,13 @@
 ;     (a b c . d) -> (Expr 'S-ExprHead (list (list a b c) d))
 (define (make-sexpr location args tail)
   (make-expr 'S-ExprHead (list args tail) location))
+
+;  make-call/cc
+;     Creates a new call/cc node.
+;  Arguments:
+;      proc - The procedure to call with the current continuation
+;      loc - Location information
+;  Returns:
+;      A new Expr with head CallCCHead
+(define (make-call/cc proc loc)
+  (make-expr 'CallCCHead (list proc) loc))

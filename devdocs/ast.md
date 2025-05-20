@@ -49,6 +49,7 @@ The eta language defines the following expression types via the `ExprHead` enum:
 | 'BindingsHead   | list of bindings                        |
 | 'ArgHead        | Argument expression                     |
 | 'S-ExprHead     | S-expression                            |
+| 'CallCCHead     | Call with current continuation          |
 
 ## Args Structure by Expression Type
 
@@ -82,7 +83,7 @@ The following table summarizes the structure of the `args` field for each `ExprH
 | 'BodyHead       | `(list defines expressions)`         | `defines`: List of Expr (Define)<br>`expressions`: List of Expr - body expressions                                                                               |
 | 'BindHead       | `(list name value)`                  | `name`: Expr (Var)<br>`value`: Expr - bound value                                                                                                                |
 | 'BindingsHead   | List of binding expressions          | List of Expr (Bind) objects                                                                                                                                      |
-| 'ArgHead        | `(list required-args variadic-args)` | `required-args`: List of required arguments<br>`variadic-args`: string of variadic variable. if no variadic, empty list                                                                  |
+| 'ArgHead        | `(list required-args variadic-args)` | `required-args`: List of required arguments<br>`variadic-args`: string of variadic variable. if no variadic, empty list                                          |
 | 'S-ExprHead     | List of S-expressions                | List of Expr objects representing nested S-expressions                                                                                                           |
 
 
