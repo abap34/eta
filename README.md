@@ -1,5 +1,7 @@
 # eta
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/abap34/eta)
+
 **eta** is a toy Scheme interpreter written in Scheme. 
 
 - [ ] Tail Call Optimization (TCO)
