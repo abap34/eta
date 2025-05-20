@@ -90,6 +90,7 @@
       [(equal? head 'IfHead)     (eval-if expr env k stack #:tail? tail?)]
       [(equal? head 'SetHead)    (eval-set! expr env k stack)]
       [(equal? head 'BodyHead)   (eval-body expr env k stack #:tail? tail?)]
+      [(equal? head 'CallCCHead) (eval-call/cc expr env k stack #:tail? tail?)]
       [else (k (make-runtime-error 
                 (format "Internal error: unexpected expression ~a with head ~a" 
                         (pretty-print-Expr expr) head))
@@ -300,8 +301,10 @@
         (if (RuntimeError? operator-value)
             (k operator-value op-stack)
             
+            ; Handle continuations, closures and builtins
             (if (not (or (equal? (EtaValue-tag operator-value) 'EtaClosureTag)
-                         (equal? (EtaValue-tag operator-value) 'EtaBuiltinTag)))
+                         (equal? (EtaValue-tag operator-value) 'EtaBuiltinTag)
+                         (equal? (EtaValue-tag operator-value) 'EtaContinuationTag)))
                 (k (make-runtime-error
                     (format "Application of non-function: ~a" (EtaValue-tag operator-value))
                     (Expr-loc operator-expr))
@@ -312,15 +315,26 @@
                     (if (RuntimeError? args)
                         (k args args-stack)
                         
-                        (if (equal? (EtaValue-tag operator-value) 'EtaClosureTag)
-                            (apply-closure operator-value args env k args-stack loc #:tail? tail?)
-                            (apply-builtin operator-value args env 
-                                             (lambda (result final-stack)
-                                               (if (and (RuntimeError? result)
-                                                       (not (EtaError-location result)))
-                                                   (k (localize-error-location result loc) final-stack)
-                                                   (k result final-stack)))
-                                             args-stack))))
+                        (cond
+                          [(equal? (EtaValue-tag operator-value) 'EtaContinuationTag)
+                           (if (= (length args) 1)
+                               (let ([cont (EtaValue-value operator-value)])
+                                 (apply-continuation cont (first args) args-stack))
+                               (k (make-runtime-error
+                                   (format "Continuation expects exactly one argument, got ~a" 
+                                           (length args))
+                                   (Expr-loc operator-expr))
+                                  args-stack))]
+                          [(equal? (EtaValue-tag operator-value) 'EtaClosureTag)
+                           (apply-closure operator-value args env k args-stack loc #:tail? tail?)]
+                          [else
+                           (apply-builtin operator-value args env 
+                                          (lambda (result final-stack)
+                                            (if (and (RuntimeError? result)
+                                                    (not (EtaError-location result)))
+                                                (k (localize-error-location result loc) final-stack)
+                                                (k result final-stack)))
+                                          args-stack)])))
                   op-stack))))
       stack)))
 
@@ -447,6 +461,45 @@
                             new-stack)))
                 current-stack
                 #:tail? (and tail? is-last-expr?)))))))
+
+;  eval-call/cc
+;     Evaluate a call/cc expression
+;  Arguments:
+;     expr - A CallCC expression containing a procedure
+;     env - The environment in which to evaluate
+;     k - The continuation to receive the result
+;     stack - The current call stack
+;     tail? - Whether this expression is in tail position (#t) or not (#f)
+;  Returns:
+;     Via k: The result of applying the procedure to the reified continuation
+(define (eval-call/cc expr env k stack #:tail? [tail? #f])
+  (let ([proc-expr (first (Expr-args expr))]
+        [loc (Expr-loc expr)])  ; Get the location for error reporting
+    ; First, evaluate the procedure
+    (eval-expr 
+     proc-expr 
+     env
+     (lambda (proc-value new-stack)
+       (if (RuntimeError? proc-value)
+           (k proc-value new-stack)
+           (let ([reified-cont (make-continuation k new-stack)])
+             (cond
+               [(and (EtaValue? proc-value) 
+                     (equal? (EtaValue-tag proc-value) 'EtaClosureTag))
+                (apply-closure proc-value (list reified-cont) env k new-stack loc #:tail? tail?)]
+               [(and (EtaValue? proc-value)
+                     (equal? (EtaValue-tag proc-value) 'EtaBuiltinTag))
+                (let ([builtin (EtaValue-value proc-value)])
+                  (apply-builtin builtin (list reified-cont) env k new-stack))]
+               [else 
+                (k (make-runtime-error 
+                    (format "call/cc requires a procedure as an argument, got: ~a" 
+                            (if (EtaValue? proc-value) 
+                                (runtime-value->string proc-value) 
+                                proc-value))
+                    loc)
+                   new-stack)]))))
+     stack)))
 
 ;  eval-body
 ;     Evaluate a body expression (a list of defines and expressions)

@@ -21,6 +21,13 @@
          EtaValue-tag
          EtaValue-value
          arity-check
+         
+         ; Continuation-related exports
+         make-continuation
+         apply-continuation
+         Continuation-k
+         Continuation-stack
+         Continuation?
 )
 
 
@@ -36,7 +43,8 @@
       (equal? tag 'EtaClosureTag)
       (equal? tag 'EtaStructTag)
       (equal? tag 'VoidTag)
-      (equal? tag 'UndefinedTag)))
+      (equal? tag 'UndefinedTag)
+      (equal? tag 'EtaContinuationTag)))
 
 
 (define (RuntimeValueTag->string tag)
@@ -53,6 +61,7 @@
     [(equal? tag 'EtaStructTag)  "StructInstance"]
     [(equal? tag 'VoidTag)       "void"]
     [(equal? tag 'UndefinedTag)  "undefined"]
+    [(equal? tag 'EtaContinuationTag) "Continuation"]
     [else                        (error (format "Internal error: unknown tag ~a" tag))]))
 
 (define (tag-checker pred tag expect-pass-msg)
@@ -141,6 +150,37 @@
 
 (struct StructInstance (name fields) #:transparent)
 
+; Continuation
+;    A structure to represent a captured continuation
+; Arguments:
+;    k - The captured continuation function
+;    stack - The captured call stack
+(struct Continuation (k stack) #:transparent)
+
+; make-continuation
+;    Creates a new continuation value
+; Arguments:
+;    k - The continuation function to capture
+;    stack - The call stack at the point of capture
+; Returns:
+;    An EtaValue representing the continuation
+(define (make-continuation k stack)
+  (if (and (procedure? k) stack)
+      (EtaValue 'EtaContinuationTag (Continuation k stack))
+      (error (format "Internal error: Invalid continuation components: ~a, ~a" k stack))))
+
+; apply-continuation
+;    Applies a captured continuation to a value
+; Arguments:
+;    cont - A continuation value
+;    arg - The value to pass to the continuation
+;    stack - The current stack (will be discarded)
+; Returns:
+;    Via the continuation: The result of applying the continuation to arg
+(define (apply-continuation cont arg stack)
+  (let ([k (Continuation-k cont)]
+        [saved-stack (Continuation-stack cont)])
+    (k arg saved-stack)))
 
 (define (make-runtime-value tag value)
   (cond
@@ -156,6 +196,7 @@
     [(equal? tag 'EtaStructTag)  (tag-checker StructInstance? tag "StructInstance?")]
     [(equal? tag 'VoidTag)       (tag-checker (lambda (x) (or (null? x) (equal? x '()))) tag "Void")]
     [(equal? tag 'UndefinedTag)  (tag-checker (lambda (x) (equal? x 'undefined)) tag "Undefined")]
+    [(equal? tag 'EtaContinuationTag) (tag-checker Continuation? tag "Continuation?")]
     [else (error "Internal error: unknown tag ~a" tag)]
     )
     
@@ -196,4 +237,5 @@
       [(equal? tag 'EtaStructTag)  (format "<StructInstance: ~a>" value)]
       [(equal? tag 'UndefinedTag)  "undefined"]
       [(equal? tag 'VoidTag)       "void"]
+      [(equal? tag 'EtaContinuationTag) (format "<continuation>")]
       [else                        (error "Internal error: unknown tag ~a" tag)]))))
