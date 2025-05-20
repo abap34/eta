@@ -21,6 +21,10 @@
 ;  Fields:
 ;     frame      - hash table mapping name(string) to value(EtaValue)
 ;     parent     - enclosing Env or #f
+;  Note:
+;     Env only contains the newly defined variables.
+;     For example, if a variable is defined in the top-level
+;     environment, it will not be present in the child environments.
 (struct Env (frame parent) #:transparent)
 
 ;  init-toplevel-env
