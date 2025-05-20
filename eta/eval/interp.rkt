@@ -319,7 +319,7 @@
                           [(equal? (EtaValue-tag operator-value) 'EtaContinuationTag)
                            (if (= (length args) 1)
                                (let ([cont (EtaValue-value operator-value)])
-                                 (apply-continuation cont (first args) args-stack))
+                                 ((Continuation-k cont) (first args) (Continuation-stack cont)))
                                (k (make-runtime-error
                                    (format "Continuation expects exactly one argument, got ~a" 
                                            (length args))
@@ -333,10 +333,11 @@
                                             (if (and (RuntimeError? result)
                                                     (not (EtaError-location result)))
                                                 (k (localize-error-location result loc) final-stack)
-                                                (k result final-stack)))
+                                               (k result final-stack)))
                                           args-stack)])))
                   op-stack))))
       stack)))
+
 
 ;  apply-builtin
 ;     Apply a builtin function to arguments

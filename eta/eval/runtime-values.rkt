@@ -24,7 +24,6 @@
          
          ; Continuation-related exports
          make-continuation
-         apply-continuation
          Continuation-k
          Continuation-stack
          Continuation?
@@ -168,19 +167,6 @@
   (if (and (procedure? k) stack)
       (EtaValue 'EtaContinuationTag (Continuation k stack))
       (error (format "Internal error: Invalid continuation components: ~a, ~a" k stack))))
-
-; apply-continuation
-;    Applies a captured continuation to a value
-; Arguments:
-;    cont - A continuation value
-;    arg - The value to pass to the continuation
-;    stack - The current stack (will be discarded)
-; Returns:
-;    Via the continuation: The result of applying the continuation to arg
-(define (apply-continuation cont arg stack)
-  (let ([k (Continuation-k cont)]
-        [saved-stack (Continuation-stack cont)])
-    (k arg saved-stack)))
 
 (define (make-runtime-value tag value)
   (cond
