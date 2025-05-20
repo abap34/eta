@@ -17,6 +17,11 @@
          eta-eval-toplevel
          format-eval-result
          exit-with-eval-result
+
+         EvalResult-success?
+         EvalResult-value
+
+         
 )
 
 

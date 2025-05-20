@@ -11,6 +11,8 @@
          make-runtime-value
          ParamSpec-required
          ParamSpec-variadic
+         ParamSpec?
+         has-rest?
          Builtin-proc
          Closure-params-spec
          Closure-body
@@ -66,7 +68,7 @@
 ;     A structure to represent the parameter specification of a function
 ; Arguments:
 ;    required - A list of required parameter names (strings)
-;    variadic - A string representing the variadic parameter name
+;    variadic - A string representing the variadic parameter name. if no variadic parameter, it should be #f
 ; Returns:
 ;    A ParamSpec object
 (struct ParamSpec (required variadic) #:transparent)
@@ -77,6 +79,7 @@
       (ParamSpec required variadic)
       (error (format "Internal error: required must be a list of strings, and variadic must be a string or #f. But got ~a" (list required variadic)))))
 
+
 (define (ParamSpec->string param-spec)
   (let ([required (ParamSpec-required param-spec)]
         [variadic (ParamSpec-variadic param-spec)])
@@ -84,9 +87,8 @@
         (format "(~a)" (string-join required ", "))
         (format "(~a . ~a)" (string-join required ", ") variadic))))
 
-
 (define (has-rest? param-spec)
-  (ParamSpec-variadic param-spec))
+  (not (null? (ParamSpec-variadic param-spec))))
 
 ; arity-check
 ;     Check the arity of a function call

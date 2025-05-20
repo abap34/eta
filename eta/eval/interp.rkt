@@ -247,9 +247,12 @@
 ;  Returns:
 ;     #t if arity check passes, #f otherwise
 (define (arity-check param-spec args)
+  (unless (ParamSpec? param-spec)
+    (error "Internal error: expected ParamSpec, got: ~a" param-spec))
+    
   (let ([req-params (ParamSpec-required param-spec)]
         [variadic? (ParamSpec-variadic param-spec)])
-    (if variadic?
+    (if (has-rest? param-spec)
         (>= (length args) (length req-params))  ; With variadic param, need at least req-params
         (= (length args) (length req-params))))) ; Without variadic param, need exact match
 
