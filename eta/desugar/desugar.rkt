@@ -450,6 +450,17 @@
         [loc (Expr-loc expr)])
     (make-bindings loc (map desugar bindings))))
 
+;  desugar-call/cc
+;     Desugars a call/cc expression.
+;  Arguments:
+;     expr - An Expr with CallCCHead
+;  Returns:
+;     A desugared call/cc expression
+(define (desugar-call/cc expr)
+  (let ([proc (first (Expr-args expr))]
+        [loc (Expr-loc expr)])
+    (make-call/cc (desugar proc) loc)))
+
 ;  desugar
 ;     Main entry point for desugaring.
 ;  Arguments:
@@ -494,6 +505,7 @@
               [(equal? head 'BodyHead)        (desugar-body expr)]
               [(equal? head 'BindHead)        (desugar-bind expr)]
               [(equal? head 'BindingsHead)    (desugar-bindings expr)]
+              [(equal? head 'CallCCHead)      (desugar-call/cc expr)]
               [(equal? head 'ArgHead)         expr]
               [(equal? head 'S-ExprHead)      expr]
               [else (error (format "desugar: unknown expression type ~a" head))]))))))

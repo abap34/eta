@@ -809,6 +809,23 @@
                   (loc (last result)))])
         (make-do-final loc cond-exp body-exps)))))
 
+; CallCC ::= (call/cc | call-with-current-continuation Exp)
+(define parse-call/cc
+  (map-parser
+   (sequence
+    (label "LParen" lparen)
+    (label "call/cc" (any-of (keyword "call/cc")
+                             (keyword "call-with-current-continuation")))
+    (label "Exp" (parser-ref parse-exp))
+    (label "RParen" rparen))
+    (lambda (result)
+      (let ([exp (third result)]
+            [loc (create-span-location
+                  (loc (first result))
+                  (loc (last result)))])
+        (make-call/cc exp loc)))))
+
+
 ; Body ::= Define* Exp+
 (define parse-body 
   (map-parser
@@ -933,6 +950,7 @@
     (label "Or" parse-or)
     (label "Begin" parse-begin)
     (label "Do" parse-do)
+    (label "CallCC" parse-call/cc)
     (label "App" parse-app)
   )
 )
