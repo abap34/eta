@@ -13,35 +13,6 @@
  )
 
 
-; eval-sequence
-;     Evaluate a sequence of expressions in the given environment.
-;     Returns the **last evaluated expression** or **first** error through continuations.
-; Arguments:
-;     expr-list - A list of expressions to evaluate
-;     env - The environment in which to evaluate
-;     k - The continuation to receive the final result
-;     stack - The current call stack
-; Returns:
-;     Via k: The last evaluated expression or a RuntimeError
-(define (eval-sequence expr-list env k stack)
-  (if (null? expr-list)
-      (k (make-runtime-error (format "Cannot evaluate empty expression list")) stack)
-      (let loop ([exprs expr-list]
-                 [result '()]
-                 [current-stack stack])
-        (if (null? exprs)
-            (k (first result) current-stack)
-            (eval-expr 
-              (first exprs) 
-              env 
-              (lambda (new-result new-stack)
-                (if (RuntimeError? new-result)
-                    (k new-result new-stack)
-                    (loop (rest exprs)
-                          (cons new-result result)
-                          new-stack)))
-              current-stack)))))
-
 ; eval-each-expr
 ;    Main entry point for evaluating expressions in the interpreter.
 ; Arguments:
@@ -56,7 +27,6 @@
   (eval-each-expr-cps expr-list env
     (lambda (result stack) result)
     (init-call-stack)))
-
 
 ;  eval-each-expr-cps
 ;     Evaluate a list of expressions in the given environment.
@@ -91,63 +61,6 @@
                      (cons new-result result)
                      new-stack)))
          current-stack))))
-
-
-; with-successfull-eval
-;     Evaluate a procedure if the result is not a RuntimeError
-;  Arguments:
-;     result - RuntimeError or EtaValue or list of EtaValues
-;     proc   - The procedure to evaluate if result is not a RuntimeError
-;  Returns:
-;     The result of the evaluation or the RuntimeError
-(define (with-successfull-eval result proc)
-  (if (RuntimeError? result)
-      result
-      (if (or (EtaValue? result)
-              (and (list? result) (andmap EtaValue? result)))
-          (proc result)
-          (error "Internal error: expected EtaValue, got: ~a" result))))
-
-
-
-;; with-successfull-eval-cps
-;;    Evaluate a procedure if the result is not a RuntimeError
-;; Arguments:
-;;    result - RuntimeError or EtaValue or list of EtaValues
-;;    success-cont - Continuation with result if evaluation was successful
-;;    error-cont - Continuation with error if result is RuntimeError
-;; Returns:
-;;    The result of applying the appropriate continuation
-(define (with-successfull-eval-cps result success-cont error-cont stack)
-  (if (RuntimeError? result)
-      (error-cont result stack)
-      (if (or (EtaValue? result)
-              (and (list? result) (andmap EtaValue? result)))
-          (success-cont result stack)
-          (error-cont (make-runtime-error (format "Internal error: expected EtaValue, got: ~a" result)) stack))))
-
-;; apply-continuation
-;;    Apply a continuation function to a value
-;; Arguments:
-;;    k - The continuation function
-;;    result - The result value to pass to the continuation
-;;    stack - The call stack
-;; Returns:
-;;    The result of applying the continuation to the value
-(define (apply-continuation k result stack)
-  (k result stack))
-
-;; create-error-continuation
-;;    Create a continuation that passes an error upward
-;; Arguments:
-;;    k - The parent continuation
-;; Returns:
-;;    A continuation that passes errors to the parent continuation
-(define (create-error-continuation k)
-  (lambda (result stack)
-    (if (RuntimeError? result)
-        (k result stack)
-        (k (make-runtime-error "Expected error, got value") stack))))
 
 
 ;  eval-expr
@@ -237,13 +150,13 @@
          [quoted-form (first quote-args)])
     (k (make-runtime-value 'EtaExprTag quoted-form) stack)))
 
-;  convert-to-param-spec
+;  arg-to-param-spec
 ;     Convert an Arg expression to a ParamSpec structure
 ;  Arguments:
 ;     arg-expr - An Arg expression with required and variadic parameters
 ;  Returns:
 ;     A ParamSpec with required and variadic parameters
-(define (convert-to-param-spec arg-expr)
+(define (arg-to-param-spec arg-expr)
   (unless (and (Expr? arg-expr)
                (eq? (Expr-head arg-expr) 'ArgHead))
     (error "Internal error: expected Arg expression, got: ~a" arg-expr))
@@ -253,8 +166,6 @@
          [variadic-params (second arg-args)])
 
     (make-param-spec required-params variadic-params)))
-
-
 
 ;  eval-lambda
 ;     Create a closure from a lambda expression
@@ -267,52 +178,11 @@
 ;     Via k: An EtaValue containing an EtaClosure
 (define (eval-lambda expr env k stack)
   (let* ([lambda-args (Expr-args expr)]
-         [param-spec (convert-to-param-spec (first lambda-args))]
+         [param-spec (arg-to-param-spec (first lambda-args))]
          [body (second lambda-args)]
          [loc (Expr-loc expr)])
     (k (make-runtime-value 'EtaClosureTag
                        (make-eta-closure param-spec body env loc)) stack)))
-
-
-;  arity-check
-;     Check if arguments match parameter specification
-;  Arguments:
-;     param-spec - A ParamSpec structure with required and variadic params
-;     args - List of arguments to check
-;  Returns:
-;     #t if arity check passes, #f otherwise
-(define (arity-check param-spec args)
-  (let ([req-params (ParamSpec-required param-spec)]
-        [variadic? (ParamSpec-variadic param-spec)])
-    (if variadic?
-        (>= (length args) (length req-params))  ; With variadic param, need at least req-params
-        (= (length args) (length req-params))))) ; Without variadic param, need exact match
-
-;  assign-params
-;     Bind arguments to parameters in environment
-;  Arguments:
-;     param-spec - A ParamSpec structure with required and variadic params
-;     args - List of arguments to bind
-;     env - Environment to extend with bindings
-;  Returns:
-;     The environment with new bindings
-(define (assign-params! param-spec args env)
-  (let ([req-params (ParamSpec-required param-spec)]
-        [variadic (ParamSpec-variadic param-spec)])
-
-    ; Bind required parameters
-    (let ([req-count (length req-params)])
-      (for ([i (in-range req-count)])
-        (when (< i (length args))
-          (define-variable! env (list-ref req-params i) (list-ref args i) #f))))
-
-    ; Bind variadic parameter if present
-    (when variadic
-      (let ([rest-args (list-tail args (min (length args) (length req-params)))])
-        (define-variable! env variadic
-          (EtaValue 'ListTag rest-args) #f)))
-
-    env))
 
 ;  eval-if
 ;     Evaluate a conditional expression
@@ -366,6 +236,44 @@
               (k v new-stack))))
       stack)))
 
+
+;  arity-check
+;     Check if arguments match parameter specification
+;  Arguments:
+;     param-spec - A ParamSpec structure with required and variadic params
+;     args - List of arguments to check
+;  Returns:
+;     #t if arity check passes, #f otherwise
+(define (arity-check param-spec args)
+  (let ([req-params (ParamSpec-required param-spec)]
+        [variadic? (ParamSpec-variadic param-spec)])
+    (if variadic?
+        (>= (length args) (length req-params))  ; With variadic param, need at least req-params
+        (= (length args) (length req-params))))) ; Without variadic param, need exact match
+
+;  assign-params!
+;     Bind arguments to parameters in environment
+;  Arguments:
+;     param-spec - A ParamSpec structure with required and variadic params
+;     args - List of arguments to bind
+;     env - Environment to extend with bindings
+;  Returns:
+;     The environment with new bindings
+(define (assign-params! param-spec args env)
+  (let ([req-params (ParamSpec-required param-spec)]
+        [variadic (ParamSpec-variadic param-spec)])
+
+    (let ([req-count (length req-params)])
+      (for ([i (in-range req-count)])
+        (when (< i (length args))
+          (define-variable! env (list-ref req-params i) (list-ref args i) #f))))
+
+    (when variadic
+      (let ([rest-args (list-tail args (min (length args) (length req-params)))])
+        (define-variable! env variadic (EtaValue 'ListTag rest-args) #f)))
+    
+    env))
+
 ;  eval-app
 ;     Apply a function to arguments
 ;  Arguments:
@@ -380,34 +288,28 @@
          [operator-expr (first app-args)]
          [operand-exprs (first (rest app-args))]
          [loc (Expr-loc expr)])
-    
-    ; Evaluate the operator
+  
     (eval-expr operator-expr env
       (lambda (operator-value op-stack)
         (if (RuntimeError? operator-value)
             (k operator-value op-stack)
             
-            ; Check if operator is a function
             (if (not (or (equal? (EtaValue-tag operator-value) 'EtaClosureTag)
-                       (equal? (EtaValue-tag operator-value) 'EtaBuiltinTag)))
-                ; Error if not a function
+                         (equal? (EtaValue-tag operator-value) 'EtaBuiltinTag)))
                 (k (make-runtime-error
                     (format "Application of non-function: ~a" (EtaValue-tag operator-value))
                     (Expr-loc operator-expr))
                    op-stack)
                 
-                ; Evaluate arguments
                 (eval-each-expr-cps operand-exprs env
                   (lambda (args args-stack)
                     (if (RuntimeError? args)
                         (k args args-stack)
                         
-                        ; Apply the function
                         (if (equal? (EtaValue-tag operator-value) 'EtaClosureTag)
-                            (apply-closure-cps operator-value args env k args-stack loc)
-                            (apply-builtin-cps operator-value args env 
+                            (apply-closure operator-value args env k args-stack loc)
+                            (apply-builtin operator-value args env 
                                              (lambda (result final-stack)
-                                               ; Localize error location if necessary
                                                (if (and (RuntimeError? result)
                                                        (not (EtaError-location result)))
                                                    (k (localize-error-location result loc) final-stack)
@@ -422,30 +324,13 @@
 ;     builtin - A Builtin structure
 ;     args - Evaluated arguments
 ;     env - The calling environment
-;  Returns:
-;     The result of applying the builtin function
-;  Raises:
-;     RuntimeError if arity check fails
-(define (apply-builtin builtin args env)
-  ; MEMO: Builtin implementation has responsibility to check arity
-  (let ([result ((Builtin-proc (EtaValue-value builtin)) args env)])
-    (if (EtaValue? result)
-        result
-        (make-runtime-error result))))
-
-;  apply-builtin-cps
-;     Apply a builtin function to arguments
-;  Arguments:
-;     builtin - A Builtin structure
-;     args - Evaluated arguments
-;     env - The calling environment
 ;     k - The continuation to receive the result
 ;     stack - The current call stack
 ;  Returns:
 ;     Via k: The result of applying the builtin function
 ;  Notes:
 ;     Builtin implementation has responsibility to check arity
-(define (apply-builtin-cps builtin args env k stack)
+(define (apply-builtin builtin args env k stack)
   ; MEMO: Builtin implementation has responsibility to check arity
   (let ([result ((Builtin-proc (EtaValue-value builtin)) args env)])
     (if (EtaValue? result)
@@ -458,39 +343,6 @@
 ;     closure-value - A EtaValue containing a Closure
 ;     args - Evaluated arguments
 ;     env - The calling environment
-;  Returns:
-;     The result of evaluating the function body in the extended environment
-;  Raises:
-;     RuntimeError if arity check fails
-(define (apply-closure closure-value args env)
-  (let* (
-         [closure (EtaValue-value closure-value)]
-         [param-spec (Closure-params-spec closure)]
-         [body (Closure-body closure)]
-         [captured-env (Closure-captured-env closure)]
-         [loc (Closure-loc closure)])
-
-    ; Check arity
-    (if (not (arity-check param-spec args))
-      (make-runtime-error
-       (format "Wrong number of arguments. Expected ~a, got ~a"
-               (length (ParamSpec-required param-spec))
-               (length args)))
-
-    ; Create a new environment with captured env as parent
-    (let* ([func-env (make-child-env captured-env)]
-           ; Assign arguments to parameters
-           [func-env (assign-params! param-spec args func-env)])
-
-      ; Evaluate the body in the extended environment
-      (eval-body body func-env)))))
-
-;  apply-closure-cps
-;     Apply a user-defined function to arguments
-;  Arguments:
-;     closure-value - A EtaValue containing a Closure
-;     args - Evaluated arguments
-;     env - The calling environment
 ;     k - The continuation to receive the result
 ;     stack - The current call stack
 ;     proc-loc - The source location of the procedure call (for error reporting)
@@ -498,14 +350,13 @@
 ;     Via k: The result of evaluating the function body in the extended environment
 ;  Notes:
 ;     Handles arity check and propagates errors properly
-(define (apply-closure-cps closure-value args env k stack proc-loc)
+(define (apply-closure closure-value args env k stack proc-loc)
   (let* ([closure (EtaValue-value closure-value)]
          [param-spec (Closure-params-spec closure)]
          [body (Closure-body closure)]
          [captured-env (Closure-captured-env closure)]
          [loc (Closure-loc closure)])
-    
-    ; Check arity
+
     (if (not (arity-check param-spec args))
         (k (make-runtime-error
             (format "Wrong number of arguments. Expected ~a, got ~a"
@@ -514,25 +365,16 @@
             proc-loc) 
            stack)
             
-        ; Create frame for call and push to stack
         (let* ([func-env (make-child-env captured-env)]
-               ; Assign arguments to parameters
                [func-env (assign-params! param-spec args func-env)]
-               ; Create call frame
                [call-frame (make-call-frame closure-value args func-env proc-loc #f)])
            
-          ; Push frame to stack
           (let ([push-result (call-stack-push stack call-frame)])
-            ; Check if push was successful or we got a stack overflow error
             (if (RuntimeError? push-result)
-                ; Report stack overflow error
                 (k (localize-error-location push-result proc-loc) stack)
-                ; Proceed with execution using new stack
                 (let ([new-stack push-result])
-                  ; Evaluate the body in the extended environment
                   (eval-body body func-env 
                                 (lambda (result popped-stack)
-                                  ; Pop the frame when done
                                   (k result popped-stack))
                                 new-stack))))))))
 
@@ -551,24 +393,50 @@
          [val-expr (second set-args)]
          [var-name (first (Expr-args var-expr))])
     
-    ; Check if variable exists
     (if (not (defined? env var-name))
         (k (make-runtime-error
             (format "Cannot set undefined variable: ~a" var-name)
             (Expr-loc expr))
            stack)
         
-        ; Evaluate the value expression
         (eval-expr val-expr env
                   (lambda (val new-stack)
                     (if (RuntimeError? val)
                         (k val new-stack)
                         (begin
-                          ; Set the variable
                           (define-variable! env var-name val #t)
-                          ; Return the value
                           (k val new-stack))))
                       stack))))
+
+; eval-body-of-body
+;     Evaluate a sequence of expressions in the given environment.
+;     Returns the **last evaluated expression** or **first** error through continuations.
+;     WARN: This function is used for evaluating the list of expressions in a body. Don't use it directly.
+; Arguments:
+;     expr-list - A list of expressions to evaluate
+;     env - The environment in which to evaluate
+;     k - The continuation to receive the final result
+;     stack - The current call stack
+; Returns:
+;     Via k: The last evaluated expression or a RuntimeError
+(define (eval-body-of-body expr-list env k stack)
+  (if (null? expr-list)
+      (k (make-runtime-error (format "Cannot evaluate empty expression list")) stack)
+      (let loop ([exprs expr-list]
+                 [result '()]
+                 [current-stack stack])
+        (if (null? exprs)
+            (k (first result) current-stack)
+            (eval-expr 
+              (first exprs) 
+              env 
+              (lambda (new-result new-stack)
+                (if (RuntimeError? new-result)
+                    (k new-result new-stack)
+                    (loop (rest exprs)
+                          (cons new-result result)
+                          new-stack)))
+              current-stack)))))
 
 ;  eval-body
 ;     Evaluate a body expression (a list of defines and expressions)
@@ -601,5 +469,5 @@
             (k result new-stack)
             (if (null? exps)
                 (k (EtaValue 'VoidTag '()) new-stack)
-                (eval-sequence exps env k new-stack))))
+                (eval-body-of-body exps env k new-stack))))
       stack)))
