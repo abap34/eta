@@ -37,6 +37,8 @@ Exp ::= Const                                 ; Constant
     | (or Exp*)                               ; Logical OR
     | (begin Exp*)                            ; Sequential execution
     | (do ((Id Exp Exp)*) (Exp Exp*) Body)    ; Iteration
+    | (call/cc Exp)                           ; Call with current continuation
+    | (call-with-current-continuation Exp)    ; Call with current continuation (full name)
 
 Body ::= Define* Exp+                         ; Function body
 
