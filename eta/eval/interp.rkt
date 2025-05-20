@@ -9,11 +9,11 @@
 
 
 (provide eval-expr 
-         eval-each-expr
+         eval-toplevel-exprs
  )
 
 
-; eval-each-expr
+; eval-toplevel-exprs
 ;    Main entry point for evaluating expressions in the interpreter.
 ; Arguments:
 ;    expr-list - A list of expressions to evaluate
@@ -21,14 +21,14 @@
 ; Returns:
 ;    A list of evaluated expressions or a RuntimeError
 ; Example:
-;   (eval-each-expr (list (make-const 'Num 1) (make-const 'Num 2) (make-const 'Num 3)) env)
+;   (eval-toplevel-exprs (list (make-const 'Num 1) (make-const 'Num 2) (make-const 'Num 3)) env)
 ;   => (1 2 3)
-(define (eval-each-expr expr-list env)
-  (eval-each-expr-cps expr-list env
+(define (eval-toplevel-exprs expr-list env)
+  (eval-toplevel-exprs-cps expr-list env
     (lambda (result stack) result)
     (init-call-stack)))
 
-;  eval-each-expr-cps
+;  eval-toplevel-exprs-cps
 ;     Evaluate a list of expressions in the given environment.
 ;     Returns the list of each evaluated expression in given order or return **first** error.
 ;  Arguments:
@@ -39,9 +39,9 @@
 ;  Returns:
 ;     Via k: A list of evaluated expressions or a RuntimeError
 ;  Example:
-;   (eval-each-expr-cps (list (make-const 'Num 1) (make-const 'Num 2) (make-const 'Num 3)) env k stack)
+;   (eval-toplevel-exprs-cps (list (make-const 'Num 1) (make-const 'Num 2) (make-const 'Num 3)) env k stack)
 ;   => via k: (1 2 3)
-(define (eval-each-expr-cps expr-list env k stack)
+(define (eval-toplevel-exprs-cps expr-list env k stack)
   (unless (and (list? expr-list)
                (andmap Expr? expr-list))
     (k (make-runtime-error (format "Internal error: expected a list of Expr, got: ~a" expr-list)) stack))
@@ -70,9 +70,10 @@
 ;     env - The environment in which to evaluate
 ;     k - The continuation to receive the result
 ;     stack - The current call stack
+;     tail? - Whether this expression is in tail position (#t) or not (#f)
 ;  Returns:
 ;     Via k: An EtaValue representing the result
-(define (eval-expr expr env k stack)
+(define (eval-expr expr env k stack #:tail? [tail? #f])
   (unless (Expr? expr)
     (k (make-runtime-error 
         (format "Internal error: expr must be an Expr, got: ~a" expr))
@@ -82,13 +83,13 @@
     (cond
       [(equal? head 'ConstHead)  (eval-const expr env k stack)]
       [(equal? head 'IdHead)     (eval-var expr env k stack)]
-      [(equal? head 'AppHead)    (eval-app expr env k stack)]
+      [(equal? head 'AppHead)    (eval-app expr env k stack #:tail? tail?)]
       [(equal? head 'LambdaHead) (eval-lambda expr env k stack)]
       [(equal? head 'QuoteHead)  (eval-quote expr env k stack)]
       [(equal? head 'DefineHead) (eval-define expr env k stack)]
-      [(equal? head 'IfHead)     (eval-if expr env k stack)]
+      [(equal? head 'IfHead)     (eval-if expr env k stack #:tail? tail?)]
       [(equal? head 'SetHead)    (eval-set! expr env k stack)]
-      [(equal? head 'BodyHead)   (eval-body expr env k stack)]
+      [(equal? head 'BodyHead)   (eval-body expr env k stack #:tail? tail?)]
       [else (k (make-runtime-error 
                 (format "Internal error: unexpected expression ~a with head ~a" 
                         (pretty-print-Expr expr) head))
@@ -191,9 +192,10 @@
 ;     env      - The environment in which to evaluate
 ;     k        - The continuation to receive the result
 ;     stack    - The current call stack
+;     tail?    - Whether this expression is in tail position (#t) or not (#f)
 ;  Returns:
 ;     Via k: The result of evaluating the selected branch or a RuntimeError
-(define (eval-if expr env k stack)
+(define (eval-if expr env k stack #:tail? [tail? #f])
   (let* ([if-args   (Expr-args expr)]
          [test-expr (first if-args)]
          [then-expr (second if-args)]
@@ -204,8 +206,8 @@
             (k test-result test-stack)
             (if (equal? (EtaValue-tag test-result) 'BooleanTag)
                 (if (equal? (EtaValue-value test-result) #t)
-                    (eval-expr then-expr env k test-stack)
-                    (eval-expr else-expr env k test-stack))
+                    (eval-expr then-expr env k test-stack #:tail? tail?)
+                    (eval-expr else-expr env k test-stack #:tail? tail?))
                 (k (make-runtime-error
                     (format "Only boolean value is allowed in condition. Given ~a" 
                             (EtaValue-tag test-result))
@@ -281,9 +283,10 @@
 ;     env - The environment in which to evaluate
 ;     k - The continuation to receive the result
 ;     stack - The current call stack
+;     tail? - Whether this expression is in tail position (#t) or not (#f)
 ;  Returns:
 ;     Via k: The result of applying the function to its arguments
-(define (eval-app expr env k stack)
+(define (eval-app expr env k stack #:tail? [tail? #f])
   (let* ([app-args (Expr-args expr)]
          [operator-expr (first app-args)]
          [operand-exprs (first (rest app-args))]
@@ -301,13 +304,13 @@
                     (Expr-loc operator-expr))
                    op-stack)
                 
-                (eval-each-expr-cps operand-exprs env
+                (eval-toplevel-exprs-cps operand-exprs env
                   (lambda (args args-stack)
                     (if (RuntimeError? args)
                         (k args args-stack)
                         
                         (if (equal? (EtaValue-tag operator-value) 'EtaClosureTag)
-                            (apply-closure operator-value args env k args-stack loc)
+                            (apply-closure operator-value args env k args-stack loc #:tail? tail?)
                             (apply-builtin operator-value args env 
                                              (lambda (result final-stack)
                                                (if (and (RuntimeError? result)
@@ -346,11 +349,12 @@
 ;     k - The continuation to receive the result
 ;     stack - The current call stack
 ;     proc-loc - The source location of the procedure call (for error reporting)
+;     tail? - Whether this application is in tail position (#t) or not (#f)
 ;  Returns:
 ;     Via k: The result of evaluating the function body in the extended environment
 ;  Notes:
 ;     Handles arity check and propagates errors properly
-(define (apply-closure closure-value args env k stack proc-loc)
+(define (apply-closure closure-value args env k stack proc-loc #:tail? [tail? #f])
   (let* ([closure (EtaValue-value closure-value)]
          [param-spec (Closure-params-spec closure)]
          [body (Closure-body closure)]
@@ -367,7 +371,7 @@
             
         (let* ([func-env (make-child-env captured-env)]
                [func-env (assign-params! param-spec args func-env)]
-               [call-frame (make-call-frame closure-value args func-env proc-loc #f)])
+               [call-frame (make-call-frame closure-value args func-env proc-loc #f tail?)])
            
           (let ([push-result (call-stack-push stack call-frame)])
             (if (RuntimeError? push-result)
@@ -376,7 +380,8 @@
                   (eval-body body func-env 
                                 (lambda (result popped-stack)
                                   (k result popped-stack))
-                                new-stack))))))))
+                                new-stack
+                                #:tail? #t))))))))
 
 ;  eval-set!
 ;     Assign a new value to an existing variable
@@ -419,7 +424,7 @@
 ;     stack - The current call stack
 ; Returns:
 ;     Via k: The last evaluated expression or a RuntimeError
-(define (eval-body-of-body expr-list env k stack)
+(define (eval-body-of-body expr-list env k stack #:tail? [tail? #f])
   (if (null? expr-list)
       (k (make-runtime-error (format "Cannot evaluate empty expression list")) stack)
       (let loop ([exprs expr-list]
@@ -427,16 +432,18 @@
                  [current-stack stack])
         (if (null? exprs)
             (k (first result) current-stack)
-            (eval-expr 
-              (first exprs) 
-              env 
-              (lambda (new-result new-stack)
-                (if (RuntimeError? new-result)
-                    (k new-result new-stack)
-                    (loop (rest exprs)
-                          (cons new-result result)
-                          new-stack)))
-              current-stack)))))
+            (let ([is-last-expr? (null? (rest exprs))])
+              (eval-expr 
+                (first exprs) 
+                env 
+                (lambda (new-result new-stack)
+                  (if (RuntimeError? new-result)
+                      (k new-result new-stack)
+                      (loop (rest exprs)
+                            (cons new-result result)
+                            new-stack)))
+                current-stack
+                #:tail? (and tail? is-last-expr?)))))))
 
 ;  eval-body
 ;     Evaluate a body expression (a list of defines and expressions)
@@ -445,9 +452,10 @@
 ;     env - The environment in which to evaluate
 ;     k - The continuation to receive the result
 ;     stack - The current call stack
+;     tail? - Whether this expression is in tail position (#t) or not (#f)
 ;  Returns:
 ;     Via k: The result of the last expression or void if empty
-(define (eval-body expr env k stack)
+(define (eval-body expr env k stack #:tail? [tail? #f])
   (let ([defines (first (Expr-args expr))]
         [exps    (second (Expr-args expr))])
     
@@ -463,11 +471,11 @@
           (format "Internal error: expected a list of Expr for expressions, got: ~a" exps))
          stack))
     
-    (eval-each-expr-cps defines env
+    (eval-toplevel-exprs-cps defines env
       (lambda (result new-stack)
         (if (RuntimeError? result)
             (k result new-stack)
             (if (null? exps)
                 (k (EtaValue 'VoidTag '()) new-stack)
-                (eval-body-of-body exps env k new-stack))))
+                (eval-body-of-body exps env k new-stack #:tail? tail?))))
       stack)))

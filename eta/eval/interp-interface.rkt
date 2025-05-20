@@ -82,7 +82,7 @@
         (let ([parsed-result (desugar (parse tokens))])
           (if (EtaError? parsed-result)
               (EvalResult #f parsed-result)
-              (let ([result (eval-each-expr parsed-result env)])
+              (let ([result (eval-toplevel-exprs parsed-result env)])
                 (if (RuntimeError? result)
                     (EvalResult #f result)
                     (EvalResult #t result))))))))

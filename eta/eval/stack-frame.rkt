@@ -14,6 +14,7 @@
     CallFrame-env
     CallFrame-loc
     CallFrame-parent
+    CallFrame-tail?
     
     CallStack
     init-call-stack
@@ -38,7 +39,8 @@
 ;;    env - The environment in which the procedure is executed
 ;;    loc - The source location information for debugging
 ;;    parent - The parent frame (for maintaining lexical scope chain)
-(struct CallFrame (proc args env loc parent) #:transparent)
+;;    tail? - Whether this is a tail call (#t) or not (#f)
+(struct CallFrame (proc args env loc parent tail?) #:transparent)
 
 ;; make-call-frame
 ;;    Creates a new call frame for a function call
@@ -48,10 +50,11 @@
 ;;    env - The environment in which the procedure is executed
 ;;    loc - The source location information for debugging
 ;;    parent - The parent frame (for maintaining lexical scope chain)
+;;    tail? - Whether this is a tail call (#t) or not (#f)
 ;; Returns:
 ;;    A new CallFrame structure
-(define (make-call-frame proc args env loc parent)
-  (CallFrame proc args env loc parent))
+(define (make-call-frame proc args env loc parent tail?)
+  (CallFrame proc args env loc parent tail?))
 
 ;; CallStack
 ;;    Represents the runtime call stack of the interpreter
@@ -75,12 +78,22 @@
 ;; Returns:
 ;;    A new call stack with the frame added or RuntimeError if stack depth exceeds MAX-STACK-DEPTH
 ;; Notes:
-;;    Returns a RuntimeError if the stack depth exceeds MAX-STACK-DEPTH
+;;    - Returns a RuntimeError if the stack depth exceeds MAX-STACK-DEPTH
+;;    - For tail calls, the current frame is replaced instead of pushing a new one
 (define (call-stack-push stack frame)
-    (if (>= (CallStack-current-depth stack) MAX-STACK-DEPTH)
-        (make-runtime-error "Stack overflow: maximum stack depth exceeded")
-        (CallStack (cons frame (CallStack-frames stack))
-                   (+ 1 (CallStack-current-depth stack)))))
+    (cond 
+      [(>= (CallStack-current-depth stack) MAX-STACK-DEPTH)
+       (make-runtime-error "Stack overflow: maximum stack depth exceeded")]
+      
+      ; For tail calls with a non-empty stack, replace the top frame
+      [(and (CallFrame-tail? frame) (not (call-stack-empty? stack)))
+       (CallStack (cons frame (cdr (CallStack-frames stack)))
+                 (CallStack-current-depth stack))]
+      
+      ; For normal calls or tail calls with empty stack, push as usual
+      [else
+       (CallStack (cons frame (CallStack-frames stack))
+                  (+ 1 (CallStack-current-depth stack)))]))
 
 ;; call-stack-pop
 ;;    Removes and returns the top frame from the call stack
