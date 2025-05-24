@@ -32,7 +32,14 @@
        (exit)]
       [(string=? input "")
        (repl-loop env)]
-      [else (displayln (format-eval-result (eta-eval env input) input))])
+      [else 
+       (with-clean-break-state
+        (lambda ()
+          (with-handlers ([exn:break? (lambda (e)
+                                        (displayln (colorize "Evaluation interrupted." 'yellow)))])
+            (displayln (format-eval-result (eta-eval-in-thread env input) input)))))])
+    ;; Always reset break state before next loop iteration
+    (reset-break-handler)
     (repl-loop env)))
                     
 ;  init-repl
