@@ -109,10 +109,11 @@
 ;;    message - Error message
 ;;    line - Line number
 ;;    col - Column number
+;;    file - Optional file name (string, symbol, or #f)
 ;; Returns:
 ;;    A TokenizeError struct
-(define (make-token-error message line col)
-  (make-tokenize-error message (make-location line col col)))
+(define (make-token-error message line col [file #f])
+  (make-tokenize-error message (make-location line col col file)))
 
 ; localize-error-location
 ;;    Adds location information to an EtaError.
@@ -173,6 +174,11 @@
     
     (if (and location source)
         (let* ([lines (string-split source "\n")]
+               [file (Location-file location)]
+               [file-display (cond
+                              [(string? file) (format "~a:" file)]
+                              [(symbol? file) (format "~a:" (symbol->string file))]
+                              [else ""])]
                [sline (Location-sline location)]
                [scol (Location-scol location)]
                [eline (Location-eline location)]
@@ -212,6 +218,10 @@
                [marker-line (string-append marker-padding (colorize marker 'red) "\n")]
                [after-lines (join-lines (range (+ sline 1) (min nlines (+ eline 2))))])
           
-          (string-append "\n" before-lines code-line marker-line after-lines message))
+          (string-append "\n" 
+                         (if (not (string=? file-display ""))
+                             (string-append (colorize file-display 'magenta) "\n")
+                             "")
+                         before-lines code-line marker-line after-lines message))
         
         message)))

@@ -36,7 +36,7 @@
 ;    None
 (define (run-file filename)
   (let* ([content (read-file filename)]
-         [result (eta-eval-toplevel-in-thread content)])
+         [result (eta-eval-toplevel-in-thread content filename)])
     (exit-with-eval-result result content)))
 
 ; setup-signal-handlers
