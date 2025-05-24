@@ -131,6 +131,30 @@
          [value (get-value-from-eval result)])
     (set! state (assert (EtaValue-value value) 10 "Let shadowing test")))
 
+  ;; Advanced let shadowing test - nested inner values
+  (let* ([input "(let ((x 5)) (let ((x 10)) (let ((x 15)) x)))"]
+         [result (eval-eta-string input)]
+         [value (get-value-from-eval result)])
+    (set! state (assert (EtaValue-value value) 15 "Deeply nested let shadowing test")))
+
+  ;; Advanced let shadowing test - access outer values
+  (let* ([input "(let ((x 5)) (let ((y 10)) x))"]
+         [result (eval-eta-string input)]
+         [value (get-value-from-eval result)])
+    (set! state (assert (EtaValue-value value) 5 "Let accessing outer scope test")))
+
+  ;; Advanced let shadowing with set! - modify inner value
+  (let* ([input "(let ((x 5)) (let ((x 10)) (set! x 20) x))"]
+         [result (eval-eta-string input)]
+         [value (get-value-from-eval result)])
+    (set! state (assert (EtaValue-value value) 20 "Let with set! inner value test")))
+
+  ;; Advanced let shadowing with set! - inner set! doesn't affect outer value
+  (let* ([input "(let ((x 5)) (let ((x 10)) (set! x 20)) x)"]
+         [result (eval-eta-string input)]
+         [value (get-value-from-eval result)])
+    (set! state (assert (EtaValue-value value) 5 "Let inner set! isolation test")))
+
   ;; Let* sequentiality
   (let* ([input "(let* ((x 1) (y (+ x 1))) (+ x y))"]
          [result (eval-eta-string input)]
@@ -267,6 +291,66 @@
          [result (eval-eta-string input)]
          [value (get-value-from-eval result)])
     (set! state (assert (EtaValue-value value) #t "Mutual recursion with letrec test")))
+
+  ;; Function with global variable access
+  (let* ([input "
+(define x 10)
+(define get-x (lambda () x))
+(get-x)"]
+         [result (eval-eta-string input)]
+         [value (get-value-from-eval result third)])
+    (set! state (assert (EtaValue-value value) 10 "Function accessing global variable test")))
+
+  ;; Function with global variable set!
+  (let* ([input "
+(define x 10)
+(define set-x (lambda (val) (set! x val)))
+(set-x 20)
+x"]
+         [result (eval-eta-string input)]
+         [value (get-value-from-eval result fourth)])
+    (set! state (assert (EtaValue-value value) 20 "Function modifying global variable test")))
+
+  ;; Nested function with variable shadowing
+  (let* ([input "
+(define x 10)
+(define nested-fn 
+  (lambda () 
+    (let ((x 20))
+      (lambda () x))))
+((nested-fn))"]
+         [result (eval-eta-string input)]
+         [value (get-value-from-eval result third)])
+    (set! state (assert (EtaValue-value value) 20 "Nested function with shadowing test")))
+
+  ;; Variable shadowing and set! in nested functions
+  (let* ([input "
+(define x 10)
+(define nested-set 
+  (lambda () 
+    (let ((x 20))
+      (set! x 30)
+      x)))
+(nested-set)
+x"]
+         [result (eval-eta-string input)]
+         [value (get-value-from-eval result fourth)])
+    (set! state (assert (EtaValue-value value) 10 "set! in nested function doesn't affect outer scope test")))
+
+  ;; Complex variable interaction with multiple levels
+  (let* ([input "
+(define x 10)
+(define y 20)
+(define complex-fn
+  (lambda ()
+    (let ((x 30))
+      (let ((get-both (lambda () (+ x y))))
+        (set! y 40)
+        (get-both)))))
+(complex-fn)"]
+         [result (eval-eta-string input)]
+         [value (get-value-from-eval result fourth)])
+    (set! state (assert (EtaValue-value value) 70 "Complex variable interaction test")))
 
   state)
 
