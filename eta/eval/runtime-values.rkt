@@ -140,12 +140,9 @@
     (Closure param-spec body captured-env  loc))  ; TODO: validation
 
 (define (pretty-print-Closure closure)
-  (let ([params-spec (Closure-params-spec closure)]
-        [body (Closure-body closure)]
-        [captured-env (Closure-captured-env closure)]
-        [loc (Closure-loc closure)])
-    (format "~a -> ~a" (ParamSpec->string params-spec) (pretty-print-Expr body))))
-
+  (let ([params-spec (Closure-params-spec closure)])
+    (string-append
+     (format "<closure: ~a>" (ParamSpec->string params-spec)))))
 
 (struct StructInstance (name fields) #:transparent)
 
@@ -219,7 +216,7 @@
       [(equal? tag 'ListTag)       (format "(~a)" (string-join (map runtime-value->string value) " "))]
       [(equal? tag 'EtaExprTag)    (format "<expr: ~a>" (pretty-print-Expr value))]
       [(equal? tag 'EtaBuiltinTag) (format "<builtin: ~a>" (pretty-print-Builtin value))]
-      [(equal? tag 'EtaClosureTag) (format "<closure: ~a>" (pretty-print-Closure value))]
+      [(equal? tag 'EtaClosureTag) (pretty-print-Closure value)]
       [(equal? tag 'EtaStructTag)  (format "<StructInstance: ~a>" value)]
       [(equal? tag 'UndefinedTag)  "undefined"]
       [(equal? tag 'VoidTag)       "void"]
