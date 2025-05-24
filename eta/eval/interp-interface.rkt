@@ -37,20 +37,26 @@
 (struct EvalResult (success? value) #:transparent)
 
 ; format-eval-result
-;   Converts an EvalResult to a string representation.
+;   Converts an EvalResult to a string representation
 ; Arguments:
 ;   result - An EvalResult to convert.
+;   source - The original source code (used for formatting errors).
 ; Returns:
 ;   A string representation of the EvalResult.
 (define (format-eval-result result source)
+  ;; Recursively flatten and colorize all values
+  (define (flatten-and-format val)
+    (cond
+      [(list? val) (apply append (map flatten-and-format val))]
+      [else (list (colorize (runtime-value->string val) 'cyan))]))
+
   (if (EvalResult-success? result)
-      (if (list? (EvalResult-value result))
-          (string-join (map (lambda (v) (colorize (runtime-value->string v) 'cyan)) (EvalResult-value result)) "\n")
-          (colorize (runtime-value->string (EvalResult-value result)) 'cyan))
-        (let ([error-value (EvalResult-value result)])
-          (if (EvaluationInterruptedError? error-value)
-              (string-append (colorize "Evaluation interrupted by user" 'yellow) "\n")
-              (colorize (format-error-with-source error-value source) 'red)))))
+      (string-join (flatten-and-format (EvalResult-value result)) "\n")
+      (let ([error-value (EvalResult-value result)])
+        (if (EvaluationInterruptedError? error-value)
+            (string-append (colorize "Evaluation interrupted by user" 'yellow) "\n")
+            (colorize (format-error-with-source error-value source) 'red)))))
+
 
 ; exit-with-eval-result
 ;   Exits the program with the given EvalResult.
