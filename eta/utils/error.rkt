@@ -21,6 +21,9 @@
          RuntimeError
          make-runtime-error
          RuntimeError?
+         EvaluationInterruptedError
+         make-evaluation-interrupted-error
+         EvaluationInterruptedError?
          )
 
 (require "location.rkt" "console.rkt")
@@ -38,6 +41,7 @@
 (struct TokenizeError EtaError () #:transparent)
 (struct ParseError EtaError () #:transparent)
 (struct RuntimeError EtaError () #:transparent)
+(struct EvaluationInterruptedError RuntimeError () #:transparent)
 
 ;; make-eta-error
 ;;    Creates a new EtaError object.
@@ -88,6 +92,17 @@
 (define (make-runtime-error message [location #f])
   (RuntimeError 'runtime message location))
 
+;; make-evaluation-interrupted-error
+;;    Creates a new EvaluationInterruptedError object.
+;; Arguments:
+;;    message - A string describing the error
+;;    location - Source location information (optional, defaults to #f)
+;; Returns:
+;;    A new EvaluationInterruptedError instance
+(define (make-evaluation-interrupted-error [message "Evaluation interrupted by user"] [location #f])
+  (EvaluationInterruptedError 'interrupted message location))
+  
+
 ;; make-token-error
 ;;    Creates an EtaError for tokenizer errors
 ;; Arguments:
@@ -113,6 +128,7 @@
            [(TokenizeError? error) (TokenizeError (EtaError-type error) message location)]
            [(ParseError? error) (ParseError (EtaError-type error) message location)]
            [(RuntimeError? error) (RuntimeError (EtaError-type error) message location)]
+           [(EvaluationInterruptedError? error) (EvaluationInterruptedError (EtaError-type error) message location)]
          )
       )
       (error (format "Expected an EtaError, got: ~a" error))))
@@ -135,6 +151,7 @@
                       [(TokenizeError? error) "TokenizeError"]
                       [(ParseError? error) "ParseError"]
                       [(RuntimeError? error) "RuntimeError"]
+                      [(EvaluationInterruptedError? error) "EvaluationInterruptedError"]
                       [else "Error"])])
     (string-append
      error-type
