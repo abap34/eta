@@ -90,11 +90,11 @@
 ;   source - The source code to evaluate. (string)
 ; Returns:
 ;  EvalResult containing success status and evaluated value.
-(define (eta-eval env source)
+(define (eta-eval env source [file #f])
    (unless (string? source)
      (error "eta-eval: source must be a string"))
 
-  (let ([tokens (tokenize source)])
+  (let ([tokens (tokenize source file)])
     (if (EtaError? tokens)
         (EvalResult #f tokens)
         (let ([parsed-result (desugar (parse tokens))])
@@ -109,34 +109,37 @@
 ;    Evaluates an script in new toplevel environment.
 ; Arguments:
 ;    source - The source code to evaluate. (string)
+;    file - Optional file name or source identifier. (string, symbol, or #f)
 ; Returns:
 ;    EvalResult containing success status and evaluated value.
-(define (eta-eval-toplevel source)
+(define (eta-eval-toplevel source [file #f])
   (let ([global-env (init-basic-env)])
-    (eta-eval global-env source)))
+    (eta-eval global-env source file)))
 
 ; eta-eval-toplevel-in-thread
 ;    Evaluates a script in new toplevel environment with interruption support.
 ; Arguments:
 ;    source - The source code to evaluate. (string)
+;    file - Optional file name or source identifier. (string, symbol, or #f)
 ; Returns:
 ;    EvalResult containing success status and evaluated value.
-(define (eta-eval-toplevel-in-thread source)
+(define (eta-eval-toplevel-in-thread source [file #f])
   (let ([global-env (init-basic-env)])
-    (eta-eval-in-thread global-env source)))
+    (eta-eval-in-thread global-env source file)))
 
 ; eta-eval-in-thread
 ;   Evaluates an expression in a separate thread with interruption support.
 ; Arguments:
 ;   env - The environment in which to evaluate the expression.
 ;   source - The source code to evaluate. (string)
+;   file - Optional file name or source identifier. (string, symbol, or #f)
 ; Returns:
 ;  EvalResult containing success status and evaluated value.
-(define (eta-eval-in-thread env source)
+(define (eta-eval-in-thread env source [file 'repl])
   (unless (string? source)
     (error "Internal error: eta-eval-in-thread: source must be a string"))
 
-  (let ([tokens (tokenize source)])
+  (let ([tokens (tokenize source file)])
     (if (EtaError? tokens)
         (EvalResult #f tokens)
         (let ([parsed-result (desugar (parse tokens))])

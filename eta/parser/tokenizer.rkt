@@ -54,14 +54,14 @@
 
 (define (tokens-span tokens)
   (if (empty? tokens)
-      (Location 0 0 0 0)
+      (Location #f 0 0 0 0)
       (let ([first-token (first tokens)]
             [last-token (last tokens)])
         (if (and first-token last-token)
             (create-span-location (Token-loc first-token) (Token-loc last-token))
             (if first-token
                 (Token-loc first-token)
-                (Location 0 0 0 0))))))
+                (Location #f 0 0 0 0))))))
 
 (define (TokenType->name typ)
   (cond
@@ -99,7 +99,7 @@
           (Token-val token)
           (location->string (Token-loc token))))
 
-(define (tokenize src)
+(define (tokenize src [file #f])
   (unless (string? src)
     (error 'tokenize "expected a string, got: ~v" src))
 
@@ -123,7 +123,7 @@
                         #\< #\= #\> #\? #\@ #\^ #\_))))
 
   (define (make-token typ val sline scol eline ecol)
-    (Token typ val (Location sline scol eline ecol)))
+    (Token typ val (Location file sline scol eline ecol)))
 
   (define (read-symbol pos line col)
     (define (loop p)
@@ -180,7 +180,7 @@
   (define (read-string pos line col)
     (define (loop p acc l c)
       (if (>= p len)
-          (values (make-tokenize-error "Unterminated string literal" (make-location line col col)) p l c)
+          (values (make-tokenize-error "Unterminated string literal" (make-location line col col file)) p l c)
           (let ((ch (get-at p)))
             (cond
               [(char=? ch #\")
@@ -190,7 +190,7 @@
                (if (>= (+ p 1) len)
                    (values (make-tokenize-error 
                            "Unexpected end after escape character" 
-                           (make-location l c c)) 
+                           (make-location l c c file)) 
                            p l c)
                    (let ((next (get-at (+ p 1))))
                      (loop (+ p 2)
@@ -209,7 +209,7 @@
     (if (>= (+ pos 1) len)
         (values (make-tokenize-error 
                 "Unexpected end after '#'" 
-                (make-location line col col)) 
+                (make-location line col col file)) 
                 pos line col)
         (let ((ch (get-at (+ pos 1))))
           (cond
@@ -222,7 +222,7 @@
             [else
              (values (make-tokenize-error 
                      (format "Invalid boolean literal: #~a" ch)
-                     (make-location line col col)
+                     (make-location line col col file)
                      )
                      (+ pos 2) line (+ col 2))]))))
 
@@ -248,7 +248,7 @@
             [(symbol-char? ch) (read-symbol pos line col)]
             [else (values (make-tokenize-error 
                           (format "Unexpected character: ~a" ch)
-                          (make-location line col col))
+                          (make-location line col col file))
                           pos1 line1 col1)]))))
 
   (define (tokenize-loop pos line col tokens-acc errors-acc)

@@ -4,6 +4,7 @@
          "parser-tests.rkt"
          "tokenizer-tests.rkt"
          "eval-tests.rkt"
+         "location-tests.rkt"
          "../eta/utils/console.rkt")
 
 ;  available-tests
@@ -17,6 +18,7 @@
     (cons "tokenizer" run-tokenizer-tests)
     (cons "parser" run-parser-tests)
     (cons "eval" run-eval-tests)
+    (cons "location" run-location-tests)
   ))
 
 ;  print-help
