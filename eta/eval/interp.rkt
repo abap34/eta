@@ -235,10 +235,11 @@
         (if (RuntimeError? v)
             (k v new-stack)
             (begin
-              (define-variable! env var-name v #f) ; non breaking set
-              (k v new-stack))))
+              (let ([define-result (define-variable! env var-name v #f)])
+                (if (RuntimeError? define-result)
+                    (k define-result new-stack)
+                    (k v new-stack))))))
       stack)))
-
 
 ;  arity-check
 ;     Check if arguments match parameter specification
@@ -426,9 +427,10 @@
                   (lambda (val new-stack)
                     (if (RuntimeError? val)
                         (k val new-stack)
-                        (begin
-                          (define-variable! env var-name val #t)
-                          (k val new-stack))))
+                        (let ([set-result (define-variable! env var-name val #t)])
+                          (if (RuntimeError? set-result)
+                              (k (localize-error-location set-result (Expr-loc expr)) new-stack)
+                              (k val new-stack)))))
                       stack))))
 
 ; eval-body-of-body
