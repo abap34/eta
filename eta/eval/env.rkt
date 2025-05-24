@@ -85,25 +85,38 @@
   (Env (make-hash) parent))
 
 ; define-variable!
-;     Define a new variable in the environment 
+;     Define or set a variable in the environment 
 ;  Arguments:
 ;     env   - the starting Env
 ;     name  - variable name
 ;     value - value
-;     breaking? - #t if this is a breaking definition
+;     breaking? - #t if this is for set! (finds variable in parent scopes)
+;                 #f if this is for define (only uses current env)
 ;  Returns:
-;     #t if successful, RuntimeError if name already exists and breaking? is #f
+;     #t if successful, RuntimeError if:
+;     - For define (breaking? = #f): name already exists
+;     - For set! (breaking? = #t): variable not found in any scope
+;     - For both: value is not an EtaValue
 (define (define-variable! env name value breaking?)
-(unless (EtaValue? value)
-    (make-runtime-error (format "Failed to define variable. Invalid value type for variable: ~a. Expected EtaValue." name)))
-  (if (hash-has-key? (Env-frame env) name)
-      (if (not breaking?)
+  (unless (EtaValue? value)
+      (make-runtime-error (format "Failed to define variable. Invalid value type for variable: ~a. Expected EtaValue." name)))
+  
+  (if breaking?
+      (let loop ([e env])
+        (cond
+          [(not e) (make-runtime-error (format "Cannot set undefined variable: ~a" name))]
+          [(hash-has-key? (Env-frame e) name) 
+           (begin
+             (hash-set! (Env-frame e) name value)
+             #t)]
+          [else (loop (Env-parent e))]))
+      
+      ; define behavior: only use current env
+      (if (is-defined? env name)
           (make-runtime-error (format "Variable already defined: ~a" name))
           (begin
             (hash-set! (Env-frame env) name value)
-            value))
-      (hash-set! (Env-frame env) name value))
-  #t)
+            #t))))
 
 ; define-variable
 ;    Define a new variable in the environment (non-breaking)
