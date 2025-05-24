@@ -84,6 +84,7 @@
 (define (make-child-env parent)
   (Env (make-hash) parent))
 
+
 ; define-variable!
 ;     Define or set a variable in the environment 
 ;  Arguments:
@@ -94,7 +95,7 @@
 ;                 #f if this is for define (only uses current env)
 ;  Returns:
 ;     #t if successful, RuntimeError if:
-;     - For define (breaking? = #f): name already exists
+;     - For define (breaking? = #f): name already exists in current env
 ;     - For set! (breaking? = #t): variable not found in any scope
 ;     - For both: value is not an EtaValue
 (define (define-variable! env name value breaking?)
@@ -111,8 +112,8 @@
              #t)]
           [else (loop (Env-parent e))]))
       
-      ; define behavior: only use current env
-      (if (is-defined? env name)
+      ; define behavior: only check in **current** env
+      (if (hash-has-key? (Env-frame env) name)
           (make-runtime-error (format "Variable already defined: ~a" name))
           (begin
             (hash-set! (Env-frame env) name value)
