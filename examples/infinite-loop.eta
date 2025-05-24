@@ -1,0 +1,4 @@
+(define (infinite-loop i)
+    (infinite-loop (+ i 1)))
+    
+(infinite-loop 0)
