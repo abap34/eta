@@ -1,6 +1,9 @@
 #lang racket
 
-(require "../parser/ast.rkt"
+(require "../parser/tokenizer.rkt"
+         "../desugar/desugar.rkt"
+         "../parser/ast.rkt"
+         "../parser/parser.rkt"
          "../utils/error.rkt"
          "runtime-values.rkt"
          "env.rkt"
@@ -91,6 +94,7 @@
       [(equal? head 'SetHead)    (eval-set! expr env k stack)]
       [(equal? head 'BodyHead)   (eval-body expr env k stack #:tail? tail?)]
       [(equal? head 'CallCCHead) (eval-call/cc expr env k stack #:tail? tail?)]
+      [(equal? head 'LoadHead)   (eval-load expr env k stack #:tail? tail?)]
       [else (k (make-runtime-error 
                 (format "Internal error: unexpected expression ~a with head ~a" 
                         (pretty-print-Expr expr) head))
@@ -538,3 +542,52 @@
                 (k (EtaValue 'VoidTag '()) new-stack)
                 (eval-body-of-body exps env k new-stack #:tail? tail?))))
       stack)))
+
+
+; string-const-node?
+;     Check if a node is a StringConstNode
+(define (string-const-node? node)
+  (and (Expr? node)
+       (eq? (Expr-head node) 'ConstHead)
+       (let ([args (Expr-args node)])
+         (and (= (length args) 2)
+              (equal? (first args) 'StringConstNode)))))
+
+
+;  eval-load
+;     Evaluate a Load expression to load and execute a file
+;  Arguments:
+;     expr - A Load expression containing the file name
+;     env - The environment in which to evaluate
+;     k - The continuation to receive the result
+;     stack - The current call stack
+;     tail? - Whether this expression is in tail position (#t) or not (#f)
+;  Returns:
+;     Via k: The result of evaluating the loaded file or a RuntimeError
+(define (eval-load expr env k stack #:tail? [tail? #f])
+  (let* ([load-args (Expr-args expr)])
+    (unless (and (list? load-args)
+                 (= (length load-args) 1)
+                 (string-const-node? (first load-args)))
+      (k (make-runtime-error
+          (format "Load expression must have exactly one string argument, got: ~a" load-args))
+         stack))
+
+    (let* ([filename (first load-args)]
+           [file-exists? (file-exists? filename)])
+        (if (not file-exists? )
+            (k (make-runtime-error
+                (format "File not found: ~a" filename)
+                (Expr-loc expr))
+              stack)
+            (let* ([content (file->string filename)] 
+                   [tokens (tokenize content filename)])
+                  (if (EtaError? tokens)
+                    ; MEMO: localize error location is not needed here. It is better to display
+                    ; the original location from the file.
+                    (k tokens stack)
+                    (let ([parsed-result (desugar (parse tokens))])
+                      (if (EtaError? parsed-result)
+                          (k parsed-result stack)  
+                          (let ([result (eval-toplevel-exprs parsed-result env)])
+                            (k result stack))))))))))
