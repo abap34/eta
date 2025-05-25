@@ -81,6 +81,49 @@
   (displayln (bold " REPL! ✨"))
   (displayln (colorize "Type ':help' for available commands." 'cyan)))
 
+;  count-bracket-balance
+;     Count the bracket balance (left - right) in a string
+;  Arguments:
+;     str - Input string to analyze
+;  Returns:
+;     Integer representing bracket balance (positive = more left brackets)
+(define (count-bracket-balance str)
+  (define (count-char char)
+    (cond
+      [(char=? char #\() 1]
+      [(char=? char #\)) -1]
+      [(char=? char #\[) 1]
+      [(char=? char #\]) -1]
+      [(char=? char #\{) 1]
+      [(char=? char #\}) -1]
+      [else 0]))
+  
+  (foldl + 0 (map count-char (string->list str))))
+
+;  read-multi-line-input
+;     Read input until bracket balance is zero or negative
+;  Arguments:
+;     initial-line - First line of input
+;  Returns:
+;     Complete multi-line input as a single string
+(define (read-multi-line-input initial-line)
+  (define (continuation-prompt)
+    (display (colorize "... " 'yellow)))
+  
+  (let loop ([lines (list initial-line)]
+             [balance (count-bracket-balance initial-line)])
+    (if (<= balance 0)
+        (string-join (reverse lines) "\n")
+        (begin
+          (continuation-prompt)
+          (let ([next-line (read-line)])
+            (cond
+              [(eof-object? next-line)
+               (string-join (reverse lines) "\n")]
+              [else
+               (let ([new-balance (+ balance (count-bracket-balance next-line))])
+                 (loop (cons next-line lines) new-balance))]))))))
+
 (define (prompt)
   (display (colorize "eta> " 'green)))
 
@@ -108,19 +151,23 @@
              (repl-loop env (cdr result))
              (exit)))]
       [else 
-       ;; Add input to history and get its index
-       (let-values ([(new-history history-index) (repl-history-add history input)])
-         (with-clean-break-state
-          (lambda ()
-            (with-handlers ([exn:break? (lambda (e)
-                                          (displayln (colorize "Evaluation interrupted." 'yellow)))])
-              ;; Pass REPL history info as location identifier
-              ;; Create a closure to retrieve source code
-              (displayln (format-eval-result 
-                          (eta-eval-in-thread env input (list 'repl-history history-index))
-                          (lambda (file-id) (get-source-from-identifier new-history file-id)))))))
-         (reset-break-handler)
-         (repl-loop env new-history))])))
+       ;; Check bracket balance and read multi-line input if needed
+       (let* ([complete-input (if (> (count-bracket-balance input) 0)
+                                  (read-multi-line-input input)
+                                  input)])
+         ;; Add input to history and get its index
+         (let-values ([(new-history history-index) (repl-history-add history complete-input)])
+           (with-clean-break-state
+            (lambda ()
+              (with-handlers ([exn:break? (lambda (e)
+                                            (displayln (colorize "Evaluation interrupted." 'yellow)))])
+                ;; Pass REPL history info as location identifier
+                ;; Create a closure to retrieve source code
+                (displayln (format-eval-result 
+                            (eta-eval-in-thread env complete-input (list 'repl-history history-index))
+                            (lambda (file-id) (get-source-from-identifier new-history file-id)))))))
+           (reset-break-handler)
+           (repl-loop env new-history)))])))
 
 ;  init-repl
 ;     Initializes and starts the eta REPL.
