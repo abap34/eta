@@ -1,7 +1,9 @@
 #lang racket
 
 (require "../utils/error.rkt"
+        "../utils/console.rkt"
          "runtime-values.rkt"
+         racket/list
         )
 
 (provide 
@@ -14,6 +16,7 @@
   is-defined?
   assign-params
   defined?
+  pretty-print-Env
 )
 
 ;  Env
@@ -175,3 +178,45 @@
 
   (assign-each (ParamSpec-required param-spec) args (make-child-env env))
   )
+
+
+;  pretty-print-Env
+;     Pretty-print the environment structure showing all defined variables
+;  Arguments:
+;     env - Environment to print
+;     show-builtins? - Whether to show built-in functions (default: #f)
+;  Returns:
+;     void (prints to stdout)
+(define (pretty-print-Env env [show-builtins? #f])
+  (displayln (colorize "Current Environment:" 'magenta))
+  (define (print-env-frame frame prefix is-toplevel?)
+    (define bindings (sort (hash->list frame) string<? #:key car))
+    (cond
+      [(null? bindings)
+       (displayln (format "~a(empty)" prefix))]
+      [else
+       (for ([binding bindings])
+         (define name (car binding))
+         (define value (cdr binding))
+         (when (or show-builtins? 
+                   (not (and (RuntimeValue? value)
+                             (equal? (RuntimeValue-tag value) 'EtaBuiltinTag))))
+           (displayln (format "~a~a: ~a" 
+                             prefix
+                             (colorize name 'green)
+                             (colorize (runtime-value->string value) 'cyan)))))]))
+  
+  (define (traverse-env env level)
+    (when env
+      (let ([frame (Env-frame env)]
+            [parent (Env-parent env)]
+            [prefix (make-string (* level 2) #\space)])
+        (if (= level 0)
+            (displayln (format "~a└─ Current scope:" prefix))
+            (displayln (format "~a├─ Parent scope ~a:" prefix level)))
+        (print-env-frame frame (string-append prefix "   ") (= level 0))
+        (when parent
+          (traverse-env parent (+ level 1))))))
+  
+  (traverse-env env 0)
+  (newline))
