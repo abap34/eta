@@ -1,12 +1,14 @@
-(define (even? n)
+(set-max-stack-depth! 90)
+
+(define (even-tco n)
   (if (= n 0)
       #t
-      (odd? (- n 1))))
+      (odd-tco (- n 1))))
 
-(define (odd? n)
+(define (odd-tco n)
   (if (= n 0)
       #f
-      (even? (- n 1))))
+      (even-tco (- n 1))))
 
 (define (not x)
   (if x #f #t))
@@ -17,7 +19,7 @@
       (not (even-without-tco (- n 1)))))
 
 (display "100000 is even? with tco    : ")
-(display (even? 100000))
+(display (even-tco 100000))
 (display "\n")
 
 

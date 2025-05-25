@@ -147,3 +147,46 @@
 ;;   The square of n
 (define (square n)
   (* n n))
+
+;; number? - Checks if a value is a number
+;; Arguments:
+;;   x - A value
+;; Returns:
+;;   #t if x is a number, #f otherwise
+(define (number? x)
+  (or (int? x) (float? x))) 
+
+;; >= - Checks if the first number is greater than or equal to the second
+;; Arguments:
+;;   a - First number
+;;   b - Second number
+(define (>= a b)
+  (if (and (number? a) (number? b))
+      (if (< a b) #f #t)
+      (error ">=: arguments must be numbers")))
+
+;; <= - Checks if the first number is less than or equal to the second
+;; Arguments:
+;;   a - First number
+;;   b - Second number
+(define (<= a b)
+  (if (and (number? a) (number? b))
+      (if (> a b) #f #t)
+      (error "<=: arguments must be numbers")))
+
+
+;; round 
+;; Rounds a number to the nearest integer
+;; Arguments:
+;;   n - A number
+(define (round n)
+  (if (number? n)
+      (if (>= n 0)
+          (if (< (% n 1) 0.5)
+              (// n 1)
+              (+ (// n 1) 1))
+          (if (< (% n 1) -0.5)
+              (- (// n 1) 1)
+              (// n 1)))
+      (error "round: argument must be a number")))
+      

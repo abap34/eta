@@ -16,6 +16,10 @@
          Pair-cdr
          set-Pair-car!
          set-Pair-cdr!
+         make-Vector
+         Vector?
+         Vector-elements
+         set-Vector-elements!
          ParamSpec-required
          ParamSpec-variadic
          ParamSpec?
@@ -49,6 +53,7 @@
       (equal? tag 'EtaBuiltinTag)
       (equal? tag 'EtaClosureTag)
       (equal? tag 'EtaStructTag)
+      (equal? tag 'VectorTag)
       (equal? tag 'VoidTag)
       (equal? tag 'UndefinedTag)
       (equal? tag 'EtaContinuationTag)))
@@ -67,6 +72,7 @@
     [(equal? tag 'EtaBuiltinTag) "Builtin"]
     [(equal? tag 'EtaClosureTag) "Closure"]
     [(equal? tag 'EtaStructTag)  "StructInstance"]
+    [(equal? tag 'VectorTag)     "Vector"]
     [(equal? tag 'VoidTag)       "Void"]
     [(equal? tag 'UndefinedTag)  "Undefined"]
     [(equal? tag 'EtaContinuationTag) "Continuation"]
@@ -94,6 +100,7 @@
     [(equal? tag 'EtaBuiltinTag) (tag-checker Builtin? tag "Builtin?")]
     [(equal? tag 'EtaClosureTag) (tag-checker Closure? tag "EtaClosure?")]
     [(equal? tag 'EtaStructTag)  (tag-checker StructInstance? tag "StructInstance?")]
+    [(equal? tag 'VectorTag)     (tag-checker Vector? tag "Vector?")]
     [(equal? tag 'VoidTag)       (tag-checker (lambda (x) (or (null? x) (equal? x '()))) tag "Void")]
     [(equal? tag 'UndefinedTag)  (tag-checker (lambda (x) (equal? x 'undefined)) tag "Undefined")]
     [(equal? tag 'EtaContinuationTag) (tag-checker Continuation? tag "Continuation?")]
@@ -110,6 +117,16 @@
 (struct Pair (car cdr) #:transparent #:mutable)
 (define (make-Pair car cdr)
     (Pair car cdr))
+
+; Vector
+;   A structure to represent a vector in the runtime
+; Arguments:
+;    elements - A mutable vector of runtime values
+(struct Vector (elements) #:transparent #:mutable)
+(define (make-Vector size init-value)
+  (if (and (number? size) (>= size 0))
+      (Vector (make-vector size init-value))
+      (error (format "Internal error: make-Vector expects a non-negative number for size, but got ~a" size))))
 
 ; list->Pair
 ;   Convert a list of RuntimeValues into a Pair object
@@ -145,6 +162,25 @@
     (if (equal? cdr (RuntimeValue 'NilValueTag '()))
         (format "(~a)" (runtime-value->string car))
         (format "(~a . ~a)" (runtime-value->string car) (runtime-value->string cdr)))))
+
+; pretty-print-Vector
+;   Convert a Vector into a string representation
+; Arguments:
+;    vector - A Vector object
+; Returns:
+;    A string representation of the vector
+; Example:
+;    (pretty-print-Vector (Vector #(1 2 3))) ; => "[1 2 3]"
+(define (pretty-print-Vector vector)
+  (unless (Vector? vector)
+    (error "Internal error: pretty-print-Vector expects a Vector, but got ~a" vector))
+  
+  (let ([elements (Vector-elements vector)])
+    (format "[~a]" 
+            (string-join 
+             (map runtime-value->string 
+                  (vector->list elements)) 
+             " "))))
 
 
 ; ParamSpec
@@ -278,6 +314,7 @@
       [(equal? tag 'EtaBuiltinTag) (format "<builtin: ~a>" (pretty-print-Builtin value))]
       [(equal? tag 'EtaClosureTag) (pretty-print-Closure value)]
       [(equal? tag 'EtaStructTag)  (format "<StructInstance: ~a>" value)]
+      [(equal? tag 'VectorTag)     (pretty-print-Vector value)]
       [(equal? tag 'UndefinedTag)  "undefined"]
       [(equal? tag 'VoidTag)       "void"]
       [(equal? tag 'EtaContinuationTag) (format "<continuation>")]

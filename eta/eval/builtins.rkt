@@ -3,7 +3,8 @@
 (require "runtime-values.rkt"
          "env.rkt"
          "../utils/error.rkt"
-)
+         "stack-frame.rkt"
+         racket/file)
 
 
 (provide 
@@ -20,6 +21,7 @@
   struct-value?
   undefined-value?
   void-value?
+  vector-value?
   add-builtins-to-env
 )
 
@@ -99,6 +101,9 @@
 
 (define (void-value? value)
   (and (RuntimeValue? value) (equal? (RuntimeValue-tag value) 'Void)))
+
+(define (vector-value? value)
+  (and (RuntimeValue? value) (equal? (RuntimeValue-tag value) 'VectorTag)))
 
 ;  check-args-count
 ;     Validates that the number of arguments matches the expected count
@@ -216,6 +221,66 @@
   (check-args-count "read-line" args 0
     (lambda (checked-args)
       (make-runtime-value 'StringTag (read-line)))))
+
+;  flush-impl
+;     Flushes the output buffer to ensure immediate display
+;  Arguments:
+;     args - No arguments expected
+;     env - The environment (unused)
+;  Returns:
+;     Void
+(define (flush-impl args env)
+  (check-args-count "flush" args 0
+    (lambda (checked-args)
+      (flush-output)
+      (make-runtime-value 'VoidTag '()))))
+
+;  newline-impl
+;     Outputs a newline character
+;  Arguments:
+;     args - No arguments expected
+;     env - The environment (unused)
+;  Returns:
+;     Void
+(define (newline-impl args env)
+  (check-args-count "newline" args 0
+    (lambda (checked-args)
+      (newline)
+      (make-runtime-value 'VoidTag '()))))
+
+
+;  set-max-stack-depth!-impl
+;     Sets the maximum call stack depth to prevent infinite recursion
+;  Arguments:
+;     args - One argument: depth (positive integer)
+;     env - The environment (unused)
+;  Returns:
+;     Void
+(define (set-max-stack-depth!-impl args env)
+  (check-args-count "set-max-stack-depth!" args 1
+    (lambda (checked-args)
+      (let ([depth-arg (first checked-args)])
+        (if (int-value? depth-arg)
+            (let ([depth (RuntimeValue-value depth-arg)])
+              (if (> depth 0)
+                  (begin
+                    (set-max-stack-depth! depth)
+                    (make-runtime-value 'VoidTag '()))
+                  (make-runtime-error (format "set-max-stack-depth! expects a positive integer, got: ~a" depth))))
+            (make-runtime-error (format "set-max-stack-depth! expects an integer, got: ~a" 
+                               (runtime-value->string depth-arg))))))))
+
+;  get-max-stack-depth-impl
+;     Gets the current maximum call stack depth
+;  Arguments:
+;     args - No arguments expected
+;     env - The environment (unused)
+;  Returns:
+;     The current maximum stack depth as an integer
+(define (get-max-stack-depth-impl args env)
+  (check-args-count "get-max-stack-depth" args 0
+    (lambda (checked-args)
+      (make-runtime-value 'IntTag (get-max-stack-depth)))))
 
 ;; Arithmetic Operations
 (define (add-impl args env)
@@ -471,6 +536,23 @@
                (make-runtime-error 
                  (format "string-append expects strings, got: ~a" 
                         (runtime-value->string arg))))))))
+
+
+; string=?-impl
+;     Checks if two strings are equal
+(define (string=?-impl args env)
+  (check-args-count "string=?" args 2
+    (lambda (checked-args)
+      (let ([arg1 (first checked-args)]
+            [arg2 (second checked-args)])
+        (if (and (string-value? arg1) (string-value? arg2))
+            (make-runtime-value 'BooleanTag 
+              (equal? (RuntimeValue-value arg1) 
+                      (RuntimeValue-value arg2)))
+            (make-runtime-error 
+              (format "string=? expects two strings, got: ~a and ~a" 
+                     (runtime-value->string arg1) 
+                     (runtime-value->string arg2))))))))
    
 
 ;  error-impl
@@ -497,8 +579,8 @@
 ;   make-type-checker
 ;     Creates a type-checking function for a specific type
 (define (make-type-checker name tag)
-  (lambda (value)
-    (check-args-count name (value) 1
+  (lambda (args env)
+    (check-args-count name args 1
       (lambda (checked-args)
         (let ([arg (first checked-args)])
           (if (equal? (RuntimeValue-tag arg) tag)
@@ -544,6 +626,125 @@
             (make-runtime-error (format "number->string expects a number, got: ~a" 
                                (runtime-value->string arg))))))))
 
+;  make-vector-impl
+;     Creates a new vector with the specified size and initial value
+;  Arguments:
+;     args - Two arguments: size (integer) and initial value
+;     env - The environment (unused)
+;  Returns:
+;     A new vector filled with the initial value
+(define (make-vector-impl args env)
+  (check-args-count "make-vector" args 2
+    (lambda (checked-args)
+      (let ([size-arg (first checked-args)]
+            [init-arg (second checked-args)])
+        (if (int-value? size-arg)
+            (let ([size (RuntimeValue-value size-arg)])
+              (if (>= size 0)
+                  (let ([vector (make-Vector size init-arg)])
+                    (make-runtime-value 'VectorTag vector))
+                  (make-runtime-error (format "make-vector expects a non-negative size, got: ~a" size))))
+            (make-runtime-error (format "make-vector expects an integer size, got: ~a" 
+                               (runtime-value->string size-arg))))))))
+
+;  vector-ref-impl
+;     Returns the element at the specified index in a vector
+;  Arguments:
+;     args - Two arguments: vector and index (integer)
+;     env - The environment (unused)
+;  Returns:
+;     The element at the specified index
+(define (vector-ref-impl args env)
+  (check-args-count "vector-ref" args 2
+    (lambda (checked-args)
+      (let ([vector-arg (first checked-args)]
+            [index-arg (second checked-args)])
+        (if (vector-value? vector-arg)
+            (if (int-value? index-arg)
+                (let ([vector (RuntimeValue-value vector-arg)]
+                      [index (RuntimeValue-value index-arg)])
+                  (let ([elements (Vector-elements vector)])
+                    (if (and (>= index 0) (< index (vector-length elements)))
+                        (vector-ref elements index)
+                        (make-runtime-error (format "vector-ref: index ~a out of bounds for vector of size ~a" 
+                                           index (vector-length elements))))))
+                (make-runtime-error (format "vector-ref expects an integer index, got: ~a" 
+                                   (runtime-value->string index-arg))))
+            (make-runtime-error (format "vector-ref expects a vector, got: ~a" 
+                               (runtime-value->string vector-arg))))))))
+
+;  vector-set!-impl
+;     Sets the element at the specified index in a vector
+;  Arguments:
+;     args - Three arguments: vector, index (integer), and new value
+;     env - The environment (unused)
+;  Returns:
+;     Void
+(define (vector-set!-impl args env)
+  (check-args-count "vector-set!" args 3
+    (lambda (checked-args)
+      (let ([vector-arg (first checked-args)]
+            [index-arg (second checked-args)]
+            [value-arg (third checked-args)])
+        (if (vector-value? vector-arg)
+            (if (int-value? index-arg)
+                (let ([vector (RuntimeValue-value vector-arg)]
+                      [index (RuntimeValue-value index-arg)])
+                  (let ([elements (Vector-elements vector)])
+                    (if (and (>= index 0) (< index (vector-length elements)))
+                        (begin
+                          (vector-set! elements index value-arg)
+                          (make-runtime-value 'VoidTag '()))
+                        (make-runtime-error (format "vector-set!: index ~a out of bounds for vector of size ~a" 
+                                           index (vector-length elements))))))
+                (make-runtime-error (format "vector-set! expects an integer index, got: ~a" 
+                                   (runtime-value->string index-arg))))
+            (make-runtime-error (format "vector-set! expects a vector, got: ~a" 
+                               (runtime-value->string vector-arg))))))))
+
+;  vector-length-impl
+;     Returns the length of a vector
+;  Arguments:
+;     args - One argument: a vector
+;     env - The environment (unused)
+;  Returns:
+;     The length of the vector as an integer
+(define (vector-length-impl args env)
+  (check-args-count "vector-length" args 1
+    (lambda (checked-args)
+      (let ([vector-arg (first checked-args)])
+        (if (vector-value? vector-arg)
+            (let ([vector (RuntimeValue-value vector-arg)])
+              (let ([elements (Vector-elements vector)])
+                (make-runtime-value 'IntTag (vector-length elements))))
+            (make-runtime-error (format "vector-length expects a vector, got: ~a" 
+                               (runtime-value->string vector-arg))))))))
+
+;  vector-copy-impl
+;     Creates a copy of a vector
+;  Arguments:
+;     args - One argument: a vector to copy
+;     env - The environment (unused)
+;  Returns:
+;     A new vector with the same elements
+(define (vector-copy-impl args env)
+  (check-args-count "vector-copy" args 1
+    (lambda (checked-args)
+      (let ([vector-arg (first checked-args)])
+        (if (vector-value? vector-arg)
+            (let* ([vector (RuntimeValue-value vector-arg)]
+                   [elements (Vector-elements vector)]
+                   [size (vector-length elements)]
+                   [new-vector (make-Vector size (make-runtime-value 'IntTag 0))])
+              (let loop ([i 0])
+                (if (< i size)
+                    (begin
+                      (vector-set! (Vector-elements new-vector) i (vector-ref elements i))
+                      (loop (+ i 1)))
+                    (make-runtime-value 'VectorTag new-vector))))
+            (make-runtime-error (format "vector-copy expects a vector, got: ~a" 
+                               (runtime-value->string vector-arg))))))))
+
 ;  add-builtins-to-env
 ;     Adds built-in functions to the environment
 ;  Arguments:
@@ -556,7 +757,11 @@
     ;; I/O Functions
     (define-builtin! env "display" display-impl)
     (define-builtin! env "read-line" read-line-impl)
+    (define-builtin! env "flush" flush-impl)
+    (define-builtin! env "newline" newline-impl)
     (define-builtin! env "error" error-impl)
+    (define-builtin! env "flush" flush-impl)
+    (define-builtin! env "newline" newline-impl)
 
     ;; Arithmetic Operations
     (define-builtin! env "+" add-impl)
@@ -578,11 +783,19 @@
     (define-builtin! env "set-cdr!" set-cdr-impl)
     (define-builtin! env "null?" null?-impl)
     
+    ;; Vector Operations
+    (define-builtin! env "make-vector" make-vector-impl)
+    (define-builtin! env "vector-ref" vector-ref-impl)
+    (define-builtin! env "vector-set!" vector-set!-impl)
+    (define-builtin! env "vector-length" vector-length-impl)
+    (define-builtin! env "vector-copy" vector-copy-impl)
+    
     ;; String Operations
     (define-builtin! env "string-length" string-length-impl)
     (define-builtin! env "substring" substring-impl)
     (define-builtin! env "string-ref" string-ref-impl)
     (define-builtin! env "string-append" string-append-impl)
+    (define-builtin! env "string=?" string=?-impl)
     
     ;; Type Checking and Conversion
     (define-builtin! env "int?" (make-type-checker "int?" 'IntTag))
@@ -591,6 +804,7 @@
     (define-builtin! env "boolean?" (make-type-checker "boolean?" 'BooleanTag))
     (define-builtin! env "nil?" (make-type-checker "nil?" 'NilValueTag))
     (define-builtin! env "pair?" (make-type-checker "pair?" 'PairTag))
+    (define-builtin! env "vector?" (make-type-checker "vector?" 'VectorTag))
     (define-builtin! env "expr?" (make-type-checker "expr?" 'EtaExprTag))
     (define-builtin! env "builtin?" (make-type-checker "builtin?" 'EtaBuiltinTag))
     (define-builtin! env "closure?" (make-type-checker "closure?" 'EtaClosureTag))
@@ -600,6 +814,10 @@
     
     (define-builtin! env "string->number" string->number-impl)
     (define-builtin! env "number->string" number->string-impl)
+
+    ;; Stack Depth Management
+    (define-builtin! env "set-max-stack-depth!" set-max-stack-depth!-impl)
+    (define-builtin! env "get-max-stack-depth" get-max-stack-depth-impl)
 
     env)
 
@@ -612,9 +830,11 @@
 ;  Example:
 ;     (get-builtin-names) => (list "+" "-" "*" "/" "=" "<" ">" "list" "cons" "car" "cdr")
 (define (get-builtin-names)
-  (list "display" "read-line" "error"
+  (list "display" "read-line" "flush" "newline" "load" "error"
         "+" "-" "*" "/" 
         "=" "<" ">"
         "list" "cons" "car" "cdr" "set-car!" "set-cdr!" "null?" "pair?"
-        "string-length" "substring" "string-ref" "string-append"
-        "apply" "string->number" "number->string"))
+        "make-vector" "vector-ref" "vector-set!" "vector-length" "vector?" "vector-copy"
+        "string-length" "substring" "string-ref" "string-append" "string=?"
+        "apply" "string->number" "number->string"
+        "set-max-stack-depth!" "get-max-stack-depth"))
