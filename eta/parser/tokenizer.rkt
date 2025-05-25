@@ -122,6 +122,24 @@
         (member c '(#\! #\$ #\% #\& #\* #\+ #\- #\. #\/
                         #\< #\= #\> #\? #\@ #\^ #\_))))
 
+  ;; read-comment
+  ;;   Read a comment from the source code (starting with semicolon and ending at newline)
+  ;; Arguments:
+  ;;   pos - Current position in the source string (right after the semicolon)
+  ;;   line - Current line number
+  ;;   col - Current column number
+  ;; Returns:
+  ;;   Continues to the next token after skipping the comment
+  (define (read-comment pos line col)
+    (define (skip-to-newline p l c)
+      (if (>= p len)
+          (read-next-token p l c) ; End of file, read next token (which will be EOF)
+          (let ((ch (get-at p)))
+            (if (char=? ch #\newline)
+                (read-next-token (+ p 1) (+ l 1) 1) ; Found newline, read next token
+                (skip-to-newline (+ p 1) l (+ c 1))))))
+    (skip-to-newline pos line col))
+
   (define (make-token typ val sline scol eline ecol)
     (Token typ val (Location file sline scol eline ecol)))
 
@@ -237,6 +255,7 @@
             [(char=? ch #\)) (values (make-token 'RParenToken ")" line col line col1) pos1 line1 col1)]
             [(char=? ch #\.) (values (make-token 'DotSymToken "." line col line col1) pos1 line1 col1)]
             [(char=? ch #\') (values (make-token 'QuoteSymToken "'" line col line col1) pos1 line1 col1)]
+            [(char=? ch #\;) (read-comment pos1 line1 col1)]
             [(char=? ch #\#) (read-bool pos line col)]
             [(char=? ch #\") (read-string pos line col)]
             [(char-numeric? ch) (read-number pos line col)]
