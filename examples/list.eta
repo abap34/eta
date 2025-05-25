@@ -1,0 +1,9 @@
+(define lst (cons 1 (cons 2 (cons 3 (cons 4 (cons 5 '()))))))
+
+(define (sum lst)
+  (if (null? lst)
+      0
+      (+ (car lst) (sum (cdr lst)))))
+
+(display "Sum of the list: ")
+(display (sum lst))
