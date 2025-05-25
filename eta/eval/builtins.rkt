@@ -458,21 +458,20 @@
                      (runtime-value->string arg))))))))
 
 ; string-append-impl
-;     Appends multiple strings together
+;     Appends multiple strings together with any number of arguments
 (define (string-append-impl args env)
-  (check-args-count "string-append" args 1
-    (lambda (checked-args)
-      (let loop ([remaining checked-args]
-                 [result ""])
-        (if (null? remaining)
-            (make-runtime-value 'StringTag result)
-            (let ([arg (first remaining)])
-              (if (string-value? arg)
-                  (loop (cdr remaining) 
-                        (string-append result (RuntimeValue-value arg)))
-                  (make-runtime-error 
-                    (format "string-append expects strings, got: ~a" 
-                           (runtime-value->string arg))))))))))
+   (let loop ([remaining args]
+             [result ""])
+     (if (null? remaining)
+         (make-runtime-value 'StringTag result)
+         (let ([arg (first remaining)])
+           (if (string-value? arg)
+               (loop (cdr remaining) 
+                     (string-append result (RuntimeValue-value arg)))
+               (make-runtime-error 
+                 (format "string-append expects strings, got: ~a" 
+                        (runtime-value->string arg))))))))
+   
 
 ;  error-impl
 ;     Creates a runtime error with a specified message
