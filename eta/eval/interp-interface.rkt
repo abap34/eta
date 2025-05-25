@@ -32,7 +32,7 @@
 ;  Represents the result of evaluating an expression.
 ;    - success? - A boolean indicating if the evaluation was successful. (bool)
 ;    - value - The evaluated value or an error message. 
-;               if success? is #t, this is the evaluated value. (EtaValue | list of EtaValue)
+;               if success? is #t, this is the evaluated value. (RuntimeValue | list of RuntimeValue)
 ;               if success? is #f, this is an error. (EtaError)
 (struct EvalResult (success? value) #:transparent)
 
@@ -40,10 +40,10 @@
 ;   Converts an EvalResult to a string representation
 ; Arguments:
 ;   result - An EvalResult to convert.
-;   source - The original source code (used for formatting errors).
+;   [source-getter] - Optional function to get source code from a file identifier.
 ; Returns:
 ;   A string representation of the EvalResult.
-(define (format-eval-result result source)
+(define (format-eval-result result [source-getter #f])
   ;; Recursively flatten and colorize all values
   (define (flatten-and-format val)
     (cond
@@ -55,17 +55,17 @@
       (let ([error-value (EvalResult-value result)])
         (if (EvaluationInterruptedError? error-value)
             (string-append (colorize "Evaluation interrupted by user" 'yellow) "\n")
-            (colorize (format-error-with-source error-value source) 'red)))))
+            (colorize (format-error-with-source error-value source-getter) 'red)))))
 
 
 ; exit-with-eval-result
 ;   Exits the program with the given EvalResult.
 ; Arguments:
 ;   result - An EvalResult to exit with.
-;   source - The source code that was evaluated.
+;   [source-getter] - Optional function to get source code from a file identifier.
 ; Returns:
 ;   Never returns (exits the program).
-(define (exit-with-eval-result result source)
+(define (exit-with-eval-result result [source-getter #f])
   (if (EvalResult-success? result)
     (exit 0)
     (begin
@@ -75,18 +75,46 @@
               (displayln (colorize "Evaluation interrupted by user" 'yellow))
               (exit 130)) 
             (begin
-              (displayln (format-eval-result result source))
+              (displayln (format-eval-result result source-getter))
               (exit 1))))))) 
 
 ; init-basic-env
 ;   Initializes the basic environment for the eta interpreter.
-;   Environment includes builtin functions.
+;   Environment includes builtin functions and standard library.
 ; Arguments:
 ;   None
 ; Returns:
-;   An environment with builtin functions and variables.
+;   An environment with builtin functions, standard library, and variables.
 (define (init-basic-env)
-  (add-builtins-to-env (init-toplevel-env)))
+  (let* ([env (add-builtins-to-env (init-toplevel-env))]
+         [stdlib-dir (build-path (current-directory) "eta" "stdlib")]
+         [list-lib-path (build-path stdlib-dir "list.eta")]
+         [math-lib-path (build-path stdlib-dir "math.eta")]
+         [higher-order-lib-path (build-path stdlib-dir "higher-order.eta")])
+    
+    ;; Load standard library modules in order (dependencies first)
+    (define (load-library-file env file-path)
+      (if (file-exists? file-path)
+          (let* ([content (file->string file-path)]
+                 [result (eta-eval env content (path->string file-path))])
+            (if (EvalResult-success? result)
+                env
+                (begin
+                  (displayln (format "Warning: Error loading standard library file: ~a" 
+                                    (path->string file-path)))
+                  (displayln (format "  Error: ~a" 
+                                    (EvalResult-value result)))
+                  env)))
+          (begin
+            (displayln (format "Warning: Standard library file not found: ~a" 
+                              (path->string file-path)))
+            env)))
+    
+    ;; Load modules in order (list, math, string, higher-order)
+    (let* ([env (load-library-file env list-lib-path)]
+           [env (load-library-file env math-lib-path)]
+           [env (load-library-file env higher-order-lib-path)])
+      env)))
 
 
 ; eta-eval
@@ -224,4 +252,3 @@
     (lambda () (void))
     thunk
     reset-break-handler))
-

@@ -2,7 +2,9 @@
 
 (require "runtime-values.rkt"
          "env.rkt"
-         "../utils/error.rkt")
+         "../utils/error.rkt"
+)
+
 
 (provide 
   get-builtin-names
@@ -21,11 +23,12 @@
   add-builtins-to-env
 )
 
+
 ;  with-error-handling
 ;     A utility function that handles runtime errors properly
 ;  Arguments:
 ;     result - The result of a computation that might be a RuntimeError
-;     proc - A function to apply to the result if it's not an error
+;     proc - A function to ;  get-builtin-names
 ;  Returns:
 ;     The RuntimeError if result is a RuntimeError, otherwise (proc result)
 ;  Example:
@@ -47,13 +50,13 @@
 ;     (with-value-check arg list-value? (lambda (v) (format "Expected a list, got: ~a" v)))
 (define (with-value-check value type-pred error-msg)
   (if (type-pred value)
-      (EtaValue-value value)
+      (RuntimeValue-value value)
       (make-runtime-error (error-msg (runtime-value->string value)))))
 
 ;  Type checking functions
-;     Check if an EtaValue has a specific tag
+;     Check if an RuntimeValue has a specific tag
 ;  Arguments:
-;     value - An EtaValue to check
+;     value - An RuntimeValue to check
 ;  Returns:
 ;     #t if the value has the specified tag, #f otherwise
 ;  Example:
@@ -61,40 +64,41 @@
 ;     (number-value? (make-runtime-value String "hello")) ; => #f
 
 (define (int-value? value)
-  (and (EtaValue? value) (equal? (EtaValue-tag value) 'IntTag)))
+  (and (RuntimeValue? value) (equal? (RuntimeValue-tag value) 'IntTag)))
 
 (define (float-value? value)
-  (and (EtaValue? value) (equal? (EtaValue-tag value) 'FloatTag)))
+  (and (RuntimeValue? value) (equal? (RuntimeValue-tag value) 'FloatTag)))
 
 (define (string-value? value)
-  (and (EtaValue? value) (equal? (EtaValue-tag value) 'StringTag)))
+  (and (RuntimeValue? value) (equal? (RuntimeValue-tag value) 'StringTag)))
 
 (define (boolean-value? value)
-  (and (EtaValue? value) (equal? (EtaValue-tag value) 'BooleanTag)))
+  (and (RuntimeValue? value) (equal? (RuntimeValue-tag value) 'BooleanTag)))
 
 (define (nil-value? value)
-  (and (EtaValue? value) (equal? (EtaValue-tag value) 'NilValueTag)))
+  (and (RuntimeValue? value) (equal? (RuntimeValue-tag value) 'NilValueTag)))
 
 (define (list-value? value)
-  (and (EtaValue? value) (equal? (EtaValue-tag value) 'ListTag)))
+  (and (RuntimeValue? value) (or (equal? (RuntimeValue-tag value) 'PairTag)
+                                  (equal? (RuntimeValue-tag value) 'NilValueTag))))
 
 (define (expr-value? value)
-  (and (EtaValue? value) (equal? (EtaValue-tag value) 'EtaExprTag)))
+  (and (RuntimeValue? value) (equal? (RuntimeValue-tag value) 'EtaExprTag)))
 
 (define (builtin-value? value)
-  (and (EtaValue? value) (equal? (EtaValue-tag value) 'EtaBuiltinTag)))
+  (and (RuntimeValue? value) (equal? (RuntimeValue-tag value) 'EtaBuiltinTag)))
 
 (define (closure-value? value)
-  (and (EtaValue? value) (equal? (EtaValue-tag value) 'EtaClosureTag)))
+  (and (RuntimeValue? value) (equal? (RuntimeValue-tag value) 'EtaClosureTag)))
 
 (define (struct-value? value)
-  (and (EtaValue? value) (equal? (EtaValue-tag value) 'EtaStructTag)))
+  (and (RuntimeValue? value) (equal? (RuntimeValue-tag value) 'EtaStructTag)))
 
 (define (undefined-value? value)
-  (and (EtaValue? value) (equal? (EtaValue-tag value) 'UndefinedTag)))
+  (and (RuntimeValue? value) (equal? (RuntimeValue-tag value) 'UndefinedTag)))
 
 (define (void-value? value)
-  (and (EtaValue? value) (equal? (EtaValue-tag value) 'Void)))
+  (and (RuntimeValue? value) (equal? (RuntimeValue-tag value) 'Void)))
 
 ;  check-args-count
 ;     Validates that the number of arguments matches the expected count
@@ -147,7 +151,7 @@
     [else 'FloatTag]))
 
 ;  ensure-numbers
-;     Ensures all arguments are numbers and extracts their values
+;     Ensures all arguments are numbers and extracts their values as racket numbers
 ;  Arguments:
 ;     func-name - Name of the function for error messages
 ;     args - The argument list to check
@@ -164,7 +168,7 @@
       [else
         (let ([val (car remaining)])
           (if (or (int-value? val) (float-value? val))
-              (loop (cdr remaining) (cons (EtaValue-value val) result))
+              (loop (cdr remaining) (cons (RuntimeValue-value val) result))
               (make-runtime-error 
                     (format "~a expects numbers, got: ~a" 
                            func-name (runtime-value->string val)))))])))
@@ -196,6 +200,10 @@
   (define-variable! env name (make-builtin impl) #f))
 
 ;; ===== Built-in Function Implementations =====
+;  builtins must be:
+;  - receive `RuntimeValue` lists and `Env` as arguments
+;  - return `RuntimeValue` or `RuntimeError`
+;  - has responsible arity checking
 
 ;; I/O Functions
 (define (display-impl args env)
@@ -272,35 +280,270 @@
               (make-runtime-value 'BooleanTag result))))))))
 
 ;; List Operations
+;  list-impl
+;     Creates a list from the given arguments
+;  Arguments:
+;     args - Any number of arguments to be put into a list
+;     env - The environment (unused)
+;  Returns:
+;     A new list containing the arguments
 (define (list-impl args env)
-  (make-runtime-value 'ListTag args))
+  (if (null? args)
+      (RuntimeValue 'NilValueTag '())
+      (let loop ([remaining args])
+        (if (null? remaining)
+            (RuntimeValue 'NilValueTag '())
+            (let* ([first-item (car remaining)]
+                   [rest-items (cdr remaining)]
+                   [rest-list (loop rest-items)]
+                   [pair (make-Pair first-item rest-list)])
+              (RuntimeValue 'PairTag pair))))))
 
+;  cons-impl
+;     Creates a new pair with the given car and cdr
+;  Arguments:
+;     args - Two arguments: the car and cdr for the new pair
+;     env - The environment (unused)
+;  Returns:
+;     A new pair
 (define (cons-impl args env)
   (check-args-count "cons" args 2
     (lambda (checked-args)
-      (let ([item (first checked-args)]
-            [lst (second checked-args)])
-        (with-error-handling (check-list-arg "cons" lst)
-          (lambda (lst-val)
-            (make-runtime-value 'ListTag (cons item lst-val))))))))
+      (let* ([car-val (first checked-args)]
+             [cdr-val (second checked-args)]
+             [pair (make-Pair car-val cdr-val)])
+        (RuntimeValue 'PairTag pair)))))
 
+;  car-impl
+;     Returns the car (first element) of a pair
+;  Arguments:
+;     args - One argument: a pair
+;     env - The environment (unused)
+;  Returns:
+;     The car of the pair
 (define (car-impl args env)
   (check-args-count "car" args 1
     (lambda (checked-args)
-      (with-error-handling (check-list-arg "car" (first checked-args))
-        (lambda (lst-val)
-          (if (null? lst-val)
-              (make-runtime-error "car called on empty list")
-              (first lst-val)))))))
+      (let ([arg (first checked-args)])
+        (if (list-value? arg)
+            (Pair-car (RuntimeValue-value arg))
+            (make-runtime-error (format "car expects a pair, got: ~a" 
+                                       (runtime-value->string arg))))))))
 
+;  cdr-impl
+;     Returns the cdr (second element) of a pair
+;  Arguments:
+;     args - One argument: a pair
+;     env - The environment (unused)
+;  Returns:
+;     The cdr of the pair
 (define (cdr-impl args env)
   (check-args-count "cdr" args 1
     (lambda (checked-args)
-      (with-error-handling (check-list-arg "cdr" (first checked-args))
-        (lambda (lst-val)
-          (if (null? lst-val)
-             (make-runtime-error "cdr called on empty list")
-              (make-runtime-value 'ListTag (rest lst-val))))))))
+      (let ([arg (first checked-args)])
+        (if (list-value? arg)
+            (Pair-cdr (RuntimeValue-value arg))
+            (make-runtime-error (format "cdr expects a pair, got: ~a" 
+                                       (runtime-value->string arg))))))))
+
+;  set-car-impl
+;     Sets the car (first element) of a pair to a new value
+;  Arguments:
+;     args - Two arguments: a pair and a new value
+;     env - The environment (unused)
+;  Returns:
+;     Void
+(define (set-car-impl args env)
+  (check-args-count "set-car!" args 2
+    (lambda (checked-args)
+      (let ([pair-arg (first checked-args)]
+            [new-val (second checked-args)])
+        (if (list-value? pair-arg)
+            (begin 
+                (set-Pair-car! (RuntimeValue-value pair-arg) new-val)
+                (make-runtime-value 'VoidTag '()))
+            (make-runtime-error (format "set-car! expects a pair, got: ~a" 
+                                       (runtime-value->string pair-arg))))))))
+
+;  set-cdr-impl
+;     Sets the cdr (second element) of a pair to a new value
+;  Arguments:
+;     args - Two arguments: a pair and a new value
+;     env - The environment (unused)
+;  Returns:
+;     Void
+(define (set-cdr-impl args env)
+  (check-args-count "set-cdr!" args 2
+    (lambda (checked-args)
+      (let ([pair-arg (first checked-args)]
+            [new-val (second checked-args)])
+        (if (list-value? pair-arg)
+            (begin 
+                (set-Pair-cdr! (RuntimeValue-value pair-arg) new-val)
+                (make-runtime-value 'VoidTag '()))
+            (make-runtime-error (format "set-cdr! expects a pair, got: ~a" 
+                                       (runtime-value->string pair-arg))))))))
+
+; null?-impl
+;     Checks if the given argument is the empty list
+;  Arguments:
+;     args - One argument: the value to check
+;     env - The environment (unused)
+(define (null?-impl args env)
+  (check-args-count "null?" args 1
+    (lambda (checked-args)
+      (let ([arg (first checked-args)])
+        (if (list-value? arg)
+            (make-runtime-value 'BooleanTag (null? (RuntimeValue-value arg)))
+            (make-runtime-error (format "null? expects a list, got: ~a" (runtime-value->string arg))))))))
+
+; string-length-impl
+;     Returns the length of a string
+;  Arguments:
+;     args - One argument: a string
+;     env - The environment (unused)
+(define (string-length-impl args env)
+  (check-args-count "string-length" args 1
+    (lambda (checked-args)
+      (let ([arg (first checked-args)])
+        (if (string-value? arg)
+            (make-runtime-value 'IntTag (string-length (RuntimeValue-value arg)))
+            (make-runtime-error (format "string-length expects a string, got: ~a" 
+                               (runtime-value->string arg))))))))
+
+; substring-impl
+;     Returns a substring of a string
+;  Arguments:
+;     args - Three arguments: a string, start index, and optional end index
+;     env - The environment (unused)
+(define (substring-impl args env)
+  (check-args-count "substring" args '(2 3)
+    (lambda (checked-args)
+      (let ([arg (first checked-args)]
+            [start (second checked-args)]
+            [end (if (= (length checked-args) 3) (third checked-args) #f)])
+        (if (string-value? arg)
+            (let* ([str (RuntimeValue-value arg)]
+                   [start-index (RuntimeValue-value start)]
+                   [end-index (if end (RuntimeValue-value end) (string-length str))])
+              (if (and (integer? start-index) 
+                       (integer? end-index)
+                       (< start-index end-index)
+                       (< end-index (string-length str)))
+                  (make-runtime-value 'StringTag 
+                    (substring str start-index end-index))
+                  (make-runtime-error "substring: invalid indices")))
+            (make-runtime-error 
+              (format "substring expects a string, got: ~a" 
+                     (runtime-value->string arg))))))))
+
+; string-ref-impl
+;     Returns the character at a specified index in a string
+(define (string-ref-impl args env)
+  (check-args-count "string-ref" args 2
+    (lambda (checked-args)
+      (let ([arg (first checked-args)]
+            [index (second checked-args)])
+        (if (string-value? arg)
+            (let* ([str (RuntimeValue-value arg)]
+                   [idx (RuntimeValue-value index)])
+              (if (and (integer? idx) 
+                       (>= idx 0) 
+                       (< idx (string-length str)))
+                  (make-runtime-value 'StringTag 
+                    (string-ref str idx))
+                  (make-runtime-error "string-ref: index out of bounds")))
+            (make-runtime-error 
+              (format "string-ref expects a string, got: ~a" 
+                     (runtime-value->string arg))))))))
+
+; string-append-impl
+;     Appends multiple strings together
+(define (string-append-impl args env)
+  (check-args-count "string-append" args 1
+    (lambda (checked-args)
+      (let loop ([remaining checked-args]
+                 [result ""])
+        (if (null? remaining)
+            (make-runtime-value 'StringTag result)
+            (let ([arg (first remaining)])
+              (if (string-value? arg)
+                  (loop (cdr remaining) 
+                        (string-append result (RuntimeValue-value arg)))
+                  (make-runtime-error 
+                    (format "string-append expects strings, got: ~a" 
+                           (runtime-value->string arg))))))))))
+
+;  error-impl
+;     Creates a runtime error with a specified message
+;  Arguments:
+;     args - One or more arguments: an error message string followed by optional values to format
+;     env - The environment (unused)
+;  Returns:
+;     A RuntimeError
+(define (error-impl args env)
+  (if (null? args)
+      (make-runtime-error "Unknown error")
+      (let ([msg (first args)]
+            [rest (cdr args)])
+        (if (string-value? msg)
+            (let ([msg-str (RuntimeValue-value msg)])
+              (if (null? rest)
+                  (make-runtime-error msg-str)
+                  (let ([formatted-args (map runtime-value->string rest)])
+                    (make-runtime-error (apply format msg-str formatted-args)))))
+            (make-runtime-error (format "error expects a string as first argument, got: ~a" 
+                              (runtime-value->string msg)))))))
+
+;   make-type-checker
+;     Creates a type-checking function for a specific type
+(define (make-type-checker name tag)
+  (lambda (value)
+    (check-args-count name (value) 1
+      (lambda (checked-args)
+        (let ([arg (first checked-args)])
+          (if (equal? (RuntimeValue-tag arg) tag)
+              (make-runtime-value 'BooleanTag #t)
+              (make-runtime-value 'BooleanTag #f)))))))
+
+
+;  string->number-impl
+;     Converts a string to a number
+;  Arguments:
+;     args - One argument: a string
+;     env - The environment (unused)
+;  Returns:
+;     A number or #f if the string does not represent a valid number
+(define (string->number-impl args env)
+  (check-args-count "string->number" args 1
+    (lambda (checked-args)
+      (let ([arg (first checked-args)])
+        (if (string-value? arg)
+            (let* ([str (RuntimeValue-value arg)]
+                   [num (string->number str)])
+              (if num
+                  (if (integer? num)
+                      (make-runtime-value 'IntTag num)
+                      (make-runtime-value 'FloatTag num))
+                  (make-runtime-value 'BooleanTag #f)))
+            (make-runtime-error (format "string->number expects a string, got: ~a" 
+                               (runtime-value->string arg))))))))
+
+;  number->string-impl
+;     Converts a number to a string
+;  Arguments:
+;     args - One argument: a number
+;     env - The environment (unused)
+;  Returns:
+;     A string representation of the number
+(define (number->string-impl args env)
+  (check-args-count "number->string" args 1
+    (lambda (checked-args)
+      (let ([arg (first checked-args)])
+        (if (or (int-value? arg) (float-value? arg))
+            (make-runtime-value 'StringTag (number->string (RuntimeValue-value arg)))
+            (make-runtime-error (format "number->string expects a number, got: ~a" 
+                               (runtime-value->string arg))))))))
 
 ;  add-builtins-to-env
 ;     Adds built-in functions to the environment
@@ -314,6 +557,7 @@
     ;; I/O Functions
     (define-builtin! env "display" display-impl)
     (define-builtin! env "read-line" read-line-impl)
+    (define-builtin! env "error" error-impl)
 
     ;; Arithmetic Operations
     (define-builtin! env "+" add-impl)
@@ -331,6 +575,32 @@
     (define-builtin! env "cons" cons-impl)
     (define-builtin! env "car" car-impl)
     (define-builtin! env "cdr" cdr-impl)
+    (define-builtin! env "set-car!" set-car-impl)
+    (define-builtin! env "set-cdr!" set-cdr-impl)
+    (define-builtin! env "null?" null?-impl)
+    
+    ;; String Operations
+    (define-builtin! env "string-length" string-length-impl)
+    (define-builtin! env "substring" substring-impl)
+    (define-builtin! env "string-ref" string-ref-impl)
+    (define-builtin! env "string-append" string-append-impl)
+    
+    ;; Type Checking and Conversion
+    (define-builtin! env "int?" (make-type-checker "int?" 'IntTag))
+    (define-builtin! env "float?" (make-type-checker "float?" 'FloatTag))
+    (define-builtin! env "string?" (make-type-checker "string?" 'StringTag))
+    (define-builtin! env "boolean?" (make-type-checker "boolean?" 'BooleanTag))
+    (define-builtin! env "nil?" (make-type-checker "nil?" 'NilValueTag))
+    (define-builtin! env "pair?" (make-type-checker "pair?" 'PairTag))
+    (define-builtin! env "expr?" (make-type-checker "expr?" 'EtaExprTag))
+    (define-builtin! env "builtin?" (make-type-checker "builtin?" 'EtaBuiltinTag))
+    (define-builtin! env "closure?" (make-type-checker "closure?" 'EtaClosureTag))
+    (define-builtin! env "struct?" (make-type-checker "struct?" 'EtaStructTag))
+    (define-builtin! env "undefined?" (make-type-checker "undefined?" 'UndefinedTag))
+    (define-builtin! env "void?" (make-type-checker "void?" 'Void))
+    
+    (define-builtin! env "string->number" string->number-impl)
+    (define-builtin! env "number->string" number->string-impl)
 
     env)
 
@@ -343,7 +613,9 @@
 ;  Example:
 ;     (get-builtin-names) => (list "+" "-" "*" "/" "=" "<" ">" "list" "cons" "car" "cdr")
 (define (get-builtin-names)
-  (list "display" "read-line"
+  (list "display" "read-line" "error"
         "+" "-" "*" "/" 
         "=" "<" ">"
-        "list" "cons" "car" "cdr"))
+        "list" "cons" "car" "cdr" "set-car!" "set-cdr!" "null?" "pair?"
+        "string-length" "substring" "string-ref" "string-append"
+        "apply" "string->number" "number->string"))

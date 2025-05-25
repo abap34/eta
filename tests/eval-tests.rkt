@@ -41,63 +41,63 @@
   (let* ([input "42"]
          [result (eval-eta-string input)]
          [value (get-value-from-eval result)])
-    (set! state (assert (EtaValue-tag value) 'IntTag "Integer constant evaluation tag test"))
-    (set! state (assert (EtaValue-value value) 42 "Integer constant evaluation value test")))
+    (set! state (assert (RuntimeValue-tag value) 'IntTag "Integer constant evaluation tag test"))
+    (set! state (assert (RuntimeValue-value value) 42 "Integer constant evaluation value test")))
 
   ;; Float constant
   (let* ([input "3.14"]
          [result (eval-eta-string input)]
          [value (get-value-from-eval result)])
-    (set! state (assert (EtaValue-tag value) 'FloatTag "Float constant evaluation tag test"))
-    (set! state (assert (EtaValue-value value) 3.14 "Float constant evaluation value test")))
+    (set! state (assert (RuntimeValue-tag value) 'FloatTag "Float constant evaluation tag test"))
+    (set! state (assert (RuntimeValue-value value) 3.14 "Float constant evaluation value test")))
 
   ;; String constant
   (let* ([input "\"hello\""]
          [result (eval-eta-string input)]
          [value (get-value-from-eval result)])
-    (set! state (assert (EtaValue-tag value) 'StringTag "String constant evaluation tag test"))
-    (set! state (assert (EtaValue-value value) "hello" "String constant evaluation value test")))
+    (set! state (assert (RuntimeValue-tag value) 'StringTag "String constant evaluation tag test"))
+    (set! state (assert (RuntimeValue-value value) "hello" "String constant evaluation value test")))
 
   ;; Boolean constants
   (let* ([input "#t"]
          [result (eval-eta-string input)]
          [value (get-value-from-eval result)])
-    (set! state (assert (EtaValue-tag value) 'BooleanTag "Boolean true evaluation tag test"))
-    (set! state (assert (EtaValue-value value) #t "Boolean true evaluation value test")))
+    (set! state (assert (RuntimeValue-tag value) 'BooleanTag "Boolean true evaluation tag test"))
+    (set! state (assert (RuntimeValue-value value) #t "Boolean true evaluation value test")))
 
   (let* ([input "#f"]
          [result (eval-eta-string input)]
          [value (get-value-from-eval result)])
-    (set! state (assert (EtaValue-tag value) 'BooleanTag "Boolean false evaluation tag test"))
-    (set! state (assert (EtaValue-value value) #f "Boolean false evaluation value test")))
+    (set! state (assert (RuntimeValue-tag value) 'BooleanTag "Boolean false evaluation tag test"))
+    (set! state (assert (RuntimeValue-value value) #f "Boolean false evaluation value test")))
 
   ;; Simple addition
   (let* ([input "(+ 1 2)"]
          [result (eval-eta-string input)]
          [value (get-value-from-eval result)])
-    (set! state (assert (EtaValue-tag value) 'IntTag "Addition evaluation tag test"))
-    (set! state (assert (EtaValue-value value) 3 "Addition evaluation value test")))
+    (set! state (assert (RuntimeValue-tag value) 'IntTag "Addition evaluation tag test"))
+    (set! state (assert (RuntimeValue-value value) 3 "Addition evaluation value test")))
 
   ;; Simple subtraction
   (let* ([input "(- 5 2)"]
          [result (eval-eta-string input)]
          [value (get-value-from-eval result)])
-    (set! state (assert (EtaValue-tag value) 'IntTag "Subtraction evaluation tag test"))
-    (set! state (assert (EtaValue-value value) 3 "Subtraction evaluation value test")))
+    (set! state (assert (RuntimeValue-tag value) 'IntTag "Subtraction evaluation tag test"))
+    (set! state (assert (RuntimeValue-value value) 3 "Subtraction evaluation value test")))
 
   ;; Simple multiplication
   (let* ([input "(* 2 3)"]
          [result (eval-eta-string input)]
          [value (get-value-from-eval result)])
-    (set! state (assert (EtaValue-tag value) 'IntTag "Multiplication evaluation tag test"))
-    (set! state (assert (EtaValue-value value) 6 "Multiplication evaluation value test")))
+    (set! state (assert (RuntimeValue-tag value) 'IntTag "Multiplication evaluation tag test"))
+    (set! state (assert (RuntimeValue-value value) 6 "Multiplication evaluation value test")))
 
   ;; Simple division
   (let* ([input "(/ 6 2)"]
          [result (eval-eta-string input)]
          [value (get-value-from-eval result)])
-    (set! state (assert (EtaValue-tag value) 'FloatTag "Division evaluation tag test"))
-    (set! state (assert (EtaValue-value value) 3.0 "Division evaluation value test")))
+    (set! state (assert (RuntimeValue-tag value) 'FloatTag "Division evaluation tag test"))
+    (set! state (assert (RuntimeValue-value value) 3.0 "Division evaluation value test")))
 
   ;; Division by zero (should fail)
   (let* ([input "(/ 6 0)"]
@@ -123,43 +123,43 @@
   (let* ([input "(let ((x 1) (y 2)) (+ x y))"]
          [result (eval-eta-string input)]
          [value (get-value-from-eval result)])
-    (set! state (assert (EtaValue-value value) 3 "Let binding test")))
+    (set! state (assert (RuntimeValue-value value) 3 "Let binding test")))
 
   ;; Let with shadowing
   (let* ([input "(let ((x 5)) (let ((x 10)) x))"]
          [result (eval-eta-string input)]
          [value (get-value-from-eval result)])
-    (set! state (assert (EtaValue-value value) 10 "Let shadowing test")))
+    (set! state (assert (RuntimeValue-value value) 10 "Let shadowing test")))
 
   ;; Advanced let shadowing test - nested inner values
   (let* ([input "(let ((x 5)) (let ((x 10)) (let ((x 15)) x)))"]
          [result (eval-eta-string input)]
          [value (get-value-from-eval result)])
-    (set! state (assert (EtaValue-value value) 15 "Deeply nested let shadowing test")))
+    (set! state (assert (RuntimeValue-value value) 15 "Deeply nested let shadowing test")))
 
   ;; Advanced let shadowing test - access outer values
   (let* ([input "(let ((x 5)) (let ((y 10)) x))"]
          [result (eval-eta-string input)]
          [value (get-value-from-eval result)])
-    (set! state (assert (EtaValue-value value) 5 "Let accessing outer scope test")))
+    (set! state (assert (RuntimeValue-value value) 5 "Let accessing outer scope test")))
 
   ;; Advanced let shadowing with set! - modify inner value
   (let* ([input "(let ((x 5)) (let ((x 10)) (set! x 20) x))"]
          [result (eval-eta-string input)]
          [value (get-value-from-eval result)])
-    (set! state (assert (EtaValue-value value) 20 "Let with set! inner value test")))
+    (set! state (assert (RuntimeValue-value value) 20 "Let with set! inner value test")))
 
   ;; Advanced let shadowing with set! - inner set! doesn't affect outer value
   (let* ([input "(let ((x 5)) (let ((x 10)) (set! x 20)) x)"]
          [result (eval-eta-string input)]
          [value (get-value-from-eval result)])
-    (set! state (assert (EtaValue-value value) 5 "Let inner set! isolation test")))
+    (set! state (assert (RuntimeValue-value value) 5 "Let inner set! isolation test")))
 
   ;; Let* sequentiality
   (let* ([input "(let* ((x 1) (y (+ x 1))) (+ x y))"]
          [result (eval-eta-string input)]
          [value (get-value-from-eval result)])
-    (set! state (assert (EtaValue-value value) 3 "Let* sequential binding test")))
+    (set! state (assert (RuntimeValue-value value) 3 "Let* sequential binding test")))
 
   state)
 
@@ -175,19 +175,19 @@
   (let* ([input "(if #t 1 2)"]
          [result (eval-eta-string input)]
          [value (get-value-from-eval result)])
-    (set! state (assert (EtaValue-value value) 1 "If with true condition test")))
+    (set! state (assert (RuntimeValue-value value) 1 "If with true condition test")))
 
   ;; Simple if with false condition
   (let* ([input "(if #f 1 2)"]
          [result (eval-eta-string input)]
          [value (get-value-from-eval result)])
-    (set! state (assert (EtaValue-value value) 2 "If with false condition test")))
+    (set! state (assert (RuntimeValue-value value) 2 "If with false condition test")))
 
   ;; If with computed condition
   (let* ([input "(if (> 5 3) \"yes\" \"no\")"]
          [result (eval-eta-string input)]
          [value (get-value-from-eval result)])
-    (set! state (assert (EtaValue-value value) "yes" "If with computed true condition test")))
+    (set! state (assert (RuntimeValue-value value) "yes" "If with computed true condition test")))
 
   ;; If with non-boolean condition (should fail)
   (let* ([input "(if 42 1 2)"]
@@ -198,37 +198,37 @@
   (let* ([input "(cond ((< 3 2) \"case 1\") ((> 5 1) \"case 2\") (else \"default\"))"]
          [result (eval-eta-string input)]
          [value (get-value-from-eval result)])
-    (set! state (assert (EtaValue-value value) "case 2" "Cond with multiple clauses test")))
+    (set! state (assert (RuntimeValue-value value) "case 2" "Cond with multiple clauses test")))
 
   ;; cond with else clause
   (let* ([input "(cond ((< 3 2) \"case 1\") (#f \"case 2\") (else \"default\"))"]
          [result (eval-eta-string input)]
          [value (get-value-from-eval result)])
-    (set! state (assert (EtaValue-value value) "default" "Cond with else clause test")))
+    (set! state (assert (RuntimeValue-value value) "default" "Cond with else clause test")))
 
   ;; and with all true values
   (let* ([input "(and #t #t #t)"]
          [result (eval-eta-string input)]
          [value (get-value-from-eval result)])
-    (set! state (assert (EtaValue-value value) #t "And with all true values test")))
+    (set! state (assert (RuntimeValue-value value) #t "And with all true values test")))
 
   ;; and with false value
   (let* ([input "(and #t #f #t)"]
          [result (eval-eta-string input)]
          [value (get-value-from-eval result)])
-    (set! state (assert (EtaValue-value value) #f "And with false value test")))
+    (set! state (assert (RuntimeValue-value value) #f "And with false value test")))
 
   ;; or with true value
   (let* ([input "(or #f #t #f)"]
          [result (eval-eta-string input)]
          [value (get-value-from-eval result)])
-    (set! state (assert (EtaValue-value value) #t "Or with true value test")))
+    (set! state (assert (RuntimeValue-value value) #t "Or with true value test")))
 
   ;; or with all false values
   (let* ([input "(or #f #f #f)"]
          [result (eval-eta-string input)]
          [value (get-value-from-eval result)])
-    (set! state (assert (EtaValue-value value) #f "Or with all false values test")))
+    (set! state (assert (RuntimeValue-value value) #f "Or with all false values test")))
 
   state)
 
@@ -244,14 +244,14 @@
   (let* ([input "((lambda (x) (* x x)) 5)"]
          [result (eval-eta-string input)]
          [value (get-value-from-eval result)])
-    (set! state (assert (EtaValue-tag value) 'IntTag "Lambda application tag test"))
-    (set! state (assert (EtaValue-value value) 25 "Lambda application value test")))
+    (set! state (assert (RuntimeValue-tag value) 'IntTag "Lambda application tag test"))
+    (set! state (assert (RuntimeValue-value value) 25 "Lambda application value test")))
 
   ;; Lambda with multiple parameters
   (let* ([input "((lambda (x y) (+ x y)) 3 4)"]
          [result (eval-eta-string input)]
          [value (get-value-from-eval result)])
-    (set! state (assert (EtaValue-value value) 7 "Lambda with multiple parameters test")))
+    (set! state (assert (RuntimeValue-value value) 7 "Lambda with multiple parameters test")))
 
   ;; Lambda with too few arguments (should fail)
   (let* ([input "((lambda (x y) (+ x y)) 3)"]
@@ -269,7 +269,7 @@
   (let* ([input "(let ((x 10)) (let ((f (lambda (y) (+ x y)))) (f 5)))"]
          [result (eval-eta-string input)]
          [value (get-value-from-eval result)])
-    (set! state (assert (EtaValue-value value) 15 "Function with lexical closure test")))
+    (set! state (assert (RuntimeValue-value value) 15 "Function with lexical closure test")))
 
   ;; Named function with recursion
   (let* ([input "
@@ -281,7 +281,7 @@
   (fact 5)"]
          [result (eval-eta-string input)]
          [value (get-value-from-eval result second)])
-    (set! state (assert (EtaValue-value value) 120 "Named recursive function test")))
+    (set! state (assert (RuntimeValue-value value) 120 "Named recursive function test")))
 
   ;; Mutual recursion with letrec
   (let* ([input "
@@ -290,7 +290,7 @@
   (even? 10))"]
          [result (eval-eta-string input)]
          [value (get-value-from-eval result)])
-    (set! state (assert (EtaValue-value value) #t "Mutual recursion with letrec test")))
+    (set! state (assert (RuntimeValue-value value) #t "Mutual recursion with letrec test")))
 
   ;; Function with global variable access
   (let* ([input "
@@ -299,7 +299,7 @@
 (get-x)"]
          [result (eval-eta-string input)]
          [value (get-value-from-eval result third)])
-    (set! state (assert (EtaValue-value value) 10 "Function accessing global variable test")))
+    (set! state (assert (RuntimeValue-value value) 10 "Function accessing global variable test")))
 
   ;; Function with global variable set!
   (let* ([input "
@@ -309,7 +309,7 @@
 x"]
          [result (eval-eta-string input)]
          [value (get-value-from-eval result fourth)])
-    (set! state (assert (EtaValue-value value) 20 "Function modifying global variable test")))
+    (set! state (assert (RuntimeValue-value value) 20 "Function modifying global variable test")))
 
   ;; Nested function with variable shadowing
   (let* ([input "
@@ -321,7 +321,7 @@ x"]
 ((nested-fn))"]
          [result (eval-eta-string input)]
          [value (get-value-from-eval result third)])
-    (set! state (assert (EtaValue-value value) 20 "Nested function with shadowing test")))
+    (set! state (assert (RuntimeValue-value value) 20 "Nested function with shadowing test")))
 
   ;; Variable shadowing and set! in nested functions
   (let* ([input "
@@ -335,7 +335,7 @@ x"]
 x"]
          [result (eval-eta-string input)]
          [value (get-value-from-eval result fourth)])
-    (set! state (assert (EtaValue-value value) 10 "set! in nested function doesn't affect outer scope test")))
+    (set! state (assert (RuntimeValue-value value) 10 "set! in nested function doesn't affect outer scope test")))
 
   ;; Complex variable interaction with multiple levels
   (let* ([input "
@@ -350,7 +350,7 @@ x"]
 (complex-fn)"]
          [result (eval-eta-string input)]
          [value (get-value-from-eval result fourth)])
-    (set! state (assert (EtaValue-value value) 70 "Complex variable interaction test")))
+    (set! state (assert (RuntimeValue-value value) 70 "Complex variable interaction test")))
 
   state)
 
@@ -372,7 +372,7 @@ x"]
   (count-down 5000)"]  ; This would overflow without TCO
          [result (eval-eta-string input)]
          [value (get-value-from-eval result second)])
-    (set! state (assert (EtaValue-value value) 0 "Deep recursion with TCO test")))
+    (set! state (assert (RuntimeValue-value value) 0 "Deep recursion with TCO test")))
 
   ;; Mutual recursion with TCO
   (let* ([input "
@@ -389,7 +389,7 @@ x"]
   (is-even? 5000)"]  ; This would overflow without TCO
          [result (eval-eta-string input)]
          [value (get-value-from-eval result third)])
-    (set! state (assert (EtaValue-value value) #t "Mutual recursion with TCO test")))
+    (set! state (assert (RuntimeValue-value value) #t "Mutual recursion with TCO test")))
 
   state)
 

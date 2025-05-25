@@ -1,0 +1,34 @@
+(define (>= a b)
+  (or (= a b) (< b a)))
+
+(define (append lst1 lst2)
+  (if (null? lst1)
+      lst2
+      (cons (car lst1) (append (cdr lst1) lst2))))
+
+(define (filter pred lst)
+  (if (null? lst)
+      '()
+      (if (pred (car lst))
+          (cons (car lst) (filter pred (cdr lst)))
+          (filter pred (cdr lst)))))
+
+(define (quick-sort lst)
+  (if (or (null? lst) (null? (cdr lst)))
+      lst
+      (let* ((pivot (car lst))
+             (less (filter (lambda (x) (< x pivot)) (cdr lst)))
+             (greater (filter (lambda (x) (>= x pivot)) (cdr lst))))
+        (append (append (quick-sort less) (list pivot)) (quick-sort greater)))))
+
+
+(define unsorted-list (list 7 2 7 9 3 4 8 9 56 9 90 6 6 8 67 8 0))
+(display "Unsorted list: ")
+(display unsorted-list)
+(display "\n")
+
+(display "Sorted list  : ")
+(display (quick-sort unsorted-list))
+(display "\n")
+
+

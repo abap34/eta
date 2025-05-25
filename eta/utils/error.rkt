@@ -9,7 +9,6 @@
          EtaError-type
          eta-error->string
          format-error-with-source
-         format-error-with-source
          make-token-error
          localize-error-location
          TokenizeError
@@ -26,7 +25,7 @@
          EvaluationInterruptedError?
          )
 
-(require "location.rkt" "console.rkt")
+(require "location.rkt" "console.rkt" racket/file)
 
 ;; Generic error type
 ;; EtaError
@@ -90,6 +89,8 @@
 ;; Example:
 ;;    (make-runtime-error "Division by zero" (make-location 3 15 3 18))
 (define (make-runtime-error message [location #f])
+  (unless (string? message)
+    (error "make-runtime-error: message must be a string"))
   (RuntimeError 'runtime message location))
 
 ;; make-evaluation-interrupted-error
@@ -165,19 +166,31 @@
 ;;    Formats an error with visual markers pointing to the error location in the source code.
 ;; Arguments:
 ;;    error - The EtaError to format
-;;    source - The source code string where the error occurred
+;;    [source-getter] - Optional function to get source code from a file identifier.
 ;; Returns:
 ;;    A formatted string with error message and visual markers
-(define (format-error-with-source error source)
+(define (format-error-with-source error [source-getter #f])
   (let* ([message (colorize (eta-error->string error) 'red)]
-         [location (EtaError-location error)])
+         [location (EtaError-location error)]
+         [source-code (cond
+                        [(and source-getter location (Location-file location))
+                         (source-getter (Location-file location))]
+                        [(and location 
+                              (Location-file location)
+                              (string? (Location-file location))
+                              (file-exists? (Location-file location)))
+                         (with-handlers ([exn:fail? (lambda (e) #f)])
+                           (file->string (Location-file location)))]
+                        [else #f])])
     
-    (if (and location source)
-        (let* ([lines (string-split source "\n")]
+    (if (and location source-code)
+        (let* ([lines (string-split source-code "\n")]
                [file (Location-file location)]
                [file-display (cond
                               [(string? file) (format "~a:" file)]
                               [(symbol? file) (format "~a:" (symbol->string file))]
+                              [(and (list? file) (= (length file) 2) (eq? (first file) 'repl-history))
+                               (format "REPL[~a]:" (second file))]
                               [else ""])]
                [sline (Location-sline location)]
                [scol (Location-scol location)]
@@ -201,7 +214,10 @@
                 (lambda (start end)
                   (if (> start end)
                       '()
-                      (cons start (range (+ start 1) end))))]
+                      (let loop ([i start] [acc '()])
+                        (if (> i end)
+                            (reverse acc)
+                            (loop (+ i 1) (cons i acc))))))]
 
                [join-lines
                 (lambda (nums)
@@ -210,13 +226,21 @@
                                 (string-append (prefix i) (get-line i) "\n"))
                               nums)))]
 
-               [before-lines (join-lines (range (max 1 (- sline 2)) (- sline 1)))]
+               [before-lines (let ([start-line (max 1 (- sline 2))]
+                                   [end-line (- sline 1)])
+                               (cond
+                                 [(< end-line 1) ""]  
+                                 [(> start-line end-line) (join-lines (list end-line))] 
+                                 [else (join-lines (range start-line end-line))]))]
                [error-line (get-line sline)]
                [code-line (string-append (prefix sline) error-line "\n")]
                [marker-padding (make-string (+ 4 line-num-len 3 (max 0 (- scol 1))) #\space)]
                [marker (make-string (max 1 (- ecol scol)) #\^)]
                [marker-line (string-append marker-padding (colorize marker 'red) "\n")]
-               [after-lines (join-lines (range (+ sline 1) (min nlines (+ eline 2))))])
+               [after-lines (let ([end-line (min nlines (+ eline 2))])
+                              (if (<= end-line eline)
+                                  ""
+                                  (join-lines (range (+ eline 1) end-line))))])
           
           (string-append "\n" 
                          (if (not (string=? file-display ""))

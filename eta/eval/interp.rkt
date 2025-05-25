@@ -75,7 +75,7 @@
 ;     stack - The current call stack
 ;     tail? - Whether this expression is in tail position (#t) or not (#f)
 ;  Returns:
-;     Via k: An EtaValue representing the result
+;     Via k: An RuntimeValue representing the result
 (define (eval-expr expr env k stack #:tail? [tail? #f])
   (unless (Expr? expr)
     (k (make-runtime-error 
@@ -108,19 +108,19 @@
 ;     k - The continuation to receive the result
 ;     stack - The current call stack
 ;  Returns:
-;     Via k: An EtaValue with appropriate tag and value
+;     Via k: An RuntimeValue with appropriate tag and value
 (define (eval-const expr env k stack)
   (let* ([const-args (Expr-args expr)]
          [node-typ (first const-args)]
          [value (second const-args)])
     (cond
-      [(equal? node-typ 'IntConstNode)       (k (EtaValue 'IntTag value) stack)]
-      [(equal? node-typ 'FloatConstNode)     (k (EtaValue 'FloatTag value) stack)]
-      [(equal? node-typ 'BoolConstNode)      (k (EtaValue 'BooleanTag value) stack)]
-      [(equal? node-typ 'StringConstNode)    (k (EtaValue 'StringTag value) stack)]
-      [(equal? node-typ 'NilConstNode)       (k (EtaValue 'NilValueTag '()) stack)]
-      [(equal? node-typ 'VoidConstNode)      (k (EtaValue 'VoidTag '()) stack)]
-      [(equal? node-typ 'UndefinedConstNode) (k (EtaValue 'UndefinedTag 'undefined) stack)]
+      [(equal? node-typ 'IntConstNode)       (k (RuntimeValue 'IntTag value) stack)]
+      [(equal? node-typ 'FloatConstNode)     (k (RuntimeValue 'FloatTag value) stack)]
+      [(equal? node-typ 'BoolConstNode)      (k (RuntimeValue 'BooleanTag value) stack)]
+      [(equal? node-typ 'StringConstNode)    (k (RuntimeValue 'StringTag value) stack)]
+      [(equal? node-typ 'NilConstNode)       (k (RuntimeValue 'NilValueTag '()) stack)]
+      [(equal? node-typ 'VoidConstNode)      (k (RuntimeValue 'VoidTag '()) stack)]
+      [(equal? node-typ 'UndefinedConstNode) (k (RuntimeValue 'UndefinedTag 'undefined) stack)]
       [else (k (make-runtime-error 
                 (format "Internal error: unexpected ConstNode type: ~a" node-typ)) stack)])))
 
@@ -143,18 +143,18 @@
 
 
 ;  eval-quote
-;     Evaluate a quoted expression by returning it as an EtaValue
+;     Evaluate a quoted expression by converting it to a runtime value
 ;  Arguments:
 ;     expr - A Quote expression containing the quoted form
 ;     env - The environment (unused for quote)
 ;     k - The continuation to receive the result
 ;     stack - The current call stack
 ;  Returns:
-;     Via k: An EtaValue containing the quoted expression
+;     Via k: A RuntimeValue containing the quoted expression as a Scheme value
 (define (eval-quote expr env k stack)
   (let* ([quote-args (Expr-args expr)]
          [quoted-form (first quote-args)])
-    (k (make-runtime-value 'EtaExprTag quoted-form) stack)))
+    (k (quoted-expr->runtime-value quoted-form) stack)))
 
 ;  arg-to-param-spec
 ;     Convert an Arg expression to a ParamSpec structure
@@ -181,7 +181,7 @@
 ;     k - The continuation to receive the result
 ;     stack - The current call stack
 ;  Returns:
-;     Via k: An EtaValue containing an EtaClosure
+;     Via k: An RuntimeValue containing an EtaClosure
 (define (eval-lambda expr env k stack)
   (let* ([lambda-args (Expr-args expr)]
          [param-spec (arg-to-param-spec (first lambda-args))]
@@ -209,13 +209,13 @@
       (lambda (test-result test-stack)
         (if (RuntimeError? test-result)
             (k test-result test-stack)
-            (if (equal? (EtaValue-tag test-result) 'BooleanTag)
-                (if (equal? (EtaValue-value test-result) #t)
+            (if (equal? (RuntimeValue-tag test-result) 'BooleanTag)
+                (if (equal? (RuntimeValue-value test-result) #t)
                     (eval-expr then-expr env k test-stack #:tail? tail?)
                     (eval-expr else-expr env k test-stack #:tail? tail?))
                 (k (make-runtime-error
                     (format "Only boolean value is allowed in condition. Given ~a" 
-                            (EtaValue-tag test-result))
+                            (RuntimeValue-tag test-result))
                     (Expr-loc test-expr)) 
                    test-stack))))
       stack)))
@@ -281,7 +281,7 @@
 
     (when variadic
       (let ([rest-args (list-tail args (min (length args) (length req-params)))])
-        (define-variable! env variadic (EtaValue 'ListTag rest-args) #f)))
+        (define-variable! env variadic (RuntimeValue 'PairTag rest-args) #f)))
     
     env))
 
@@ -307,11 +307,11 @@
             (k operator-value op-stack)
             
             ; Handle continuations, closures and builtins
-            (if (not (or (equal? (EtaValue-tag operator-value) 'EtaClosureTag)
-                         (equal? (EtaValue-tag operator-value) 'EtaBuiltinTag)
-                         (equal? (EtaValue-tag operator-value) 'EtaContinuationTag)))
+            (if (not (or (equal? (RuntimeValue-tag operator-value) 'EtaClosureTag)
+                         (equal? (RuntimeValue-tag operator-value) 'EtaBuiltinTag)
+                         (equal? (RuntimeValue-tag operator-value) 'EtaContinuationTag)))
                 (k (make-runtime-error
-                    (format "Application of non-function: ~a" (EtaValue-tag operator-value))
+                    (format "Application of non-function: ~a" (RuntimeValue-tag operator-value))
                     (Expr-loc operator-expr))
                    op-stack)
                 
@@ -321,16 +321,16 @@
                         (k args args-stack)
                         
                         (cond
-                          [(equal? (EtaValue-tag operator-value) 'EtaContinuationTag)
+                          [(equal? (RuntimeValue-tag operator-value) 'EtaContinuationTag)
                            (if (= (length args) 1)
-                               (let ([cont (EtaValue-value operator-value)])
+                               (let ([cont (RuntimeValue-value operator-value)])
                                  ((Continuation-k cont) (first args) (Continuation-stack cont)))
                                (k (make-runtime-error
                                    (format "Continuation expects exactly one argument, got ~a" 
                                            (length args))
                                    (Expr-loc operator-expr))
                                   args-stack))]
-                          [(equal? (EtaValue-tag operator-value) 'EtaClosureTag)
+                          [(equal? (RuntimeValue-tag operator-value) 'EtaClosureTag)
                            (apply-closure operator-value args env k args-stack loc #:tail? tail?)]
                           [else
                            (apply-builtin operator-value args env 
@@ -358,15 +358,13 @@
 ;     Builtin implementation has responsibility to check arity
 (define (apply-builtin builtin args env k stack)
   ; MEMO: Builtin implementation has responsibility to check arity
-  (let ([result ((Builtin-proc (EtaValue-value builtin)) args env)])
-    (if (EtaValue? result)
-        (k result stack)
-        (k (make-runtime-error result) stack))))
+  (let ([result ((Builtin-proc (RuntimeValue-value builtin)) args env)])
+    (k result stack)))
 
 ;  apply-closure
 ;     Apply a user-defined function to arguments
 ;  Arguments:
-;     closure-value - A EtaValue containing a Closure
+;     closure-value - A RuntimeValue containing a Closure
 ;     args - Evaluated arguments
 ;     env - The calling environment
 ;     k - The continuation to receive the result
@@ -378,7 +376,7 @@
 ;  Notes:
 ;     Handles arity check and propagates errors properly
 (define (apply-closure closure-value args env k stack proc-loc #:tail? [tail? #f])
-  (let* ([closure (EtaValue-value closure-value)]
+  (let* ([closure (RuntimeValue-value closure-value)]
          [param-spec (Closure-params-spec closure)]
          [body (Closure-body closure)]
          [captured-env (Closure-captured-env closure)]
@@ -491,17 +489,17 @@
            (k proc-value new-stack)
            (let ([reified-cont (make-continuation k new-stack)])
              (cond
-               [(and (EtaValue? proc-value) 
-                     (equal? (EtaValue-tag proc-value) 'EtaClosureTag))
+               [(and (RuntimeValue? proc-value) 
+                     (equal? (RuntimeValue-tag proc-value) 'EtaClosureTag))
                 (apply-closure proc-value (list reified-cont) env k new-stack loc #:tail? tail?)]
-               [(and (EtaValue? proc-value)
-                     (equal? (EtaValue-tag proc-value) 'EtaBuiltinTag))
-                (let ([builtin (EtaValue-value proc-value)])
+               [(and (RuntimeValue? proc-value)
+                     (equal? (RuntimeValue-tag proc-value) 'EtaBuiltinTag))
+                (let ([builtin (RuntimeValue-value proc-value)])
                   (apply-builtin builtin (list reified-cont) env k new-stack))]
                [else 
                 (k (make-runtime-error 
                     (format "call/cc requires a procedure as an argument, got: ~a" 
-                            (if (EtaValue? proc-value) 
+                            (if (RuntimeValue? proc-value) 
                                 (runtime-value->string proc-value) 
                                 proc-value))
                     loc)
@@ -539,7 +537,7 @@
         (if (RuntimeError? result)
             (k result new-stack)
             (if (null? exps)
-                (k (EtaValue 'VoidTag '()) new-stack)
+                (k (RuntimeValue 'VoidTag '()) new-stack)
                 (eval-body-of-body exps env k new-stack #:tail? tail?))))
       stack)))
 
@@ -591,3 +589,65 @@
                           (k parsed-result stack)  
                           (let ([result (eval-toplevel-exprs parsed-result env)])
                             (k result stack))))))))))
+;  expr->runtime-value
+;     Convert an Expr to a RuntimeValue using Pair and Symbol tags
+;  Arguments:
+;     expr - An Expr to convert
+;  Returns:
+;     A RuntimeValue representing the expression as a Scheme value
+(define (expr->runtime-value expr)
+  (cond
+    ; Constants
+    [(equal? (Expr-head expr) 'ConstHead)
+     (let* ([const-args (Expr-args expr)]
+            [node-typ (first const-args)]
+            [value (second const-args)])
+       (cond
+         [(equal? node-typ 'IntConstNode)       (RuntimeValue 'IntTag value)]
+         [(equal? node-typ 'FloatConstNode)     (RuntimeValue 'FloatTag value)]
+         [(equal? node-typ 'BoolConstNode)      (RuntimeValue 'BooleanTag value)]
+         [(equal? node-typ 'StringConstNode)    (RuntimeValue 'StringTag value)]
+         [(equal? node-typ 'NilConstNode)       (RuntimeValue 'NilValueTag '())]
+         [(equal? node-typ 'VoidConstNode)      (RuntimeValue 'VoidTag '())]
+         [(equal? node-typ 'UndefinedConstNode) (RuntimeValue 'UndefinedTag 'undefined)]
+         [else 
+          (make-runtime-error
+           (format "Internal error: unexpected ConstNode type in quoted expression: ~a" node-typ))]))]
+    
+    ; Identifiers (convert to symbols)
+    [(equal? (Expr-head expr) 'IdHead)
+     (let ([name (first (Expr-args expr))])
+       (RuntimeValue 'SymbolTag name))]
+    
+    ; S-expressions (list structure)
+    [(equal? (Expr-head expr) 'S-ExprHead)
+     (let* ([sexpr-args (Expr-args expr)]
+            [items (first sexpr-args)]
+            [dotted (second sexpr-args)])
+       ; Build the list recursively from right to left
+       (let ([tail-value (if (null? dotted)
+                            (RuntimeValue 'NilValueTag '())
+                            (expr->runtime-value dotted))])
+         (foldr
+          (lambda (item acc)
+            (let* ([item-value (expr->runtime-value item)]
+                   [pair (make-Pair item-value acc)])
+              (RuntimeValue 'PairTag pair)))
+          tail-value
+          items)))]
+    
+    ; Fallback for other expressions
+    [else
+     (make-runtime-error
+      (format "Internal error: Cannot convert complex expression to S-expression: ~a" 
+              (pretty-print-Expr expr)))]))
+
+;  quoted-expr->runtime-value
+;     Process a quoted expression for eval-quote
+;  Arguments:
+;     expr - The expression from the quote form
+;  Returns:
+;     A RuntimeValue representing the quoted expression
+(define (quoted-expr->runtime-value expr)
+  ; Direct conversion for S-expressions and other forms
+  (expr->runtime-value expr))

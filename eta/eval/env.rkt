@@ -19,7 +19,7 @@
 ;  Env
 ;     Environment frame holding variable bindings, link to parent
 ;  Fields:
-;     frame      - hash table mapping name(string) to value(EtaValue)
+;     frame      - hash table mapping name(string) to value(RuntimeValue)
 ;     parent     - enclosing Env or #f
 ;  Note:
 ;     Env only contains the newly defined variables.
@@ -97,10 +97,10 @@
 ;     #t if successful, RuntimeError if:
 ;     - For define (breaking? = #f): name already exists in current env
 ;     - For set! (breaking? = #t): variable not found in any scope
-;     - For both: value is not an EtaValue
+;     - For both: value is not an RuntimeValue
 (define (define-variable! env name value breaking?)
-  (unless (EtaValue? value)
-      (make-runtime-error (format "Failed to define variable. Invalid value type for variable: ~a. Expected EtaValue." name)))
+  (unless (RuntimeValue? value)
+      (make-runtime-error (format "Failed to define variable. Invalid value type for variable: ~a. Expected RuntimeValue." name)))
   
   (if breaking?
       (let loop ([e env])
