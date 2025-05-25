@@ -14,6 +14,8 @@
          Pair?
          Pair-car
          Pair-cdr
+         set-Pair-car!
+         set-Pair-cdr!
          ParamSpec-required
          ParamSpec-variadic
          ParamSpec?
@@ -105,7 +107,7 @@
 ; Arguments:
 ;    car - The first element of the pair
 ;    cdr - The second element of the pair (can be another pair or nil)
-(struct Pair (car cdr) #:transparent)
+(struct Pair (car cdr) #:transparent #:mutable)
 (define (make-Pair car cdr)
     (Pair car cdr))
 
@@ -137,23 +139,13 @@
 (define (pretty-print-Pair pair)
   (unless (Pair? pair)
     (error "Internal error: pretty-print-Pair expects a Pair, but got ~a" pair))
+  
+  (let ([car (Pair-car pair)]
+        [cdr (Pair-cdr pair)])
+    (if (equal? cdr (RuntimeValue 'NilValueTag '()))
+        (format "(~a)" (runtime-value->string car))
+        (format "(~a . ~a)" (runtime-value->string car) (runtime-value->string cdr)))))
 
-  (define (collect-elements p)
-    (cond
-      [(Pair? p)
-       (let ([car-str (runtime-value->string (Pair-car p))]
-             [cdr (Pair-cdr p)])
-         (let ([rest (collect-elements cdr)])
-           (if (and (list? rest) (not (null? rest)) (equal? (car rest) "."))
-               (cons car-str rest)
-               (cons car-str rest))))]
-      [(and (RuntimeValue? p) (equal? (RuntimeValue-tag p) 'NilValueTag))
-       '()]
-      [else
-       (list "." (runtime-value->string p))]))
-
-  (let ([elems (collect-elements pair)])
-    (string-append "(" (string-join elems " ") ")")))
 
 ; ParamSpec
 ;     A structure to represent the parameter specification of a function
