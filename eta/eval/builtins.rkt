@@ -3,12 +3,8 @@
 (require "runtime-values.rkt"
          "env.rkt"
          "../utils/error.rkt"
+         "stack-frame.rkt"
          racket/file)
-
-(require "runtime-values.rkt"
-         "env.rkt"
-         "../utils/error.rkt"
-)
 
 
 (provide 
@@ -251,6 +247,40 @@
     (lambda (checked-args)
       (newline)
       (make-runtime-value 'VoidTag '()))))
+
+
+;  set-max-stack-depth!-impl
+;     Sets the maximum call stack depth to prevent infinite recursion
+;  Arguments:
+;     args - One argument: depth (positive integer)
+;     env - The environment (unused)
+;  Returns:
+;     Void
+(define (set-max-stack-depth!-impl args env)
+  (check-args-count "set-max-stack-depth!" args 1
+    (lambda (checked-args)
+      (let ([depth-arg (first checked-args)])
+        (if (int-value? depth-arg)
+            (let ([depth (RuntimeValue-value depth-arg)])
+              (if (> depth 0)
+                  (begin
+                    (set-max-stack-depth! depth)
+                    (make-runtime-value 'VoidTag '()))
+                  (make-runtime-error (format "set-max-stack-depth! expects a positive integer, got: ~a" depth))))
+            (make-runtime-error (format "set-max-stack-depth! expects an integer, got: ~a" 
+                               (runtime-value->string depth-arg))))))))
+
+;  get-max-stack-depth-impl
+;     Gets the current maximum call stack depth
+;  Arguments:
+;     args - No arguments expected
+;     env - The environment (unused)
+;  Returns:
+;     The current maximum stack depth as an integer
+(define (get-max-stack-depth-impl args env)
+  (check-args-count "get-max-stack-depth" args 0
+    (lambda (checked-args)
+      (make-runtime-value 'IntTag (get-max-stack-depth)))))
 
 ;; Arithmetic Operations
 (define (add-impl args env)
@@ -785,6 +815,10 @@
     (define-builtin! env "string->number" string->number-impl)
     (define-builtin! env "number->string" number->string-impl)
 
+    ;; Stack Depth Management
+    (define-builtin! env "set-max-stack-depth!" set-max-stack-depth!-impl)
+    (define-builtin! env "get-max-stack-depth" get-max-stack-depth-impl)
+
     env)
 
 ;  get-builtin-names
@@ -802,4 +836,5 @@
         "list" "cons" "car" "cdr" "set-car!" "set-cdr!" "null?" "pair?"
         "make-vector" "vector-ref" "vector-set!" "vector-length" "vector?" "vector-copy"
         "string-length" "substring" "string-ref" "string-append" "string=?"
-        "apply" "string->number" "number->string"))
+        "apply" "string->number" "number->string"
+        "set-max-stack-depth!" "get-max-stack-depth"))

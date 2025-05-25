@@ -25,11 +25,32 @@
     call-stack-current-depth
 
     MAX-STACK-DEPTH
+    set-max-stack-depth!
+    get-max-stack-depth
 )
 
 
 ;; Maximum depth of the call stack to prevent infinite recursion
-(define MAX-STACK-DEPTH 1000)
+;; This is now a mutable variable that can be changed at runtime
+(define MAX-STACK-DEPTH (make-parameter 1000000))
+
+;; set-max-stack-depth!
+;;    Sets the maximum stack depth
+;; Arguments:
+;;    depth - The new maximum stack depth (must be positive integer)
+;; Returns:
+;;    void
+(define (set-max-stack-depth! depth)
+  (if (and (integer? depth) (> depth 0))
+      (MAX-STACK-DEPTH depth)
+      (error "set-max-stack-depth!: depth must be a positive integer")))
+
+;; get-max-stack-depth
+;;    Gets the current maximum stack depth
+;; Returns:
+;;    The current maximum stack depth
+(define (get-max-stack-depth)
+  (MAX-STACK-DEPTH))
 
 ;; CallFrame
 ;;    Represents a function call frame on the call stack
@@ -82,7 +103,7 @@
 ;;    - For tail calls, the current frame is replaced instead of pushing a new one
 (define (call-stack-push stack frame)
     (cond 
-      [(>= (CallStack-current-depth stack) MAX-STACK-DEPTH)
+      [(>= (CallStack-current-depth stack) (MAX-STACK-DEPTH))
        (make-runtime-error "Stack overflow: maximum stack depth exceeded")]
       
       ; For tail calls with a non-empty stack, replace the top frame

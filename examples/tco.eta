@@ -1,3 +1,5 @@
+(set-max-stack-depth! 90)
+
 (define (fact-with-tco n)
   (define (fact-iter n acc)
     (if (= n 1)
