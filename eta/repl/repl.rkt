@@ -37,7 +37,7 @@
         (lambda ()
           (with-handlers ([exn:break? (lambda (e)
                                         (displayln (colorize "Evaluation interrupted." 'yellow)))])
-            (displayln (format-eval-result (eta-eval-in-thread env input 'repl) input)))))])
+            (displayln (format-eval-result (eta-eval-in-thread env input 'repl))))))])
     ;; Always reset break state before next loop iteration
     (reset-break-handler)
     (repl-loop env)))
