@@ -1,0 +1,149 @@
+;; math.eta - Standard library for mathematical functions
+
+;; abs - Returns the absolute value of a number
+;; Arguments:
+;;   x - A number
+;; Returns:
+;;   The absolute value of x
+(define (abs x)
+  (if (< x 0)
+      (- 0 x)
+      x))
+
+;; max - Returns the maximum of its arguments
+;; Arguments:
+;;   args... - One or more numbers
+;; Returns:
+;;   The maximum value
+(define (max . args)
+  (if (null? args)
+      (error "max: requires at least one argument")
+      (if (null? (cdr args))
+          (car args)
+          (let ((first (car args))
+                (rest-max (apply max (cdr args))))
+            (if (> first rest-max)
+                first
+                rest-max)))))
+
+;; min - Returns the minimum of its arguments
+;; Arguments:
+;;   args... - One or more numbers
+;; Returns:
+;;   The minimum value
+(define (min . args)
+  (if (null? args)
+      (error "min: requires at least one argument")
+      (if (null? (cdr args))
+          (car args)
+          (let ((first (car args))
+                (rest-min (apply min (cdr args))))
+            (if (< first rest-min)
+                first
+                rest-min)))))
+
+;; % - Returns the % of the first argument divided by the second
+;; Arguments:
+;;   a - Dividend
+;;   b - Divisor
+;; Returns:
+;;   The % of a divided by b
+(define (% a b)
+  (if (= b 0)
+      (error "%: division by zero")
+      (- a (* b (% a b)))))
+
+;; // - Returns the integer division of the first argument by the second
+;; Arguments:
+;;   a - Dividend
+;;   b - Divisor
+;; Returns:
+;;   The integer division of a by b
+(define (// a b)
+  (if (= b 0)
+      (error "//: division by zero")
+      (if (and (> a 0) (> b 0))
+          (if (< a b) 0 (+ 1 (// (- a b) b)))
+          (if (and (< a 0) (< b 0))
+              (// (abs a) (abs b))
+              (if (< a 0)
+                  (- 0 (+ 1 (// (- (abs a) 1) (abs b))))
+                  (- 0 (// a (abs b))))))))
+
+;; gcd - Returns the greatest common divisor of its arguments
+;; Arguments:
+;;   a, b... - Two or more integers
+;; Returns:
+;;   The greatest common divisor
+(define (gcd a . bs)
+  (if (null? bs)
+      (abs a)
+      (let ((b (car bs)))
+        (apply gcd 
+               (if (= b 0) 
+                   a 
+                   (gcd b (% a b)))
+               (cdr bs)))))
+
+;; lcm - Returns the least common multiple of its arguments
+;; Arguments:
+;;   a, b... - Two or more integers
+;; Returns:
+;;   The least common multiple
+(define (lcm a . bs)
+  (if (null? bs)
+      (abs a)
+      (let ((b (car bs)))
+        (apply lcm 
+               (if (or (= a 0) (= b 0))
+                   0
+                   (abs (/ (* a b) (gcd a b))))
+               (cdr bs)))))
+
+;; even? - Checks if a number is even
+;; Arguments:
+;;   n - An integer
+;; Returns:
+;;   #t if n is even, #f otherwise
+(define (even? n)
+  (= (% n 2) 0))
+
+;; odd? - Checks if a number is odd
+;; Arguments:
+;;   n - An integer
+;; Returns:
+;;   #t if n is odd, #f otherwise
+(define (odd? n)
+  (= (% n 2) 1))
+
+;; positive? - Checks if a number is positive
+;; Arguments:
+;;   n - A number
+;; Returns:
+;;   #t if n is positive, #f otherwise
+(define (positive? n)
+  (> n 0))
+
+;; negative? - Checks if a number is negative
+;; Arguments:
+;;   n - A number
+;; Returns:
+;;   #t if n is negative, #f otherwise
+(define (negative? n)
+  (< n 0))
+
+;; zero? - Checks if a number is zero
+;; Arguments:
+;;   n - A number
+;; Returns:
+;;   #t if n is zero, #f otherwise
+(define (zero? n)
+  (= n 0))
+
+;; square - Returns the square of a number
+;; Arguments:
+;;   n - A number
+;; Returns:
+;;   The square of n
+(define (square n)
+  (* n n))

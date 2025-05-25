@@ -1,0 +1,176 @@
+;; higher-order.eta - Standard library for higher-order functions
+
+;; map - Applies a procedure to each element of a list and returns a new list
+;; Arguments:
+;;   proc - A procedure that takes one argument
+;;   lst - A list
+;; Returns:
+;;   A new list with the results of applying proc to each element
+(define (map proc lst)
+  (if (null? lst)
+      '()
+      (cons (proc (car lst))
+            (map proc (cdr lst)))))
+
+;; map2 - Applies a procedure to corresponding elements of two lists and returns a new list
+;; Arguments:
+;;   proc - A procedure that takes two arguments
+;;   lst1 - First list
+;;   lst2 - Second list
+;; Returns:
+;;   A new list with the results of applying proc to corresponding elements
+(define (map2 proc lst1 lst2)
+  (if (or (null? lst1) (null? lst2))
+      '()
+      (cons (proc (car lst1) (car lst2))
+            (map2 proc (cdr lst1) (cdr lst2)))))
+
+;; for-each - Applies a procedure to each element of a list for side effects
+;; Arguments:
+;;   proc - A procedure that takes one argument
+;;   lst - A list
+;; Returns:
+;;   Unspecified
+(define (for-each proc lst)
+  (if (null? lst)
+      'void
+      (begin
+        (proc (car lst))
+        (for-each proc (cdr lst)))))
+
+;; filter - Returns a new list with elements that satisfy a predicate
+;; Arguments:
+;;   pred - A predicate procedure that takes one argument
+;;   lst - A list
+;; Returns:
+;;   A new list with elements that satisfy pred
+(define (filter pred lst)
+  (if (null? lst)
+      '()
+      (if (pred (car lst))
+          (cons (car lst) (filter pred (cdr lst)))
+          (filter pred (cdr lst)))))
+
+;; remove - Returns a new list with elements that don't satisfy a predicate
+;; Arguments:
+;;   pred - A predicate procedure that takes one argument
+;;   lst - A list
+;; Returns:
+;;   A new list with elements that don't satisfy pred
+(define (remove pred lst)
+  (filter (lambda (x) (not (pred x))) lst))
+
+;; find - Returns the first element that satisfies a predicate
+;; Arguments:
+;;   pred - A predicate procedure that takes one argument
+;;   lst - A list
+;; Returns:
+;;   The first element that satisfies pred, or #f if none found
+(define (find pred lst)
+  (if (null? lst)
+      #f
+      (if (pred (car lst))
+          (car lst)
+          (find pred (cdr lst)))))
+
+;; fold-left - Performs a left fold over a list
+;; Arguments:
+;;   proc - A procedure that takes two arguments: accumulator and element
+;;   init - Initial value for accumulator
+;;   lst - A list
+;; Returns:
+;;   The result of folding the list from left to right
+(define (fold-left proc init lst)
+  (if (null? lst)
+      init
+      (fold-left proc
+               (proc init (car lst))
+               (cdr lst))))
+
+;; fold-right - Performs a right fold over a list
+;; Arguments:
+;;   proc - A procedure that takes two arguments: element and accumulator
+;;   init - Initial value for accumulator
+;;   lst - A list
+;; Returns:
+;;   The result of folding the list from right to left
+(define (fold-right proc init lst)
+  (if (null? lst)
+      init
+      (proc (car lst)
+            (fold-right proc init (cdr lst)))))
+
+;; compose - Returns a function that is the composition of the given functions
+;; Arguments:
+;;   f, g... - One or more functions
+;; Returns:
+;;   A function that applies each function from right to left
+(define (compose f . gs)
+  (if (null? gs)
+      f
+      (let ((g (apply compose gs)))
+        (lambda (x) (f (g x))))))
+
+;; curry - Returns a curried version of a function
+;; Arguments:
+;;   f - A function that takes multiple arguments
+;;   n - Number of arguments the function takes
+;; Returns:
+;;   A function that takes one argument at a time
+(define (curry f n)
+  (if (<= n 1)
+      f
+      (lambda (x)
+        (curry (lambda args
+                 (apply f (cons x args)))
+               (- n 1)))))
+
+;; identity - Returns its argument unchanged
+;; Arguments:
+;;   x - Any value
+;; Returns:
+;;   The same value
+(define (identity x) x)
+
+;; const - Returns a function that always returns the same value
+;; Arguments:
+;;   x - Any value
+;; Returns:
+;;   A function that returns x regardless of its arguments
+(define (const x)
+  (lambda args x))
+
+;; flip - Returns a function with the first two arguments swapped
+;; Arguments:
+;;   f - A function that takes at least two arguments
+;; Returns:
+;;   A function that applies f with the first two arguments swapped
+(define (flip f)
+  (lambda (a b . args)
+    (apply f b a args)))
+
+;; any? - Returns #t if any element satisfies the predicate
+;; Arguments:
+;;   pred - A predicate procedure that takes one argument
+;;   lst - A list
+;; Returns:
+;;   #t if any element satisfies pred, #f otherwise
+(define (any? pred lst)
+  (if (null? lst)
+      #f
+      (if (pred (car lst))
+          #t
+          (any? pred (cdr lst)))))
+
+;; every? - Returns #t if every element satisfies the predicate
+;; Arguments:
+;;   pred - A predicate procedure that takes one argument
+;;   lst - A list
+;; Returns:
+;;   #t if every element satisfies pred, #f otherwise
+(define (every? pred lst)
+  (if (null? lst)
+      #t
+      (if (pred (car lst))
+          (every? pred (cdr lst))
+          #f)))

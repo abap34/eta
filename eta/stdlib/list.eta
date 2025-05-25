@@ -1,0 +1,175 @@
+;; list.eta - Standard library for list operations
+
+;; length - Returns the length of a list
+;; Arguments:
+;;   lst - A list
+;; Returns:
+;;   The number of elements in the list
+(define (length lst)
+  (if (null? lst)
+      0
+      (+ 1 (length (cdr lst)))))
+
+;; append - Concatenates multiple lists
+;; Arguments:
+;;   lists... - Zero or more lists to append
+;; Returns:
+;;   A new list containing all elements from the input lists
+(define (append . lists)
+  (if (null? lists)
+      '()
+      (if (null? (car lists))
+          (apply append (cdr lists))
+          (cons (car (car lists))
+                (apply append (cons (cdr (car lists)) (cdr lists)))))))
+
+;; apply - Applies a procedure to a list of arguments
+;; Arguments:
+;;   proc - A procedure
+;;   args - A list of arguments
+;; Returns:
+;;   The result of applying proc to the elements of args
+(define (apply proc args)
+  (if (null? args)
+      (error "apply: no arguments provided")
+      (if (not (procedure? proc))
+          (error "apply: first argument must be a procedure")
+          (let loop ((args args) (result '()))
+            (if (null? args)
+                (apply proc result)
+                (loop (cdr args) (cons (car args) result)))))))
+
+;; reverse - Returns a new list with elements in reverse order
+;; Arguments:
+;;   lst - A list
+;; Returns:
+;;   A new list with elements in reverse order
+(define (reverse lst)
+  (define (reverse-helper lst acc)
+    (if (null? lst)
+        acc
+        (reverse-helper (cdr lst) (cons (car lst) acc))))
+  (reverse-helper lst '()))
+
+;; list-ref - Returns the element at the specified index in a list
+;; Arguments:
+;;   lst - A list
+;;   n - An index (0-based)
+;; Returns:
+;;   The element at the specified index
+(define (list-ref lst n)
+  (if (< n 0)
+      (error "list-ref: negative index")
+      (if (null? lst)
+          (error "list-ref: index out of range")
+          (if (= n 0)
+              (car lst)
+              (list-ref (cdr lst) (- n 1))))))
+
+;; list-tail - Returns the list starting from the specified index
+;; Arguments:
+;;   lst - A list
+;;   n - An index (0-based)
+;; Returns:
+;;   The list starting from the specified index
+(define (list-tail lst n)
+  (if (< n 0)
+      (error "list-tail: negative index")
+      (if (= n 0)
+          lst
+          (if (null? lst)
+              (error "list-tail: index out of range")
+              (list-tail (cdr lst) (- n 1))))))
+
+;; list-take - Returns the first n elements of a list
+;; Arguments:
+;;   lst - A list
+;;   n - Number of elements to take
+;; Returns:
+;;   A new list containing the first n elements
+(define (list-take lst n)
+  (if (< n 0)
+      (error "list-take: negative count")
+      (if (or (= n 0) (null? lst))
+          '()
+          (cons (car lst) (list-take (cdr lst) (- n 1))))))
+
+;; list-drop - Drops the first n elements of a list
+;; Arguments:
+;;   lst - A list
+;;   n - Number of elements to drop
+;; Returns:
+;;   A new list with the first n elements removed
+(define (list-drop lst n)
+  (if (< n 0)
+      (error "list-drop: negative count")
+      (if (or (= n 0) (null? lst))
+          lst
+          (list-drop (cdr lst) (- n 1)))))
+
+
+(define (first lst) (car lst))
+(define (second lst) (car (cdr lst)))
+(define (third lst) (car (cdr (cdr lst))))
+(define (fourth lst) (car (cdr (cdr (cdr lst)))))
+(define (fifth lst) (car (cdr (cdr (cdr (cdr lst))))))
+(define (sixth lst) (car (cdr (cdr (cdr (cdr (cdr lst)))))))
+(define (seventh lst) (car (cdr (cdr (cdr (cdr (cdr (cdr lst))))))))
+(define (eighth lst) (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr lst)))))))))
+(define (ninth lst) (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr lst))))))))))
+(define (tenth lst) (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr lst)))))))))))
+
+
+;; iota - Generates a list of consecutive integers
+;; Arguments:
+;;   count - Number of integers to generate
+;;   start - Starting value (default: 0)
+;;   step - Step between values (default: 1)
+;; Returns:
+;;   A list of consecutive integers
+(define (iota count . args)
+  (let ((start (if (null? args) 0 (car args)))
+        (step (if (or (null? args) (null? (cdr args))) 1 (cadr args))))
+    (if (< count 0)
+        (error "iota: negative count")
+        (let loop ((i 0) (result '()))
+          (if (= i count)
+              (reverse result)
+              (loop (+ i 1) (cons (+ start (* i step)) result)))))))
+
+;; member - Checks if an element is a member of a list
+;; Arguments:
+;;   obj - The object to search for
+;;   lst - The list to search in
+;; Returns:
+;;   #t if the element is in the list, #f otherwise
+(define (member obj lst)
+  (if (null? lst)
+      #f
+      (if (equal? obj (car lst))
+          #t
+          (member obj (cdr lst)))))
+
+;; last - Returns the last element of a list
+;; Arguments:
+;;   lst - A non-empty list
+;; Returns:
+;;   The last element of the list
+(define (last lst)
+  (if (null? lst)
+      (error "last: empty list")
+      (if (null? (cdr lst))
+          (car lst)
+          (last (cdr lst)))))
+
+;; flatten - Flattens a nested list structure
+;; Arguments:
+;;   lst - A list, possibly containing nested lists
+;; Returns:
+;;   A new list with all elements at the top level
+(define (flatten lst)
+  (if (null? lst)
+      '()
+      (if (pair? (car lst))
+          (append (flatten (car lst)) (flatten (cdr lst)))
+          (cons (car lst) (flatten (cdr lst))))))
