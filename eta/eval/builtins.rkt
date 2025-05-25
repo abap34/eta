@@ -226,6 +226,32 @@
     (lambda (checked-args)
       (make-runtime-value 'StringTag (read-line)))))
 
+;  flush-impl
+;     Flushes the output buffer to ensure immediate display
+;  Arguments:
+;     args - No arguments expected
+;     env - The environment (unused)
+;  Returns:
+;     Void
+(define (flush-impl args env)
+  (check-args-count "flush" args 0
+    (lambda (checked-args)
+      (flush-output)
+      (make-runtime-value 'VoidTag '()))))
+
+;  newline-impl
+;     Outputs a newline character
+;  Arguments:
+;     args - No arguments expected
+;     env - The environment (unused)
+;  Returns:
+;     Void
+(define (newline-impl args env)
+  (check-args-count "newline" args 0
+    (lambda (checked-args)
+      (newline)
+      (make-runtime-value 'VoidTag '()))))
+
 ;; Arithmetic Operations
 (define (add-impl args env)
   (with-error-handling (ensure-numbers "+" args)
@@ -480,6 +506,23 @@
                (make-runtime-error 
                  (format "string-append expects strings, got: ~a" 
                         (runtime-value->string arg))))))))
+
+
+; string=?-impl
+;     Checks if two strings are equal
+(define (string=?-impl args env)
+  (check-args-count "string=?" args 2
+    (lambda (checked-args)
+      (let ([arg1 (first checked-args)]
+            [arg2 (second checked-args)])
+        (if (and (string-value? arg1) (string-value? arg2))
+            (make-runtime-value 'BooleanTag 
+              (equal? (RuntimeValue-value arg1) 
+                      (RuntimeValue-value arg2)))
+            (make-runtime-error 
+              (format "string=? expects two strings, got: ~a and ~a" 
+                     (runtime-value->string arg1) 
+                     (runtime-value->string arg2))))))))
    
 
 ;  error-impl
@@ -684,7 +727,11 @@
     ;; I/O Functions
     (define-builtin! env "display" display-impl)
     (define-builtin! env "read-line" read-line-impl)
+    (define-builtin! env "flush" flush-impl)
+    (define-builtin! env "newline" newline-impl)
     (define-builtin! env "error" error-impl)
+    (define-builtin! env "flush" flush-impl)
+    (define-builtin! env "newline" newline-impl)
 
     ;; Arithmetic Operations
     (define-builtin! env "+" add-impl)
@@ -718,6 +765,7 @@
     (define-builtin! env "substring" substring-impl)
     (define-builtin! env "string-ref" string-ref-impl)
     (define-builtin! env "string-append" string-append-impl)
+    (define-builtin! env "string=?" string=?-impl)
     
     ;; Type Checking and Conversion
     (define-builtin! env "int?" (make-type-checker "int?" 'IntTag))
@@ -748,7 +796,7 @@
 ;  Example:
 ;     (get-builtin-names) => (list "+" "-" "*" "/" "=" "<" ">" "list" "cons" "car" "cdr")
 (define (get-builtin-names)
-  (list "display" "read-line" "error"
+  (list "display" "read-line" "flush" "newline" "load" "error"
         "+" "-" "*" "/" 
         "=" "<" ">"
         "list" "cons" "car" "cdr" "set-car!" "set-cdr!" "null?" "pair?"

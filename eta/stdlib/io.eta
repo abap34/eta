@@ -1,0 +1,170 @@
+; io.eta - I/O utility functions for Eta
+
+; print
+;   Display a value followed by a newline
+; Arguments:
+;   value - The value to print
+; Returns:
+;   Void
+; Example:
+;   (print "Hello World") ; prints "Hello World" with newline
+(define print
+  (lambda (value)
+    (display value)
+    (newline)))
+
+; println
+;   Alias for print (more familiar to some users)
+; Arguments:
+;   value - The value to print
+; Returns:
+;   Void
+; Example:
+;   (println "Hello World") ; prints "Hello World" with newline
+(define println print)
+
+; clear-screen
+;   Clear the terminal screen using ANSI escape sequences
+; Arguments:
+;   None
+; Returns:
+;   Void
+; Example:
+;   (clear-screen) ; clears the terminal screen
+(define clear-screen
+  (lambda ()
+    (display "\033[2J")    ; Clear entire screen
+    (display "\033[H")     ; Move cursor to home position
+    (flush)))              ; Ensure immediate output
+
+; move-cursor
+;   Move cursor to specified position using ANSI escape sequences
+; Arguments:
+;   row - Row position (1-based)
+;   col - Column position (1-based)
+; Returns:
+;   Void
+; Example:
+;   (move-cursor 5 10) ; moves cursor to row 5, column 10
+(define move-cursor
+  (lambda (row col)
+    (display "\033[")
+    (display row)
+    (display ";")
+    (display col)
+    (display "H")
+    (flush)))
+
+; hide-cursor
+;   Hide the terminal cursor
+; Arguments:
+;   None
+; Returns:
+;   Void
+; Example:
+;   (hide-cursor) ; hides the cursor
+(define hide-cursor
+  (lambda ()
+    (display "\033[?25l")
+    (flush)))
+
+; show-cursor
+;   Show the terminal cursor
+; Arguments:
+;   None
+; Returns:
+;   Void
+; Example:
+;   (show-cursor) ; shows the cursor
+(define show-cursor
+  (lambda ()
+    (display "\033[?25h")
+    (flush)))
+
+; set-color
+;   Set text color using ANSI escape sequences
+; Arguments:
+;   color - Color code (30-37 for foreground, 40-47 for background)
+; Returns:
+;   Void
+; Example:
+;   (set-color 31) ; sets text color to red
+(define set-color
+  (lambda (color)
+    (display "\033[")
+    (display color)
+    (display "m")))
+
+; reset-color
+;   Reset text color to default
+; Arguments:
+;   None
+; Returns:
+;   Void
+; Example:
+;   (reset-color) ; resets color to default
+(define reset-color
+  (lambda ()
+    (display "\033[0m")))
+
+; print-colored
+;   Print text in a specific color and then reset
+; Arguments:
+;   text - Text to print
+;   color - Color code
+; Returns:
+;   Void
+; Example:
+;   (print-colored "Error!" 31) ; prints "Error!" in red
+(define print-colored
+  (lambda (text color)
+    (set-color color)
+    (display text)
+    (reset-color)
+    (flush)))
+
+; sleep
+;   Sleep for a specified number of milliseconds (using a simple loop)
+; Arguments:
+;   ms - Milliseconds to sleep (approximate)
+; Returns:
+;   Void
+; Note:
+;   This is a simple implementation and may not be accurate
+(define sleep
+  (lambda (ms)
+    (define loop-count (* ms 1000))
+    (let loop ((i 0))
+      (if (< i loop-count)
+          (loop (+ i 1))
+          '()))))
+
+; prompt
+;   Display a prompt and read user input
+; Arguments:
+;   message - Prompt message to display
+; Returns:
+;   String containing user input
+; Example:
+;   (prompt "Enter your name: ") ; displays prompt and returns input
+(define prompt
+  (lambda (message)
+    (display message)
+    (flush)
+    (read-line)))
+
+; confirm
+;   Ask a yes/no question and return boolean result
+; Arguments:
+;   message - Question to ask
+; Returns:
+;   #t for yes, #f for no
+; Example:
+;   (confirm "Are you sure? (y/n) ") ; returns #t if user enters 'y'
+(define confirm
+  (lambda (message)
+    (let ((response (prompt message)))
+      (or (string=? response "y") 
+          (string=? response "Y") 
+          (string=? response "yes") 
+          (string=? response "Yes")))))
