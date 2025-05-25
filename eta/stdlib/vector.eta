@@ -1,0 +1,169 @@
+; vector.eta - Higher-level vector operations for Eta
+
+; vector
+;   Create a vector from the given arguments
+; Arguments:
+;   args... - Variable number of arguments to be elements of the vector
+; Returns:
+;   A new vector containing all the arguments
+; Example:
+;   (vector 1 2 3) => [1 2 3]
+(define vector
+  (lambda args
+    (define len (length args))
+    (define vec (make-vector len 0))
+    (define fill-vector!
+      (lambda (lst idx)
+        (if (null? lst)
+            vec
+            (begin
+              (vector-set! vec idx (car lst))
+              (fill-vector! (cdr lst) (+ idx 1))))))
+    (fill-vector! args 0)))
+
+; vector->list
+;   Convert a vector to a list
+; Arguments:
+;   vec - A vector
+; Returns:
+;   A list containing all elements of the vector
+; Example:
+;   (vector->list [1 2 3]) => (1 2 3)
+(define vector->list
+  (lambda (vec)
+    (define len (vector-length vec))
+    (define helper
+      (lambda (idx acc)
+        (if (= idx len)
+            acc
+            (helper (+ idx 1) (cons (vector-ref vec idx) acc)))))
+    (reverse (helper 0 '()))))
+
+; list->vector
+;   Convert a list to a vector
+; Arguments:
+;   lst - A list
+; Returns:
+;   A vector containing all elements of the list
+; Example:
+;   (list->vector '(1 2 3)) => [1 2 3]
+(define list->vector
+  (lambda (lst)
+    (define len (length lst))
+    (define vec (make-vector len 0))
+    (define fill-vector!
+      (lambda (l idx)
+        (if (null? l)
+            vec
+            (begin
+              (vector-set! vec idx (car l))
+              (fill-vector! (cdr l) (+ idx 1))))))
+    (fill-vector! lst 0)))
+
+; vector-fill!
+;   Fill a vector with a given value
+; Arguments:
+;   vec - A vector to fill
+;   value - The value to fill with
+; Returns:
+;   Void (modifies the vector in place)
+; Example:
+;   (vector-fill! vec 42) ; fills vec with 42s
+(define vector-fill!
+  (lambda (vec value)
+    (define len (vector-length vec))
+    (define helper
+      (lambda (idx)
+        (if (= idx len)
+            '()
+            (begin
+              (vector-set! vec idx value)
+              (helper (+ idx 1))))))
+    (helper 0)))
+
+
+; vector-map
+;   Apply a function to each element of a vector and return a new vector
+; Arguments:
+;   func - A function to apply to each element
+;   vec - A vector
+; Returns:
+;   A new vector with the results
+; Example:
+;   (vector-map (lambda (x) (* x 2)) [1 2 3]) => [2 4 6]
+(define vector-map
+  (lambda (func vec)
+    (define len (vector-length vec))
+    (define new-vec (make-vector len 0))
+    (define helper
+      (lambda (idx)
+        (if (= idx len)
+            new-vec
+            (begin
+              (vector-set! new-vec idx (func (vector-ref vec idx)))
+              (helper (+ idx 1))))))
+    (helper 0)))
+
+; vector-for-each
+;   Apply a function to each element of a vector for side effects
+; Arguments:
+;   func - A function to apply to each element
+;   vec - A vector
+; Returns:
+;   Void
+; Example:
+;   (vector-for-each display [1 2 3]) ; prints 123
+(define vector-for-each
+  (lambda (func vec)
+    (define len (vector-length vec))
+    (define helper
+      (lambda (idx)
+        (if (= idx len)
+            '()
+            (begin
+              (func (vector-ref vec idx))
+              (helper (+ idx 1))))))
+    (helper 0)))
+
+; vector-fold
+;   Fold (reduce) a vector from left to right
+; Arguments:
+;   func - A binary function that takes accumulator and element
+;   init - Initial value for the accumulator
+;   vec - A vector
+; Returns:
+;   The final accumulated value
+; Example:
+;   (vector-fold + 0 [1 2 3 4]) => 10
+(define vector-fold
+  (lambda (func init vec)
+    (define len (vector-length vec))
+    (define helper
+      (lambda (idx acc)
+        (if (= idx len)
+            acc
+            (helper (+ idx 1) (func acc (vector-ref vec idx))))))
+    (helper 0 init)))
+
+; make-2d-vector
+;   Create a 2D vector (vector of vectors)
+; Arguments:
+;   rows - Number of rows
+;   cols - Number of columns
+;   init - Initial value for all elements
+; Returns:
+;   A 2D vector filled with init values
+; Example:
+;   (make-2d-vector 3 4 0) => [[0 0 0 0] [0 0 0 0] [0 0 0 0]]
+(define make-2d-vector
+  (lambda (rows cols init)
+    (define vec (make-vector rows 0))
+    (define helper
+      (lambda (idx)
+        (if (= idx rows)
+            vec
+            (begin
+              (vector-set! vec idx (make-vector cols init))
+              (helper (+ idx 1))))))
+    (helper 0)))
+

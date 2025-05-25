@@ -3,6 +3,11 @@
 (require "runtime-values.rkt"
          "env.rkt"
          "../utils/error.rkt"
+         racket/file)
+
+(require "runtime-values.rkt"
+         "env.rkt"
+         "../utils/error.rkt"
 )
 
 
@@ -20,6 +25,7 @@
   struct-value?
   undefined-value?
   void-value?
+  vector-value?
   add-builtins-to-env
 )
 
@@ -99,6 +105,9 @@
 
 (define (void-value? value)
   (and (RuntimeValue? value) (equal? (RuntimeValue-tag value) 'Void)))
+
+(define (vector-value? value)
+  (and (RuntimeValue? value) (equal? (RuntimeValue-tag value) 'VectorTag)))
 
 ;  check-args-count
 ;     Validates that the number of arguments matches the expected count
@@ -497,8 +506,8 @@
 ;   make-type-checker
 ;     Creates a type-checking function for a specific type
 (define (make-type-checker name tag)
-  (lambda (value)
-    (check-args-count name (value) 1
+  (lambda (args env)
+    (check-args-count name args 1
       (lambda (checked-args)
         (let ([arg (first checked-args)])
           (if (equal? (RuntimeValue-tag arg) tag)
@@ -544,6 +553,125 @@
             (make-runtime-error (format "number->string expects a number, got: ~a" 
                                (runtime-value->string arg))))))))
 
+;  make-vector-impl
+;     Creates a new vector with the specified size and initial value
+;  Arguments:
+;     args - Two arguments: size (integer) and initial value
+;     env - The environment (unused)
+;  Returns:
+;     A new vector filled with the initial value
+(define (make-vector-impl args env)
+  (check-args-count "make-vector" args 2
+    (lambda (checked-args)
+      (let ([size-arg (first checked-args)]
+            [init-arg (second checked-args)])
+        (if (int-value? size-arg)
+            (let ([size (RuntimeValue-value size-arg)])
+              (if (>= size 0)
+                  (let ([vector (make-Vector size init-arg)])
+                    (make-runtime-value 'VectorTag vector))
+                  (make-runtime-error (format "make-vector expects a non-negative size, got: ~a" size))))
+            (make-runtime-error (format "make-vector expects an integer size, got: ~a" 
+                               (runtime-value->string size-arg))))))))
+
+;  vector-ref-impl
+;     Returns the element at the specified index in a vector
+;  Arguments:
+;     args - Two arguments: vector and index (integer)
+;     env - The environment (unused)
+;  Returns:
+;     The element at the specified index
+(define (vector-ref-impl args env)
+  (check-args-count "vector-ref" args 2
+    (lambda (checked-args)
+      (let ([vector-arg (first checked-args)]
+            [index-arg (second checked-args)])
+        (if (vector-value? vector-arg)
+            (if (int-value? index-arg)
+                (let ([vector (RuntimeValue-value vector-arg)]
+                      [index (RuntimeValue-value index-arg)])
+                  (let ([elements (Vector-elements vector)])
+                    (if (and (>= index 0) (< index (vector-length elements)))
+                        (vector-ref elements index)
+                        (make-runtime-error (format "vector-ref: index ~a out of bounds for vector of size ~a" 
+                                           index (vector-length elements))))))
+                (make-runtime-error (format "vector-ref expects an integer index, got: ~a" 
+                                   (runtime-value->string index-arg))))
+            (make-runtime-error (format "vector-ref expects a vector, got: ~a" 
+                               (runtime-value->string vector-arg))))))))
+
+;  vector-set!-impl
+;     Sets the element at the specified index in a vector
+;  Arguments:
+;     args - Three arguments: vector, index (integer), and new value
+;     env - The environment (unused)
+;  Returns:
+;     Void
+(define (vector-set!-impl args env)
+  (check-args-count "vector-set!" args 3
+    (lambda (checked-args)
+      (let ([vector-arg (first checked-args)]
+            [index-arg (second checked-args)]
+            [value-arg (third checked-args)])
+        (if (vector-value? vector-arg)
+            (if (int-value? index-arg)
+                (let ([vector (RuntimeValue-value vector-arg)]
+                      [index (RuntimeValue-value index-arg)])
+                  (let ([elements (Vector-elements vector)])
+                    (if (and (>= index 0) (< index (vector-length elements)))
+                        (begin
+                          (vector-set! elements index value-arg)
+                          (make-runtime-value 'VoidTag '()))
+                        (make-runtime-error (format "vector-set!: index ~a out of bounds for vector of size ~a" 
+                                           index (vector-length elements))))))
+                (make-runtime-error (format "vector-set! expects an integer index, got: ~a" 
+                                   (runtime-value->string index-arg))))
+            (make-runtime-error (format "vector-set! expects a vector, got: ~a" 
+                               (runtime-value->string vector-arg))))))))
+
+;  vector-length-impl
+;     Returns the length of a vector
+;  Arguments:
+;     args - One argument: a vector
+;     env - The environment (unused)
+;  Returns:
+;     The length of the vector as an integer
+(define (vector-length-impl args env)
+  (check-args-count "vector-length" args 1
+    (lambda (checked-args)
+      (let ([vector-arg (first checked-args)])
+        (if (vector-value? vector-arg)
+            (let ([vector (RuntimeValue-value vector-arg)])
+              (let ([elements (Vector-elements vector)])
+                (make-runtime-value 'IntTag (vector-length elements))))
+            (make-runtime-error (format "vector-length expects a vector, got: ~a" 
+                               (runtime-value->string vector-arg))))))))
+
+;  vector-copy-impl
+;     Creates a copy of a vector
+;  Arguments:
+;     args - One argument: a vector to copy
+;     env - The environment (unused)
+;  Returns:
+;     A new vector with the same elements
+(define (vector-copy-impl args env)
+  (check-args-count "vector-copy" args 1
+    (lambda (checked-args)
+      (let ([vector-arg (first checked-args)])
+        (if (vector-value? vector-arg)
+            (let* ([vector (RuntimeValue-value vector-arg)]
+                   [elements (Vector-elements vector)]
+                   [size (vector-length elements)]
+                   [new-vector (make-Vector size (make-runtime-value 'IntTag 0))])
+              (let loop ([i 0])
+                (if (< i size)
+                    (begin
+                      (vector-set! (Vector-elements new-vector) i (vector-ref elements i))
+                      (loop (+ i 1)))
+                    (make-runtime-value 'VectorTag new-vector))))
+            (make-runtime-error (format "vector-copy expects a vector, got: ~a" 
+                               (runtime-value->string vector-arg))))))))
+
 ;  add-builtins-to-env
 ;     Adds built-in functions to the environment
 ;  Arguments:
@@ -578,6 +706,13 @@
     (define-builtin! env "set-cdr!" set-cdr-impl)
     (define-builtin! env "null?" null?-impl)
     
+    ;; Vector Operations
+    (define-builtin! env "make-vector" make-vector-impl)
+    (define-builtin! env "vector-ref" vector-ref-impl)
+    (define-builtin! env "vector-set!" vector-set!-impl)
+    (define-builtin! env "vector-length" vector-length-impl)
+    (define-builtin! env "vector-copy" vector-copy-impl)
+    
     ;; String Operations
     (define-builtin! env "string-length" string-length-impl)
     (define-builtin! env "substring" substring-impl)
@@ -591,6 +726,7 @@
     (define-builtin! env "boolean?" (make-type-checker "boolean?" 'BooleanTag))
     (define-builtin! env "nil?" (make-type-checker "nil?" 'NilValueTag))
     (define-builtin! env "pair?" (make-type-checker "pair?" 'PairTag))
+    (define-builtin! env "vector?" (make-type-checker "vector?" 'VectorTag))
     (define-builtin! env "expr?" (make-type-checker "expr?" 'EtaExprTag))
     (define-builtin! env "builtin?" (make-type-checker "builtin?" 'EtaBuiltinTag))
     (define-builtin! env "closure?" (make-type-checker "closure?" 'EtaClosureTag))
@@ -616,5 +752,6 @@
         "+" "-" "*" "/" 
         "=" "<" ">"
         "list" "cons" "car" "cdr" "set-car!" "set-cdr!" "null?" "pair?"
-        "string-length" "substring" "string-ref" "string-append"
+        "make-vector" "vector-ref" "vector-set!" "vector-length" "vector?" "vector-copy"
+        "string-length" "substring" "string-ref" "string-append" "string=?"
         "apply" "string->number" "number->string"))
