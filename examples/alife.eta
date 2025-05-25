@@ -1,0 +1,146 @@
+;; Conway's Game of Life
+
+(define width 15)  
+(define height 15) 
+(define generations 30)
+
+(define (make-empty-grid)
+  (define (make-row w)
+    (let ((row (make-vector w 0)))
+      (let fill-row ((i 0))
+        (if (< i w)
+            (begin
+              (vector-set! row i 0)
+              (fill-row (+ i 1)))
+            row))))
+  
+  (let ((grid (make-vector height 0)))
+    (let fill-grid ((i 0))
+      (if (< i height)
+          (begin
+            (vector-set! grid i (make-row width))
+            (fill-grid (+ i 1)))
+          grid))))
+
+(define (get-cell grid x y)
+  (if (or (< x 0) (>= x width) (< y 0) (>= y height))
+      0  ; Out of bounds
+      (vector-ref (vector-ref grid y) x)))
+
+(define (set-cell grid x y value)
+  ;; Create a copy of the grid to maintain immutability
+  (define new-grid (vector-copy grid))
+  ;; Create a copy of the row to be modified
+  (define new-row (vector-copy (vector-ref grid y)))
+  ;; Update the cell value
+  (vector-set! new-row x value)
+  ;; Update the grid with the new row
+  (vector-set! new-grid y new-row)
+  ;; Return the new grid
+  new-grid)
+
+(define (count-neighbors grid x y)
+  (define neighbors-delta
+    '((-1 . -1) (0 . -1) (1 . -1)
+      (-1 . 0)           (1 . 0)
+      (-1 . 1)  (0 . 1)  (1 . 1)))
+  
+  (let count-live ((deltas neighbors-delta) (count 0))
+    (if (null? deltas)
+        count
+        (let* ((delta (car deltas))
+               (nx (+ x (car delta)))
+               (ny (+ y (cdr delta)))
+               (value (get-cell grid nx ny)))
+          (count-live (cdr deltas) (+ count value))))))
+
+(define (next-cell-state grid x y)
+  (let ((cell (get-cell grid x y))
+        (neighbors (count-neighbors grid x y)))
+    (if (= cell 1)
+        ;; Live cell rules:
+        ;; - Any live cell with fewer than two live neighbors dies (underpopulation)
+        ;; - Any live cell with two or three live neighbors lives
+        ;; - Any live cell with more than three live neighbors dies (overpopulation)
+        (if (or (< neighbors 2) (> neighbors 3))
+            0  ; Dies
+            1) ; Survives
+        ;; Dead cell rules:
+        ;; - Any dead cell with exactly three live neighbors becomes a live cell (reproduction)
+        (if (= neighbors 3)
+            1  ; Becomes alive
+            0))))  ; Stays dead
+
+(define (next-generation grid)
+  (let ((new-grid (make-empty-grid)))
+    (let process-rows ((y 0))
+      (if (< y height)
+          (begin
+            (let process-cols ((x 0))
+              (if (< x width)
+                  (begin
+                    (let ((next-state (next-cell-state grid x y)))
+                      (vector-set! (vector-ref new-grid y) x next-state)
+                      (process-cols (+ x 1))))
+                  (process-rows (+ y 1)))))
+          new-grid))))
+
+(define (display-grid grid)
+  (let display-rows ((y 0))
+    (if (< y height)
+        (begin
+          (let display-cols ((x 0))
+            (if (< x width)
+                (begin
+                  (display (if (= (vector-ref (vector-ref grid y) x) 1) "■ " "□ "))
+                  (display-cols (+ x 1)))
+                (display "\n")))
+          (display-rows (+ y 1)))
+        '())))
+
+(define (initialize-pulsar-grid)
+  (define grid (make-empty-grid))
+  
+  (define (set-cells! positions)
+    (for-each 
+     (lambda (pos)
+       (let ((x (car pos))
+             (y (cdr pos)))
+         (vector-set! (vector-ref grid y) x 1)))
+     positions))
+  
+  (define pulsar-coords
+    (list 
+     ;; Top horizontal bars
+     (cons 2 0) (cons 3 0) (cons 4 0)
+     (cons 8 0) (cons 9 0) (cons 10 0)
+     ;; Left vertical bars
+     (cons 0 2) (cons 0 3) (cons 0 4)
+     (cons 0 8) (cons 0 9) (cons 0 10)
+     ;; Right vertical bars
+     (cons 9 2) (cons 9 3) (cons 9 4)
+     (cons 9 8) (cons 9 9) (cons 9 10)
+     ;; Bottom horizontal bars
+     (cons 2 9) (cons 3 9) (cons 4 9)
+     (cons 8 9) (cons 9 9) (cons 10 9)))
+  
+  (set-cells! pulsar-coords)
+  grid)
+
+(define (run-game-of-life generations pattern-name pattern-initializer)
+  (let run ((grid (pattern-initializer)) (gen 1))
+    (if (> gen generations)
+        '()  ; Base case: we've shown all generations
+        (begin
+          (display "\nConway's Game of Life - ")
+          (display pattern-name)
+          (display "\n")
+          (display "Generation ")
+          (display gen)
+          (display " of ")
+          (display generations)
+          (display "\n\n")
+          (display-grid grid)
+          (run (next-generation grid) (+ gen 1))))))
+
+(run-game-of-life generations "Pulsar Pattern" initialize-pulsar-grid)
