@@ -37,7 +37,7 @@
 (define (run-file filename)
   (let* ([content (read-file filename)]
          [result (eta-eval-toplevel-in-thread content filename)])
-    (exit-with-eval-result result content)))
+    (exit-with-eval-result result (lambda (filename) (file->string filename)))))
 
 ; setup-signal-handlers
 ;    Sets up handlers for signals like Ctrl+C.
