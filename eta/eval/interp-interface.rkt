@@ -40,9 +40,10 @@
 ;   Converts an EvalResult to a string representation
 ; Arguments:
 ;   result - An EvalResult to convert.
+;   [source-getter] - Optional function to get source code from a file identifier.
 ; Returns:
 ;   A string representation of the EvalResult.
-(define (format-eval-result result)
+(define (format-eval-result result [source-getter #f])
   ;; Recursively flatten and colorize all values
   (define (flatten-and-format val)
     (cond
@@ -54,16 +55,17 @@
       (let ([error-value (EvalResult-value result)])
         (if (EvaluationInterruptedError? error-value)
             (string-append (colorize "Evaluation interrupted by user" 'yellow) "\n")
-            (colorize (format-error-with-source error-value) 'red)))))
+            (colorize (format-error-with-source error-value source-getter) 'red)))))
 
 
 ; exit-with-eval-result
 ;   Exits the program with the given EvalResult.
 ; Arguments:
 ;   result - An EvalResult to exit with.
+;   [source-getter] - Optional function to get source code from a file identifier.
 ; Returns:
 ;   Never returns (exits the program).
-(define (exit-with-eval-result result)
+(define (exit-with-eval-result result [source-getter #f])
   (if (EvalResult-success? result)
     (exit 0)
     (begin
@@ -73,7 +75,7 @@
               (displayln (colorize "Evaluation interrupted by user" 'yellow))
               (exit 130)) 
             (begin
-              (displayln (format-eval-result result))
+              (displayln (format-eval-result result source-getter))
               (exit 1))))))) 
 
 ; init-basic-env

@@ -166,17 +166,22 @@
 ;;    Formats an error with visual markers pointing to the error location in the source code.
 ;; Arguments:
 ;;    error - The EtaError to format
+;;    [source-getter] - Optional function to get source code from a file identifier.
 ;; Returns:
 ;;    A formatted string with error message and visual markers
-(define (format-error-with-source error)
+(define (format-error-with-source error [source-getter #f])
   (let* ([message (colorize (eta-error->string error) 'red)]
          [location (EtaError-location error)]
-         [source-code (and location 
-                           (Location-file location)
-                           (string? (Location-file location))
-                           (file-exists? (Location-file location))
-                           (with-handlers ([exn:fail? (lambda (e) #f)])
-                             (file->string (Location-file location))))])
+         [source-code (cond
+                        [(and source-getter location (Location-file location))
+                         (source-getter (Location-file location))]
+                        [(and location 
+                              (Location-file location)
+                              (string? (Location-file location))
+                              (file-exists? (Location-file location)))
+                         (with-handlers ([exn:fail? (lambda (e) #f)])
+                           (file->string (Location-file location)))]
+                        [else #f])])
     
     (if (and location source-code)
         (let* ([lines (string-split source-code "\n")]
@@ -184,6 +189,8 @@
                [file-display (cond
                               [(string? file) (format "~a:" file)]
                               [(symbol? file) (format "~a:" (symbol->string file))]
+                              [(and (list? file) (= (length file) 2) (eq? (first file) 'repl-history))
+                               (format "REPL[~a]:" (second file))]
                               [else ""])]
                [sline (Location-sline location)]
                [scol (Location-scol location)]
