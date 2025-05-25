@@ -359,9 +359,7 @@
 (define (apply-builtin builtin args env k stack)
   ; MEMO: Builtin implementation has responsibility to check arity
   (let ([result ((Builtin-proc (RuntimeValue-value builtin)) args env)])
-    (if (RuntimeValue? result)
-        (k result stack)
-        (k (make-runtime-error result) stack))))
+    (k result stack)))
 
 ;  apply-closure
 ;     Apply a user-defined function to arguments
