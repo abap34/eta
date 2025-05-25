@@ -32,7 +32,7 @@
 ;  Represents the result of evaluating an expression.
 ;    - success? - A boolean indicating if the evaluation was successful. (bool)
 ;    - value - The evaluated value or an error message. 
-;               if success? is #t, this is the evaluated value. (EtaValue | list of EtaValue)
+;               if success? is #t, this is the evaluated value. (RuntimeValue | list of RuntimeValue)
 ;               if success? is #f, this is an error. (EtaError)
 (struct EvalResult (success? value) #:transparent)
 

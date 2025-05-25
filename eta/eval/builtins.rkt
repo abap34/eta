@@ -2,7 +2,8 @@
 
 (require "runtime-values.rkt"
          "env.rkt"
-         "../utils/error.rkt")
+         "../utils/error.rkt"
+         rnrs/mutable-pairs-6)
 
 (provide 
   get-builtin-names
@@ -20,6 +21,7 @@
   void-value?
   add-builtins-to-env
 )
+
 
 ;  with-error-handling
 ;     A utility function that handles runtime errors properly
@@ -47,13 +49,13 @@
 ;     (with-value-check arg list-value? (lambda (v) (format "Expected a list, got: ~a" v)))
 (define (with-value-check value type-pred error-msg)
   (if (type-pred value)
-      (EtaValue-value value)
+      (RuntimeValue-value value)
       (make-runtime-error (error-msg (runtime-value->string value)))))
 
 ;  Type checking functions
-;     Check if an EtaValue has a specific tag
+;     Check if an RuntimeValue has a specific tag
 ;  Arguments:
-;     value - An EtaValue to check
+;     value - An RuntimeValue to check
 ;  Returns:
 ;     #t if the value has the specified tag, #f otherwise
 ;  Example:
@@ -61,40 +63,40 @@
 ;     (number-value? (make-runtime-value String "hello")) ; => #f
 
 (define (int-value? value)
-  (and (EtaValue? value) (equal? (EtaValue-tag value) 'IntTag)))
+  (and (RuntimeValue? value) (equal? (RuntimeValue-tag value) 'IntTag)))
 
 (define (float-value? value)
-  (and (EtaValue? value) (equal? (EtaValue-tag value) 'FloatTag)))
+  (and (RuntimeValue? value) (equal? (RuntimeValue-tag value) 'FloatTag)))
 
 (define (string-value? value)
-  (and (EtaValue? value) (equal? (EtaValue-tag value) 'StringTag)))
+  (and (RuntimeValue? value) (equal? (RuntimeValue-tag value) 'StringTag)))
 
 (define (boolean-value? value)
-  (and (EtaValue? value) (equal? (EtaValue-tag value) 'BooleanTag)))
+  (and (RuntimeValue? value) (equal? (RuntimeValue-tag value) 'BooleanTag)))
 
 (define (nil-value? value)
-  (and (EtaValue? value) (equal? (EtaValue-tag value) 'NilValueTag)))
+  (and (RuntimeValue? value) (equal? (RuntimeValue-tag value) 'NilValueTag)))
 
 (define (list-value? value)
-  (and (EtaValue? value) (equal? (EtaValue-tag value) 'ListTag)))
+  (and (RuntimeValue? value) (equal? (RuntimeValue-tag value) 'PairTag)))
 
 (define (expr-value? value)
-  (and (EtaValue? value) (equal? (EtaValue-tag value) 'EtaExprTag)))
+  (and (RuntimeValue? value) (equal? (RuntimeValue-tag value) 'EtaExprTag)))
 
 (define (builtin-value? value)
-  (and (EtaValue? value) (equal? (EtaValue-tag value) 'EtaBuiltinTag)))
+  (and (RuntimeValue? value) (equal? (RuntimeValue-tag value) 'EtaBuiltinTag)))
 
 (define (closure-value? value)
-  (and (EtaValue? value) (equal? (EtaValue-tag value) 'EtaClosureTag)))
+  (and (RuntimeValue? value) (equal? (RuntimeValue-tag value) 'EtaClosureTag)))
 
 (define (struct-value? value)
-  (and (EtaValue? value) (equal? (EtaValue-tag value) 'EtaStructTag)))
+  (and (RuntimeValue? value) (equal? (RuntimeValue-tag value) 'EtaStructTag)))
 
 (define (undefined-value? value)
-  (and (EtaValue? value) (equal? (EtaValue-tag value) 'UndefinedTag)))
+  (and (RuntimeValue? value) (equal? (RuntimeValue-tag value) 'UndefinedTag)))
 
 (define (void-value? value)
-  (and (EtaValue? value) (equal? (EtaValue-tag value) 'Void)))
+  (and (RuntimeValue? value) (equal? (RuntimeValue-tag value) 'Void)))
 
 ;  check-args-count
 ;     Validates that the number of arguments matches the expected count
@@ -147,7 +149,7 @@
     [else 'FloatTag]))
 
 ;  ensure-numbers
-;     Ensures all arguments are numbers and extracts their values
+;     Ensures all arguments are numbers and extracts their values as racket numbers
 ;  Arguments:
 ;     func-name - Name of the function for error messages
 ;     args - The argument list to check
@@ -164,7 +166,7 @@
       [else
         (let ([val (car remaining)])
           (if (or (int-value? val) (float-value? val))
-              (loop (cdr remaining) (cons (EtaValue-value val) result))
+              (loop (cdr remaining) (cons (RuntimeValue-value val) result))
               (make-runtime-error 
                     (format "~a expects numbers, got: ~a" 
                            func-name (runtime-value->string val)))))])))
