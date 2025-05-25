@@ -3,7 +3,8 @@
 (require "runtime-values.rkt"
          "env.rkt"
          "../utils/error.rkt"
-         rnrs/mutable-pairs-6)
+)
+
 
 (provide 
   get-builtin-names
@@ -78,7 +79,8 @@
   (and (RuntimeValue? value) (equal? (RuntimeValue-tag value) 'NilValueTag)))
 
 (define (list-value? value)
-  (and (RuntimeValue? value) (equal? (RuntimeValue-tag value) 'PairTag)))
+  (and (RuntimeValue? value) (or (equal? (RuntimeValue-tag value) 'PairTag)
+                                  (equal? (RuntimeValue-tag value) 'NilValueTag))))
 
 (define (expr-value? value)
   (and (RuntimeValue? value) (equal? (RuntimeValue-tag value) 'EtaExprTag)))
@@ -198,6 +200,10 @@
   (define-variable! env name (make-builtin impl) #f))
 
 ;; ===== Built-in Function Implementations =====
+;  builtins must be:
+;  - receive `RuntimeValue` lists and `Env` as arguments
+;  - return `RuntimeValue` or `RuntimeError`
+;  - has responsible arity checking
 
 ;; I/O Functions
 (define (display-impl args env)
@@ -274,35 +280,122 @@
               (make-runtime-value 'BooleanTag result))))))))
 
 ;; List Operations
+;  list-impl
+;     Creates a list from the given arguments
+;  Arguments:
+;     args - Any number of arguments to be put into a list
+;     env - The environment (unused)
+;  Returns:
+;     A new list containing the arguments
 (define (list-impl args env)
-  (make-runtime-value 'ListTag args))
+  (if (null? args)
+      (RuntimeValue 'NilValueTag '())
+      (let loop ([remaining args])
+        (if (null? remaining)
+            (RuntimeValue 'NilValueTag '())
+            (let* ([first-item (car remaining)]
+                   [rest-items (cdr remaining)]
+                   [rest-list (loop rest-items)]
+                   [pair (make-Pair first-item rest-list)])
+              (RuntimeValue 'PairTag pair))))))
 
+;  cons-impl
+;     Creates a new pair with the given car and cdr
+;  Arguments:
+;     args - Two arguments: the car and cdr for the new pair
+;     env - The environment (unused)
+;  Returns:
+;     A new pair
 (define (cons-impl args env)
   (check-args-count "cons" args 2
     (lambda (checked-args)
-      (let ([item (first checked-args)]
-            [lst (second checked-args)])
-        (with-error-handling (check-list-arg "cons" lst)
-          (lambda (lst-val)
-            (make-runtime-value 'ListTag (cons item lst-val))))))))
+      (let* ([car-val (first checked-args)]
+             [cdr-val (second checked-args)]
+             [pair (make-Pair car-val cdr-val)])
+        (RuntimeValue 'PairTag pair)))))
 
+;  car-impl
+;     Returns the car (first element) of a pair
+;  Arguments:
+;     args - One argument: a pair
+;     env - The environment (unused)
+;  Returns:
+;     The car of the pair
 (define (car-impl args env)
   (check-args-count "car" args 1
     (lambda (checked-args)
-      (with-error-handling (check-list-arg "car" (first checked-args))
-        (lambda (lst-val)
-          (if (null? lst-val)
-              (make-runtime-error "car called on empty list")
-              (first lst-val)))))))
+      (let ([arg (first checked-args)])
+        (if (list-value? arg)
+            (Pair-car (RuntimeValue-value arg))
+            (make-runtime-error (format "car expects a pair, got: ~a" 
+                                       (runtime-value->string arg))))))))
 
+;  cdr-impl
+;     Returns the cdr (second element) of a pair
+;  Arguments:
+;     args - One argument: a pair
+;     env - The environment (unused)
+;  Returns:
+;     The cdr of the pair
 (define (cdr-impl args env)
   (check-args-count "cdr" args 1
     (lambda (checked-args)
-      (with-error-handling (check-list-arg "cdr" (first checked-args))
-        (lambda (lst-val)
-          (if (null? lst-val)
-             (make-runtime-error "cdr called on empty list")
-              (make-runtime-value 'ListTag (rest lst-val))))))))
+      (let ([arg (first checked-args)])
+        (if (list-value? arg)
+            (Pair-cdr (RuntimeValue-value arg))
+            (make-runtime-error (format "cdr expects a pair, got: ~a" 
+                                       (runtime-value->string arg))))))))
+
+;  set-car-impl
+;     Sets the car (first element) of a pair to a new value
+;  Arguments:
+;     args - Two arguments: a pair and a new value
+;     env - The environment (unused)
+;  Returns:
+;     Void
+(define (set-car-impl args env)
+  (check-args-count "set-car!" args 2
+    (lambda (checked-args)
+      (let ([pair-arg (first checked-args)]
+            [new-val (second checked-args)])
+        (if (list-value? pair-arg)
+            (begin 
+                (set-Pair-car! (RuntimeValue-value pair-arg) new-val)
+                (make-runtime-value 'VoidTag '()))
+            (make-runtime-error (format "set-car! expects a pair, got: ~a" 
+                                       (runtime-value->string pair-arg))))))))
+
+;  set-cdr-impl
+;     Sets the cdr (second element) of a pair to a new value
+;  Arguments:
+;     args - Two arguments: a pair and a new value
+;     env - The environment (unused)
+;  Returns:
+;     Void
+(define (set-cdr-impl args env)
+  (check-args-count "set-cdr!" args 2
+    (lambda (checked-args)
+      (let ([pair-arg (first checked-args)]
+            [new-val (second checked-args)])
+        (if (list-value? pair-arg)
+            (begin 
+                (set-Pair-cdr! (RuntimeValue-value pair-arg) new-val)
+                (make-runtime-value 'VoidTag '()))
+            (make-runtime-error (format "set-cdr! expects a pair, got: ~a" 
+                                       (runtime-value->string pair-arg))))))))
+
+; null?-impl
+;     Checks if the given argument is the empty list
+;  Arguments:
+;     args - One argument: the value to check
+;     env - The environment (unused)
+(define (null?-impl args env)
+  (check-args-count "null?" args 1
+    (lambda (checked-args)
+      (let ([arg (first checked-args)])
+        (if (list-value? arg)
+            (make-runtime-value 'BooleanTag (null? (RuntimeValue-value arg)))
+            (make-runtime-error (format "null? expects a list, got: ~a" (runtime-value->string arg))))))))
 
 ;  add-builtins-to-env
 ;     Adds built-in functions to the environment
@@ -333,6 +426,9 @@
     (define-builtin! env "cons" cons-impl)
     (define-builtin! env "car" car-impl)
     (define-builtin! env "cdr" cdr-impl)
+    (define-builtin! env "set-car!" set-car-impl)
+    (define-builtin! env "set-cdr!" set-cdr-impl)
+    (define-builtin! env "null?" null?-impl)
 
     env)
 
@@ -348,4 +444,4 @@
   (list "display" "read-line"
         "+" "-" "*" "/" 
         "=" "<" ">"
-        "list" "cons" "car" "cdr"))
+        "list" "cons" "car" "cdr" "set-car!" "set-cdr!"))
