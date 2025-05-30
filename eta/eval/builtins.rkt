@@ -23,8 +23,25 @@
   void-value?
   vector-value?
   add-builtins-to-env
+  with-stack-trace
 )
 
+
+;  with-stack-trace
+;     A utility function that adds stack trace information to runtime errors
+;  Arguments:
+;     result - The result of a computation that might be a RuntimeError
+;     loc - Source location information for the error
+;  Returns:
+;     The RuntimeError with stack trace information if result is a RuntimeError, otherwise result
+;  Example:
+;     (with-stack-trace (some-operation) (make-location 10 5 10 6))
+(define (with-stack-trace result loc)
+  (if (RuntimeError? result)
+      (if (not (EtaError-location result))
+          (localize-error-location result loc)
+          result)
+      result))
 
 ;  with-error-handling
 ;     A utility function that handles runtime errors properly
@@ -202,7 +219,7 @@
 ;  Example:
 ;     (define-builtin! env "+" numeric-add-impl)
 (define (define-builtin! env name impl)
-  (define-variable! env name (make-builtin impl) #f))
+  (define-variable! env name (make-builtin impl name) #f))
 
 ;; ===== Built-in Function Implementations =====
 ;  builtins must be:

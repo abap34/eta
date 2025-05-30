@@ -31,9 +31,13 @@
 ;; Returns:
 ;;   A string representation of the location
 (define (location->string loc)
-  (let ([file-str (cond
-                    [(string? (Location-file loc)) (format "~a:" (Location-file loc))]
-                    [(symbol? (Location-file loc)) (format "~a:" (symbol->string (Location-file loc)))]
+   
+  (let* ([file (Location-file loc)]
+         [file-str (cond
+                    [(string? file) (format "~a:" file)]
+                    [(symbol? file) (format "~a:" (symbol->string file))]
+                    [(and (list? file) (= (length file) 2) (equal? (first file) 'repl-history)) (format "REPL[~a]:" (second file))]
+                    [file (format "~a:" file)]
                     [else ""])])
     (format "~a(~a, ~a) - (~a, ~a)"
             file-str

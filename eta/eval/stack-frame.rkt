@@ -27,6 +27,10 @@
     MAX-STACK-DEPTH
     set-max-stack-depth!
     get-max-stack-depth
+    
+    ;; Stack trace related functions
+    call-stack->stack-trace
+    extract-function-name
 )
 
 
@@ -163,5 +167,41 @@
 ;;    The current depth of the stack as an integer
 (define (call-stack-current-depth stack)
     (CallStack-current-depth stack))
+
+;; extract-function-name
+;;    Extracts a human-readable function name from a procedure value
+;; Arguments:
+;;    proc - The procedure value (RuntimeValue)
+;; Returns:
+;;    A string representation of the function name
+(define (extract-function-name proc)
+  (cond
+    [(not (RuntimeValue? proc)) "<unknown>"]
+    [(equal? (RuntimeValue-tag proc) 'EtaClosureTag)
+     (let ([closure (RuntimeValue-value proc)])
+       (if (and (Closure? closure) (Closure-name closure))
+           (Closure-name closure)
+           "<anonymous>"))]
+    [(equal? (RuntimeValue-tag proc) 'EtaBuiltinTag)
+     (let ([builtin (RuntimeValue-value proc)])
+       (if (and (Builtin? builtin) (Builtin-name builtin))
+           (string-append "<builtin:" (Builtin-name builtin) ">")
+           "<builtin>"))]
+    [else "<unknown>"]))
+
+;; call-stack->stack-trace
+;;    Converts a CallStack to a list of StackTraceEntry objects
+;; Arguments:
+;;    stack - The call stack to convert
+;; Returns:
+;;    A list of StackTraceEntry objects
+(define (call-stack->stack-trace stack)
+  (if (call-stack-empty? stack)
+      '()
+      (map (lambda (frame)
+             (let ([proc (CallFrame-proc frame)]
+                   [loc (CallFrame-loc frame)])
+               (make-stack-trace-entry (extract-function-name proc) loc)))
+           (CallStack-frames stack))))
 
 
