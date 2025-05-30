@@ -238,11 +238,12 @@
       (lambda (v new-stack)
         (if (RuntimeError? v)
             (k v new-stack)
-            (begin
-              (let ([define-result (define-variable! env var-name v #f)])
+              (let ([define-result (define-variable! env var-name (if (equal? (RuntimeValue-tag v) 'EtaClosureTag)
+                                                                      (attach-function-name v var-name)
+                                                                      v) #f)])
                 (if (RuntimeError? define-result)
                     (k define-result new-stack)
-                    (k v new-stack))))))
+                    (k v new-stack)))))
       stack)))
 
 ;  arity-check
