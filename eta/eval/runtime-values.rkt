@@ -25,10 +25,14 @@
          ParamSpec?
          has-rest?
          Builtin-proc
+         Builtin-name
+         Builtin?
          Closure-params-spec
          Closure-body
          Closure-captured-env
          Closure-loc
+         Closure-name
+         Closure?
          RuntimeValue-tag
          RuntimeValue-value
          arity-check
@@ -232,10 +236,11 @@
 ;     A structure to represent a built-in function
 ; Arguments:
 ;    proc - A procedure object (args env -> RuntimeValue)
-(struct Builtin (proc) #:transparent)
-(define (make-builtin proc)
+;    name - The name of the builtin function (optional)
+(struct Builtin (proc name) #:transparent)
+(define (make-builtin proc [name #f])
   (if (procedure? proc)
-      (RuntimeValue 'EtaBuiltinTag (Builtin proc))
+      (RuntimeValue 'EtaBuiltinTag (Builtin proc name))
       (error (format "Internal error: proc must be a procedure, but got ~a" proc))))
 
 (define (pretty-print-Builtin builtin)
@@ -247,17 +252,17 @@
         proc
         (error "Internal error: Builtin proc must be a procedure, but got ~a" proc))))  
 
-(struct Closure (params-spec body captured-env loc) #:transparent)
-(define (make-eta-closure param-spec body captured-env loc)
-    (Closure param-spec body captured-env  loc))  ; TODO: validation
+(struct Closure (params-spec body captured-env loc name) #:transparent)
+(define (make-eta-closure param-spec body captured-env loc name)
+    (Closure param-spec body captured-env loc name))  ; TODO: validation
 
 (define (pretty-print-Closure closure)
   (unless (Closure? closure)
     (error "Internal error: pretty-print-Closure expects a Closure, but got ~a" closure))
 
-  (let ([params-spec (Closure-params-spec closure)])
-    (string-append
-     (format "<closure: ~a>" (ParamSpec->string params-spec)))))
+  (let ([params-spec (Closure-params-spec closure)]
+        [name (Closure-name closure)])
+    (format "<closure: ~a>" (ParamSpec->string params-spec))))
 
 (struct StructInstance (name fields) #:transparent)
 

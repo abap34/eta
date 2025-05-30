@@ -13,6 +13,7 @@
 
 (provide eval-expr 
          eval-toplevel-exprs
+         collect-stack-trace-for-error
  )
 
 
@@ -59,7 +60,7 @@
          env
          (lambda (new-result new-stack)
            (if (RuntimeError? new-result)
-               (k new-result new-stack)
+               (k (collect-stack-trace-for-error new-result new-stack) new-stack)
                (loop (rest exprs)
                      (cons new-result result)
                      new-stack)))
@@ -78,8 +79,10 @@
 ;     Via k: An RuntimeValue representing the result
 (define (eval-expr expr env k stack #:tail? [tail? #f])
   (unless (Expr? expr)
-    (k (make-runtime-error 
+    (k (collect-stack-trace-for-error
+        (make-runtime-error 
         (format "Internal error: expr must be an Expr, got: ~a" expr))
+        stack)
        stack))
   
   (let ([head (Expr-head expr)])
@@ -188,7 +191,8 @@
          [body (second lambda-args)]
          [loc (Expr-loc expr)])
     (k (make-runtime-value 'EtaClosureTag
-                       (make-eta-closure param-spec body env loc)) stack)))
+                       (make-eta-closure param-spec body env loc #f)) stack)))
+                       ;                                         ^^^ anonymous function name
 
 ;  eval-if
 ;     Evaluate a conditional expression
@@ -219,6 +223,33 @@
                     (Expr-loc test-expr)) 
                    test-stack))))
       stack)))
+
+; attach-function-name
+;     Attach a function name to a RuntimeValue for better error reporting
+;  Arguments:
+;     value - A RuntimeValue with EtaClosureTag
+;     name  - The name to attach
+;  Returns:
+;     A new RuntimeValue with the function name attached
+(define (attach-function-name value name)
+  (when (not (RuntimeValue? value))
+      (error "Internal error: expected RuntimeValue, got: ~a" value))
+  
+  (when (not (equal? (RuntimeValue-tag value) 'EtaClosureTag))
+      (error "Internal error: expected EtaClosureTag, got: ~a" (RuntimeValue-tag value)))
+  
+  (let ([closure (RuntimeValue-value value)])
+    (when (not (Closure? closure))
+        (error "Internal error: expected Closure, got: ~a" closure))
+    
+    (make-runtime-value 'EtaClosureTag
+                        (make-eta-closure 
+                         (Closure-params-spec closure)
+                         (Closure-body closure)
+                         (Closure-captured-env closure)
+                         (Closure-loc closure)
+                         name))))
+
 
 ;  eval-define
 ;     Define a variable in the current environment
@@ -336,10 +367,14 @@
                           [else
                            (apply-builtin operator-value args env 
                                           (lambda (result final-stack)
-                                            (if (and (RuntimeError? result)
-                                                    (not (EtaError-location result)))
-                                                (k (localize-error-location result loc) final-stack)
-                                               (k result final-stack)))
+                                            (if (RuntimeError? result)
+                                                (k (collect-stack-trace-for-error 
+                                                    (if (EtaError-location result)
+                                                        result
+                                                        (localize-error-location result loc))
+                                                    final-stack)
+                                                   final-stack)
+                                                (k result final-stack)))
                                           args-stack)])))
                   op-stack))))
       stack)))
@@ -360,7 +395,9 @@
 (define (apply-builtin builtin args env k stack)
   ; MEMO: Builtin implementation has responsibility to check arity
   (let ([result ((Builtin-proc (RuntimeValue-value builtin)) args env)])
-    (k result stack)))
+    (if (RuntimeError? result)
+        (k (collect-stack-trace-for-error result stack) stack)
+        (k result stack))))
 
 ;  apply-closure
 ;     Apply a user-defined function to arguments
@@ -384,11 +421,13 @@
          [loc (Closure-loc closure)])
 
     (if (not (arity-check param-spec args))
-        (k (make-runtime-error
+        (k (collect-stack-trace-for-error 
+            (make-runtime-error
             (format "Wrong number of arguments. Expected ~a, got ~a"
                     (length (ParamSpec-required param-spec))
                     (length args))
-            proc-loc) 
+            proc-loc)
+            stack) 
            stack)
             
         (let* ([func-env (make-child-env captured-env)]
@@ -449,7 +488,10 @@
 ;     Via k: The last evaluated expression or a RuntimeError
 (define (eval-body-of-body expr-list env k stack #:tail? [tail? #f])
   (if (null? expr-list)
-      (k (make-runtime-error (format "Cannot evaluate empty expression list")) stack)
+      (k (collect-stack-trace-for-error
+          (make-runtime-error (format "Cannot evaluate empty expression list"))
+          stack) 
+         stack)
       (let loop ([exprs expr-list]
                  [result '()]
                  [current-stack stack])
@@ -461,7 +503,7 @@
                 env 
                 (lambda (new-result new-stack)
                   (if (RuntimeError? new-result)
-                      (k new-result new-stack)
+                      (k (collect-stack-trace-for-error new-result new-stack) new-stack)
                       (loop (rest exprs)
                             (cons new-result result)
                             new-stack)))
@@ -652,3 +694,15 @@
 (define (quoted-expr->runtime-value expr)
   ; Direct conversion for S-expressions and other forms
   (expr->runtime-value expr))
+
+;  collect-stack-trace-for-error
+;     Collects stack trace information for a runtime error
+;  Arguments:
+;     error - The RuntimeError object
+;     stack - The current call stack
+;  Returns:
+;     A RuntimeError object with stack trace information added
+(define (collect-stack-trace-for-error error stack)
+  (if (RuntimeError? error)
+      (add-stack-trace-to-error error (call-stack->stack-trace stack))
+      error))
