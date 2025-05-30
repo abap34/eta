@@ -20,12 +20,25 @@
          RuntimeError
          make-runtime-error
          RuntimeError?
+         RuntimeError-stack-trace
          EvaluationInterruptedError
          make-evaluation-interrupted-error
          EvaluationInterruptedError?
+         
+         ;; Stack trace related exports
+         StackTraceEntry
+         make-stack-trace-entry
+         StackTraceEntry?
+         StackTraceEntry-func-name
+         StackTraceEntry-location
+         add-stack-trace-to-error
+         MAX-STACK-TRACE-DISPLAY
          )
 
 (require "location.rkt" "console.rkt" racket/file)
+
+;; Maximum depth of stack trace to display
+(define MAX-STACK-TRACE-DISPLAY 20)
 
 ;; Generic error type
 ;; EtaError
@@ -39,10 +52,35 @@
 ;; Specific error types that extend EtaError
 (struct TokenizeError EtaError () #:transparent)
 (struct ParseError EtaError () #:transparent)
-(struct RuntimeError EtaError () #:transparent)
+
+;; Stack trace related structures
+;; StackTraceEntry
+;;    Represents a single entry in a stack trace
+;; Fields:
+;;    func-name - The name of the function (string)
+;;    location - Source location information
+(struct StackTraceEntry (func-name location) #:transparent)
+
+;; make-stack-trace-entry
+;;    Creates a new StackTraceEntry object.
+;; Arguments:
+;;    func-name - The name of the function
+;;    location - Source location information
+;; Returns:
+;;    A new StackTraceEntry instance
+(define (make-stack-trace-entry func-name location)
+  (StackTraceEntry func-name location))
+
+;; RuntimeError with built-in stack trace
+;; RuntimeError
+;;    Represents a runtime error with stack trace information
+;; Fields:
+;;    type, message, location - Same as EtaError
+;;    stack-trace - A list of StackTraceEntry objects (optional, can be empty list)
+(struct RuntimeError EtaError (stack-trace) #:transparent)
 (struct EvaluationInterruptedError RuntimeError () #:transparent)
 
-;; make-eta-error
+;; make-runtime-error
 ;;    Creates a new EtaError object.
 ;; Arguments:
 ;;    type - The type of error ('syntax, 'runtime, 'parse, etc.)
@@ -84,24 +122,28 @@
 ;; Arguments:
 ;;    message - A string describing the error
 ;;    location - Source location information (optional, defaults to #f)
+;;    stack-trace - A list of StackTraceEntry objects (optional, defaults to empty list)
 ;; Returns:      []
 ;;    A new RuntimeError instance
 ;; Example:
 ;;    (make-runtime-error "Division by zero" (make-location 3 15 3 18))
-(define (make-runtime-error message [location #f])
+(define (make-runtime-error message [location #f] [stack-trace '()])
   (unless (string? message)
     (error "make-runtime-error: message must be a string"))
-  (RuntimeError 'runtime message location))
+  (unless (list? stack-trace)
+    (error "make-runtime-error: stack-trace must be a list"))
+  (RuntimeError 'runtime message location stack-trace))
 
 ;; make-evaluation-interrupted-error
 ;;    Creates a new EvaluationInterruptedError object.
 ;; Arguments:
 ;;    message - A string describing the error
 ;;    location - Source location information (optional, defaults to #f)
+;;    stack-trace - A list of StackTraceEntry objects (optional, defaults to empty list)
 ;; Returns:
 ;;    A new EvaluationInterruptedError instance
-(define (make-evaluation-interrupted-error [message "Evaluation interrupted by user"] [location #f])
-  (EvaluationInterruptedError 'interrupted message location))
+(define (make-evaluation-interrupted-error [message "Evaluation interrupted by user"] [location #f] [stack-trace '()])
+  (EvaluationInterruptedError 'interrupted message location stack-trace))
   
 
 ;; make-token-error
@@ -129,8 +171,11 @@
          (cond 
            [(TokenizeError? error) (TokenizeError (EtaError-type error) message location)]
            [(ParseError? error) (ParseError (EtaError-type error) message location)]
-           [(RuntimeError? error) (RuntimeError (EtaError-type error) message location)]
-           [(EvaluationInterruptedError? error) (EvaluationInterruptedError (EtaError-type error) message location)]
+           [(RuntimeError? error) 
+            (RuntimeError (EtaError-type error) message location (RuntimeError-stack-trace error))]
+           [(EvaluationInterruptedError? error) 
+            (EvaluationInterruptedError (EtaError-type error) message location 
+                                        (RuntimeError-stack-trace error))]
          )
       )
       (error (format "Expected an EtaError, got: ~a" error))))
@@ -160,7 +205,30 @@
      (if location
          (format " at ~a" (location->string location))
          "")
-     (format ":\n~a" message))))
+     (format ":\n~a" message)
+     
+     ;; Add stack trace if available
+     (if (RuntimeError? error)
+         (let ([stack-trace (RuntimeError-stack-trace error)])
+           (if (null? stack-trace)
+               ""
+               (let* ([limited-stack (take (if (> (length stack-trace) MAX-STACK-TRACE-DISPLAY)
+                                              (append (take stack-trace MAX-STACK-TRACE-DISPLAY)
+                                                    (list (make-stack-trace-entry "..." #f)))
+                                              stack-trace)
+                                          (min (+ 1 MAX-STACK-TRACE-DISPLAY) (length stack-trace)))]
+                      [stack-strings 
+                       (map (lambda (entry)
+                              (let ([func-name (StackTraceEntry-func-name entry)]
+                                    [loc (StackTraceEntry-location entry)])
+                                (string-append 
+                                 "  at " func-name 
+                                 (if loc
+                                     (format " (at ~a)" (location->string loc))
+                                     ""))))
+                            limited-stack)])
+                 (string-append "\n\nStack trace:\n" (string-join stack-strings "\n")))))
+         ""))))
 
 ;; format-error-with-source
 ;;    Formats an error with visual markers pointing to the error location in the source code.
@@ -249,3 +317,22 @@
                          before-lines code-line marker-line after-lines message))
         
         message)))
+
+;; add-stack-trace-to-error
+;;    Adds stack trace information to a RuntimeError
+;; Arguments:
+;;    error - The RuntimeError
+;;    stack-entries - List of StackTraceEntry objects
+;; Returns:
+;;    A RuntimeError object with the stack trace added
+(define (add-stack-trace-to-error error stack-entries)
+  (if (RuntimeError? error)
+      (let ([message (EtaError-message error)]
+            [location (EtaError-location error)]
+            [current-stack (RuntimeError-stack-trace error)])
+        (if (null? current-stack)
+            ;; If no stack trace yet, add it
+            (make-runtime-error message location stack-entries)
+            ;; Otherwise, keep the existing one
+            error))
+      (error (format "Expected a RuntimeError, got: ~a" error))))

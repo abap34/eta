@@ -1,0 +1,11 @@
+; example of a error in a deep function call
+
+(define (f1) (error "<<< Error! Can you guess where I'm from...? >>>"))
+(define (f2) (+ (f1) 1))
+(define (f3) (+ (f2) 2))
+(define (f4) (+ (f3) 3))
+(define (f5) (+ (f4) 4))
+(define (f6) (+ (f5) 5))
+(define (f7) (+ (f6) 6))
+
+(f7)
