@@ -6,6 +6,7 @@
          RuntimeValue
          RuntimeValue?
          make-param-spec
+         ParamSpec->string
          make-eta-closure
          make-builtin
          make-runtime-value
@@ -60,25 +61,6 @@
       (equal? tag 'VoidTag)
       (equal? tag 'UndefinedTag)
       (equal? tag 'EtaContinuationTag)))
-
-
-(define (RuntimeValueTag->string tag)
-  (cond
-    [(equal? tag 'IntTag)        "Int"]
-    [(equal? tag 'FloatTag)      "Float"]
-    [(equal? tag 'StringTag)     "String"]
-    [(equal? tag 'BooleanTag)    "Boolean"]
-    [(equal? tag 'NilValueTag)   "Nil"]
-    [(equal? tag 'PairTag)       "Pair"]
-    [(equal? tag 'SymbolTag)     "Symbol"]
-    [(equal? tag 'EtaBuiltinTag) "Builtin"]
-    [(equal? tag 'EtaClosureTag) "Closure"]
-    [(equal? tag 'EtaStructTag)  "StructInstance"]
-    [(equal? tag 'VectorTag)     "Vector"]
-    [(equal? tag 'VoidTag)       "Void"]
-    [(equal? tag 'UndefinedTag)  "Undefined"]
-    [(equal? tag 'EtaContinuationTag) "Continuation"]
-    [else                        (error (format "Internal error: unknown tag ~a" tag))]))
 
 (define (tag-checker pred tag expect-pass-msg)
   (lambda (tag)

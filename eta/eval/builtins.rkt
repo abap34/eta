@@ -758,6 +758,21 @@
             (make-runtime-error (format "vector-copy expects a vector, got: ~a" 
                                (runtime-value->string vector-arg))))))))
 
+;; ===== Type Information Functions =====
+
+;  type-of-impl
+;     Returns the type tag of a runtime value
+;  Arguments:
+;     args - One argument: the value to check
+;     env - The environment (unused)
+;  Returns:
+;     A symbol representing the type tag
+(define (type-of-impl args env)
+  (check-args-count "type-of" args 1
+    (lambda (checked-args)
+      (let ([arg (first checked-args)])
+        (make-runtime-value 'SymbolTag (RuntimeValue-tag arg))))))
+
 ;  add-builtins-to-env
 ;     Adds built-in functions to the environment
 ;  Arguments:
@@ -824,8 +839,12 @@
     (define-builtin! env "undefined?" (make-type-checker "undefined?" 'UndefinedTag))
     (define-builtin! env "void?" (make-type-checker "void?" 'Void))
     
+    ;; Type Information Functions
+    (define-builtin! env "type-of" type-of-impl)
+    
     (define-builtin! env "string->number" string->number-impl)
     (define-builtin! env "number->string" number->string-impl)
+
 
     ;; Stack Depth Management
     (define-builtin! env "set-max-stack-depth!" set-max-stack-depth!-impl)
@@ -849,4 +868,6 @@
         "make-vector" "vector-ref" "vector-set!" "vector-length" "vector?" "vector-copy"
         "string-length" "substring" "string-ref" "string-append" "string=?"
         "apply" "string->number" "number->string"
+        "int?" "float?" "string?" "boolean?" "nil?" "vector?" "builtin?" "closure?" "struct?" "undefined?" "void?"
+        "type-of" 
         "set-max-stack-depth!" "get-max-stack-depth"))
