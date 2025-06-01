@@ -311,7 +311,7 @@
       [(equal? tag 'BooleanTag)    (if value "#t" "#f")]
       [(equal? tag 'NilValueTag)   "'()"]
       [(equal? tag 'PairTag)       (format "~a" (pretty-print-Pair value))]
-      [(equal? tag 'SymbolTag)     (format "~a" value)]
+      [(equal? tag 'SymbolTag)     (format "'~a" value)]
       [(equal? tag 'EtaBuiltinTag) (format "<builtin: ~a>" (pretty-print-Builtin value))]
       [(equal? tag 'EtaClosureTag) (pretty-print-Closure value)]
       [(equal? tag 'EtaStructTag)  (format "<StructInstance: ~a>" value)]
