@@ -41,9 +41,6 @@ The eta language defines the following expression types via the `ExprHead` enum:
 | 'OrHead         | OR expression                           |
 | 'LoadHead       | Load a file                             |
 | 'SetHead        | Breaking assignment                     |
-| 'DoHead         | Do expression                           |
-| 'DoLetHead      | Let expression inside a Do expression   |
-| 'DoFinalHead    | Final expression inside a Do expression |
 | 'BodyHead       | Body of a function or block             |
 | 'BindHead       | Binding expression                      |
 | 'BindingsHead   | list of bindings                        |
@@ -77,9 +74,6 @@ The following table summarizes the structure of the `args` field for each `ExprH
 | 'OrHead         | List of expressions                  | List of Expr objects to be OR-ed                                                                                                                                 |
 | 'LoadHead       | `(list filename)`                    |                                                                                                                                                                  | `filename`: Expr (Const with String tag) - path to file |
 | 'SetHead        | `(list name value)`                  | `name`: Expr (Var) - variable name<br>`value`: Expr - value to set                                                                                               |
-| 'DoHead         | `(list vars test body)`              | `vars`: List of Expr (DoLet)<br>`test`: Expr (DoFinal)<br>`body`: Expr (Body)                                                                                    |
-| 'DoLetHead      | `(list name init step)`              | `name`: Expr (Var)<br>`init`: Expr - initial value<br>`step`: Expr - update expr                                                                                 |
-| 'DoFinalHead    | `(list test result)`                 | `test`: Expr - termination condition<br>`result`: List of Expr - result expressions                                                                              |
 | 'BodyHead       | `(list defines expressions)`         | `defines`: List of Expr (Define)<br>`expressions`: List of Expr - body expressions                                                                               |
 | 'BindHead       | `(list name value)`                  | `name`: Expr (Var)<br>`value`: Expr - bound value                                                                                                                |
 | 'BindingsHead   | List of binding expressions          | List of Expr (Bind) objects                                                                                                                                      |

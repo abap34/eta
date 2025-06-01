@@ -754,61 +754,6 @@
                   (loc (last result)))])
         (make-begin loc args)))))
 
-
-; Do ::= (do (DoLet*) DoFinal Body)
-(define parse-do 
-  (map-parser
-   (sequence
-    (label "LParen" lparen)
-    (label "do" (keyword "do"))
-    (label "DoLet*" (zero-or-more (parser-ref parse-do-let)))
-    (label "DoFinal" (parser-ref parse-do-final))
-    (label "Body" (parser-ref parse-body))
-    (label "RParen" rparen))
-    (lambda (result)
-      (let ([do-lets (third result)]
-            [do-final (fourth result)]
-            [body (fifth result)]
-            [loc (create-span-location
-                  (loc (first result))
-                  (loc (last result)))])
-        (make-do loc do-lets do-final body)))))
-
-; DoLet ::= (Id Exp Exp)
-(define parse-do-let 
-  (map-parser
-   (sequence
-    (label "LParen" lparen)
-    (label "Id" (parser-ref parse-id))
-    (label "InitExp" (parser-ref parse-exp))
-    (label "StepExp" (parser-ref parse-exp))
-    (label "RParen" rparen))
-    (lambda (result)
-      (let ([name (second result)]
-            [init (third result)]
-            [step (fourth result)]
-            [loc (create-span-location
-                  (loc (first result))
-                  (loc (last result)))])
-        (make-do-let loc name init step)))))
-
-
-; DoFinal ::= (Exp Exp*)
-(define parse-do-final
-  (map-parser
-   (sequence
-    (label "LParen" lparen)
-    (label "Cond" (parser-ref parse-exp))
-    (label "Body" (zero-or-more (parser-ref parse-exp)))
-    (label "RParen" rparen))
-    (lambda (result)
-      (let ([cond-exp (second result)]
-            [body-exps (third result)]
-            [loc (create-span-location
-                  (loc (first result))
-                  (loc (last result)))])
-        (make-do-final loc cond-exp body-exps)))))
-
 ; CallCC ::= (call/cc | call-with-current-continuation Exp)
 (define parse-call/cc
   (map-parser
@@ -936,7 +881,6 @@
 ;     | (and Exp*)                              ; Logical AND
 ;     | (or Exp*)                               ; Logical OR
 ;     | (begin Exp*)                            ; Sequential execution
-;     | (do ((Id Exp Exp)*) (Exp Exp*) Body)    ; Iteration
 ;     | (Exp Exp*)                              ; Function application
 (define parse-exp 
   (any-of
@@ -954,7 +898,6 @@
     (label "And" parse-and)
     (label "Or" parse-or)
     (label "Begin" parse-begin)
-    (label "Do" parse-do)
     (label "CallCC" parse-call/cc)
     (label "App" parse-app)
   )

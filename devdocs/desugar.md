@@ -24,9 +24,6 @@ In eta Language, some of the expressions in the AST are desugared to simpler for
 | 'OrHead         | Yes      | UnNamedLetHead+IfHead    | No                   |
 | 'LoadHead       | No       | Same                     | Yes                  |
 | 'SetHead        | Yes      | SetHead                  | Yes                  |
-| 'DoHead         | N/A      | Not implemented          | No                   |
-| 'DoLetHead      | N/A      | Not implemented          | No                   |
-| 'DoFinalHead    | N/A      | Not implemented          | No                   |
 | 'BodyHead       | Yes      | BodyHead                 | Yes                  |
 | 'BindHead       | Yes      | BindHead                 | Yes                  |
 | 'BindingsHead   | Yes      | BindingsHead             | Yes                  |
@@ -334,12 +331,6 @@ is desugared to:
 ('SetHead (list name (desugar value)))
 ```
 
-
----
-
-#### 'DoHead, 'DoLetHead, 'DoFinalHead
-
-TODO
 
 ---
 
