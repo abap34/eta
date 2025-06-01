@@ -874,11 +874,16 @@
         (make-bind loc name value)))))
 
 
-; S-Exp ::= Const | Id | (S-Exp* [S-Exp . S-Exp])
+; S-Exp ::= Const | Id | Keywords | (S-Exp* [S-Exp . S-Exp])
 (define parse-s-exp 
   (any-of
     (label "Const" (parser-ref parse-const))
     (label "Id" (parser-ref parse-id))
+    (label "Keyword" (map-parser
+                      (token-type 'KeywordToken)
+                      (lambda (token)
+                        (let ([loc (Token-loc token)])
+                          (make-var loc (Token-val token))))))
     (label "NestedS-Exp" (parser-ref parse-nested-s-exp))))
 
 ; NestedS-Exp ::= (S-Exp* [. S-Exp])
