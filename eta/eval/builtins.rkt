@@ -15,7 +15,6 @@
   boolean-value?
   nil-value?
   list-value?
-  expr-value?
   builtin-value?
   closure-value?
   struct-value?
@@ -100,9 +99,6 @@
 (define (list-value? value)
   (and (RuntimeValue? value) (or (equal? (RuntimeValue-tag value) 'PairTag)
                                   (equal? (RuntimeValue-tag value) 'NilValueTag))))
-
-(define (expr-value? value)
-  (and (RuntimeValue? value) (equal? (RuntimeValue-tag value) 'EtaExprTag)))
 
 (define (builtin-value? value)
   (and (RuntimeValue? value) (equal? (RuntimeValue-tag value) 'EtaBuiltinTag)))
@@ -822,7 +818,6 @@
     (define-builtin! env "nil?" (make-type-checker "nil?" 'NilValueTag))
     (define-builtin! env "pair?" (make-type-checker "pair?" 'PairTag))
     (define-builtin! env "vector?" (make-type-checker "vector?" 'VectorTag))
-    (define-builtin! env "expr?" (make-type-checker "expr?" 'EtaExprTag))
     (define-builtin! env "builtin?" (make-type-checker "builtin?" 'EtaBuiltinTag))
     (define-builtin! env "closure?" (make-type-checker "closure?" 'EtaClosureTag))
     (define-builtin! env "struct?" (make-type-checker "struct?" 'EtaStructTag))

@@ -53,7 +53,6 @@
       (equal? tag 'NilValueTag)
       (equal? tag 'PairTag)
       (equal? tag 'SymbolTag)
-      (equal? tag 'EtaExprTag)
       (equal? tag 'EtaBuiltinTag)
       (equal? tag 'EtaClosureTag)
       (equal? tag 'EtaStructTag)
@@ -72,7 +71,6 @@
     [(equal? tag 'NilValueTag)   "Nil"]
     [(equal? tag 'PairTag)       "Pair"]
     [(equal? tag 'SymbolTag)     "Symbol"]
-    [(equal? tag 'EtaExprTag)    "Expr"]
     [(equal? tag 'EtaBuiltinTag) "Builtin"]
     [(equal? tag 'EtaClosureTag) "Closure"]
     [(equal? tag 'EtaStructTag)  "StructInstance"]
@@ -100,7 +98,6 @@
     [(equal? tag 'NilValueTag)   (tag-checker null? tag "null?")]
     [(equal? tag 'PairTag)       (tag-checker Pair? tag "Pair?")]
     [(equal? tag 'SymbolTag)     (tag-checker symbol? tag "symbol?")]
-    [(equal? tag 'EtaExprTag)    (tag-checker Expr? tag "Expr?")]
     [(equal? tag 'EtaBuiltinTag) (tag-checker Builtin? tag "Builtin?")]
     [(equal? tag 'EtaClosureTag) (tag-checker Closure? tag "EtaClosure?")]
     [(equal? tag 'EtaStructTag)  (tag-checker StructInstance? tag "StructInstance?")]
@@ -315,7 +312,6 @@
       [(equal? tag 'NilValueTag)   "'()"]
       [(equal? tag 'PairTag)       (format "~a" (pretty-print-Pair value))]
       [(equal? tag 'SymbolTag)     (format "~a" value)]
-      [(equal? tag 'EtaExprTag)    (format "<expr: ~a>" (pretty-print-Expr value))]
       [(equal? tag 'EtaBuiltinTag) (format "<builtin: ~a>" (pretty-print-Builtin value))]
       [(equal? tag 'EtaClosureTag) (pretty-print-Closure value)]
       [(equal? tag 'EtaStructTag)  (format "<StructInstance: ~a>" value)]
