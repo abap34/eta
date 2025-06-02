@@ -313,7 +313,7 @@
 
     (when variadic
       (let ([rest-args (list-tail args (min (length args) (length req-params)))])
-        (define-variable! env variadic (RuntimeValue 'PairTag rest-args) #f)))
+        (define-variable! env variadic (list->Pair rest-args) #f)))
     
     env))
 
