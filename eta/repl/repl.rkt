@@ -7,7 +7,9 @@
          "../eval/interp-interface.rkt"
          "../eval/env.rkt"
          "../eval/runtime-values.rkt"
-         "../eval/builtins.rkt")
+         "../eval/builtins.rkt"
+         "input-reader.rkt"
+         "history.rkt")
 
 ;; Vector-based history store for REPL
 (struct repl-history-store (vector index count) #:transparent)
@@ -81,52 +83,12 @@
   (displayln (bold " REPL! ✨"))
   (displayln (colorize "Type ':help' for available commands." 'cyan)))
 
-;  count-bracket-balance
-;     Count the bracket balance (left - right) in a string
-;  Arguments:
-;     str - Input string to analyze
-;  Returns:
-;     Integer representing bracket balance (positive = more left brackets)
-(define (count-bracket-balance str)
-  (define (count-char char)
-    (cond
-      [(char=? char #\() 1]
-      [(char=? char #\)) -1]
-      [(char=? char #\[) 1]
-      [(char=? char #\]) -1]
-      [(char=? char #\{) 1]
-      [(char=? char #\}) -1]
-      [else 0]))
-  
-  (foldl + 0 (map count-char (string->list str))))
-
-;  read-multi-line-input
-;     Read input until bracket balance is zero or negative
-;  Arguments:
-;     initial-line - First line of input
-;  Returns:
-;     Complete multi-line input as a single string
-(define (read-multi-line-input initial-line)
-  (define (continuation-prompt)
-    ; NOTE: eta> {program star here}, so number of dots is 4
-    (display (colorize ".... " 'yellow)))
-  
-  (let loop ([lines (list initial-line)]
-             [balance (count-bracket-balance initial-line)])
-    (if (<= balance 0)
-        (string-join (reverse lines) "\n")
-        (begin
-          (continuation-prompt)
-          (let ([next-line (read-line)])
-            (cond
-              [(eof-object? next-line)
-               (string-join (reverse lines) "\n")]
-              [else
-               (let ([new-balance (+ balance (count-bracket-balance next-line))])
-                 (loop (cons next-line lines) new-balance))]))))))
-
 (define (prompt)
   (display (colorize "eta> " 'green)))
+
+(define (continuation-prompt)
+  ; NOTE: eta> {program star here}, so number of dots is 4
+  (display (colorize ".... " 'yellow)))
 
 ;  repl-loop
 ;     Enhanced Read-Eval-Print Loop for eta with command support.
@@ -152,10 +114,10 @@
              (repl-loop env (cdr result))
              (exit)))]
       [else 
-       ;; Check bracket balance and read multi-line input if needed
-       (let* ([complete-input (if (> (count-bracket-balance input) 0)
-                                  (read-multi-line-input input)
-                                  input)])
+       ;; Check if input needs continuation (brackets, string literals)
+       (let* ([complete-input (if (input-needs-continuation? input)
+                                 (read-multi-line-input input continuation-prompt)
+                                 input)])
          ;; Add input to history and get its index
          (let-values ([(new-history history-index) (repl-history-add history complete-input)])
            (with-clean-break-state
@@ -195,6 +157,7 @@
   (displayln (format "  ~a - Display current environment" (colorize ":env" 'yellow)))
   (displayln (format "  ~a - Display current environment with built-ins" (colorize ":env-all" 'yellow)))
   (displayln (format "  ~a - Show REPL history" (colorize ":history" 'yellow)))
+  (displayln (format "  ~a - Clear REPL history" (colorize ":clear-history" 'yellow)))
   (displayln (format "  ~a / ~a - Exit REPL" (colorize ":exit" 'yellow) (colorize ":quit" 'yellow)))
   (newline))
 
@@ -229,10 +192,15 @@
     [(string=? cmd ":env-all")
      (pretty-print-Env env #t)
      (cons #t history)]
+    [(string=? cmd ":history")
+     (show-history history)
+     (cons #t history)]
+    [(string=? cmd ":clear-history")
+     (cons #t (clear-history history))]
     [(or (string=? cmd ":exit") (string=? cmd ":quit") (string=? cmd ":q"))
      (displayln (colorize "Goodbye!" 'yellow))
      (cons #f history)]
     [else
      (displayln (format "Unknown command: ~a. Type ':help' for available commands." 
-                       (colorize cmd 'red)))
+                        (colorize cmd 'red)))
      (cons #t history)]))
