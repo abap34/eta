@@ -108,7 +108,8 @@
 ;     Complete multi-line input as a single string
 (define (read-multi-line-input initial-line)
   (define (continuation-prompt)
-    (display (colorize "... " 'yellow)))
+    ; NOTE: eta> {program star here}, so number of dots is 4
+    (display (colorize ".... " 'yellow)))
   
   (let loop ([lines (list initial-line)]
              [balance (count-bracket-balance initial-line)])
