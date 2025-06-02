@@ -2,6 +2,7 @@
 
 ;; Provides location-related functionality for the Eta language
 (provide Location
+         make-dummy-location
          make-location
          location-equal?
          Location?
@@ -31,20 +32,26 @@
 ;; Returns:
 ;;   A string representation of the location
 (define (location->string loc)
-   
-  (let* ([file (Location-file loc)]
-         [file-str (cond
-                    [(string? file) (format "~a:" file)]
-                    [(symbol? file) (format "~a:" (symbol->string file))]
-                    [(and (list? file) (= (length file) 2) (equal? (first file) 'repl-history)) (format "REPL[~a]:" (second file))]
-                    [file (format "~a:" file)]
-                    [else ""])])
-    (format "~a(~a, ~a) - (~a, ~a)"
-            file-str
-            (Location-sline loc)
-            (Location-scol loc)
-            (Location-eline loc)
-            (Location-ecol loc))))
+  (if (not (Location-file loc))
+    "Unknown location"
+    (let* ([file (Location-file loc)]
+          [file-str (cond
+                      [(string? file) (format "~a:" file)]
+                      [(symbol? file) (format "~a:" (symbol->string file))]
+                      [(and (list? file) (= (length file) 2) (equal? (first file) 'repl-history)) (format "REPL[~a]:" (second file))]
+                      [file (format "~a:" file)]
+                      [else ""])])
+      (format "~a(~a, ~a) - (~a, ~a)"
+              file-str
+              (Location-sline loc)
+              (Location-scol loc)
+              (Location-eline loc)
+              (Location-ecol loc)))))
+
+;; make-dummy-location
+;;   Creates a dummy location object with no file and line/column numbers
+(define (make-dummy-location)
+  (Location #f 0 0 0 0))
 
 
 ;; make-location

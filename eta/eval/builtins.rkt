@@ -1199,7 +1199,7 @@
         (cond
           ;; Handle expressions that need to be evaluated (symbols, pairs, nil)
           [(or (symbol-value? arg) (pair-value? arg) (nil-value? arg))
-           (let* ([dummy-location (make-location 0 0 0)]
+           (let* ([dummy-location (make-dummy-location)]
                   [expr (runtime-value->expr arg dummy-location)])
              ;; Special handling for special forms (if, lambda, etc.)
              (if (and (pair-value? arg)
