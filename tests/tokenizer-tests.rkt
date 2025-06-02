@@ -389,7 +389,6 @@
                     (Token 'KeywordToken "and" (Location #f 1 36 1 39))
                     (Token 'KeywordToken "or" (Location #f 1 40 1 42))
                     (Token 'KeywordToken "begin" (Location #f 1 43 1 48))
-                    (Token 'KeywordToken "do" (Location #f 1 49 1 51))
                     (Token 'KeywordToken "load" (Location #f 1 52 1 56))
                     (Token 'KeywordToken "else" (Location #f 1 57 1 61)))])
     (set! state (assert-equal tokens expected
