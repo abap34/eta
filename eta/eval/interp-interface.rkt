@@ -88,6 +88,7 @@
 (define (init-basic-env)
   (let* ([env (add-builtins-to-env (init-toplevel-env))]
          [stdlib-dir (build-path (current-directory) "eta" "stdlib")]
+         [logical-lib-path (build-path stdlib-dir "logical.eta")]
          [list-lib-path (build-path stdlib-dir "list.eta")]
          [math-lib-path (build-path stdlib-dir "math.eta")]
          [higher-order-lib-path (build-path stdlib-dir "higher-order.eta")]
@@ -112,7 +113,8 @@
             env)))
     
     ;; Load modules in order (list, math, string, higher-order)
-    (let* ([env (load-library-file env list-lib-path)]
+    (let* ([env (load-library-file env logical-lib-path)]
+           [env (load-library-file env list-lib-path)]
            [env (load-library-file env math-lib-path)]
            [env (load-library-file env higher-order-lib-path)]
            [env (load-library-file env vector-lib-path)])
