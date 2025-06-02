@@ -35,9 +35,6 @@
          make-and
          make-or
          make-begin
-         make-do-let
-         make-do-final
-         make-do
          make-body
          make-bind
          make-bindings
@@ -72,9 +69,6 @@
       (equal? head 'OrHead)          ; OR expression
       (equal? head 'LoadHead)        ; Load a file (MEMO: This is not a special form, but a function call. But in)
       (equal? head 'SetHead)         ; Breaking the value of a variable
-      (equal? head 'DoHead)          ; Do expression
-      (equal? head 'DoLetHead)       ; Let expression inside a Do expression
-      (equal? head 'DoFinalHead)     ; Final expression inside a Do expression
       (equal? head 'BodyHead)        ; Body of a function or block
       (equal? head 'BindHead)        ; Binding expression
       (equal? head 'BindingsHead)    ; list of bindings
@@ -144,9 +138,6 @@
     [(equal? head 'OrHead)         "Or"]
     [(equal? head 'LoadHead)       "Load"]
     [(equal? head 'SetHead)        "Set!"]
-    [(equal? head 'DoHead)         "Do"]
-    [(equal? head 'DoLetHead)      "DoLet"]
-    [(equal? head 'DoFinalHead)    "DoFinal"]
     [(equal? head 'BodyHead)       "Body"]
     [(equal? head 'BindHead)       "Bind"]
     [(equal? head 'BindingsHead)   "Bindings"]
@@ -550,59 +541,9 @@
 ;  Returns:
 ;     An Expr with Begin head
 (define (make-begin location args)
-  (assert-list-of-exprs args 'make-begin "arguments")
-  
+  (assert-list-of-exprs args 'make-begin "arguments")  
   (make-expr 'BeginHead args location))
 
-; make-do-let
-;     Create a binding expression node for do
-;  Arguments:
-;     location - Source location
-;     name - The name of the variable (string)
-;     init - The initial value (Expr)
-;     step - The step value (Expr)
-;  Returns:
-;     An Expr with DoLet head
-(define (make-do-let location name init step)
-  (assert-string name 'make-do-let "name")
-  (assert-expr init 'make-do-let "initial value")
-  (assert-expr step 'make-do-let "step value")
-  
-  (make-expr 'DoLetHead (list name init step) location))
-
-; make-do-final
-;     Create a final expression node for do
-;  Arguments:
-;     location - Source location
-;     cond - The condition expression (Expr)
-;     body - The body of the do (list of Expr)
-;  Returns:
-;     An Expr with DoFinal head
-(define (make-do-final location cond body)
-  (assert-expr cond 'make-do-final "condition")
-  (assert-list-of-exprs body 'make-do-final "body")
-
-  (make-expr 'DoFinalHead (list cond body) location))
-
-
-; make-do
-;     Create a do expression node
-;  Arguments:
-;     location - Source location
-;     do-lets - The list of do-let bindings (Expr with DoLet head)
-;     do-final - The final expression (Expr with DoFinal head)
-;     body - The body of the do (Expr)
-;  Returns:
-;     An Expr with Do head
-(define (make-do location do-lets do-final body)
-  (unless (list? do-lets)
-    (error 'make-do "Expected a list of do-let bindings, got: ~a" do-lets))
-  (when (not (null? do-lets))
-    (for-each (lambda (do-let) (assert-head 'DoLetHead do-let 'make-do "do-let binding")) do-lets))
-  (assert-head 'DoFinalHead do-final 'make-do "do-final")
-  (assert-expr body 'make-do "body")
-  
-  (make-expr 'DoHead (list do-lets do-final body) location))
 
 
 ; make-body

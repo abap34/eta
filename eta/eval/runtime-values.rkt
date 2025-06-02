@@ -6,6 +6,7 @@
          RuntimeValue
          RuntimeValue?
          make-param-spec
+         ParamSpec->string
          make-eta-closure
          make-builtin
          make-runtime-value
@@ -53,7 +54,6 @@
       (equal? tag 'NilValueTag)
       (equal? tag 'PairTag)
       (equal? tag 'SymbolTag)
-      (equal? tag 'EtaExprTag)
       (equal? tag 'EtaBuiltinTag)
       (equal? tag 'EtaClosureTag)
       (equal? tag 'EtaStructTag)
@@ -61,26 +61,6 @@
       (equal? tag 'VoidTag)
       (equal? tag 'UndefinedTag)
       (equal? tag 'EtaContinuationTag)))
-
-
-(define (RuntimeValueTag->string tag)
-  (cond
-    [(equal? tag 'IntTag)        "Int"]
-    [(equal? tag 'FloatTag)      "Float"]
-    [(equal? tag 'StringTag)     "String"]
-    [(equal? tag 'BooleanTag)    "Boolean"]
-    [(equal? tag 'NilValueTag)   "Nil"]
-    [(equal? tag 'PairTag)       "Pair"]
-    [(equal? tag 'SymbolTag)     "Symbol"]
-    [(equal? tag 'EtaExprTag)    "Expr"]
-    [(equal? tag 'EtaBuiltinTag) "Builtin"]
-    [(equal? tag 'EtaClosureTag) "Closure"]
-    [(equal? tag 'EtaStructTag)  "StructInstance"]
-    [(equal? tag 'VectorTag)     "Vector"]
-    [(equal? tag 'VoidTag)       "Void"]
-    [(equal? tag 'UndefinedTag)  "Undefined"]
-    [(equal? tag 'EtaContinuationTag) "Continuation"]
-    [else                        (error (format "Internal error: unknown tag ~a" tag))]))
 
 (define (tag-checker pred tag expect-pass-msg)
   (lambda (tag)
@@ -100,7 +80,6 @@
     [(equal? tag 'NilValueTag)   (tag-checker null? tag "null?")]
     [(equal? tag 'PairTag)       (tag-checker Pair? tag "Pair?")]
     [(equal? tag 'SymbolTag)     (tag-checker symbol? tag "symbol?")]
-    [(equal? tag 'EtaExprTag)    (tag-checker Expr? tag "Expr?")]
     [(equal? tag 'EtaBuiltinTag) (tag-checker Builtin? tag "Builtin?")]
     [(equal? tag 'EtaClosureTag) (tag-checker Closure? tag "EtaClosure?")]
     [(equal? tag 'EtaStructTag)  (tag-checker StructInstance? tag "StructInstance?")]
@@ -122,6 +101,28 @@
 (define (make-Pair car cdr)
     (Pair car cdr))
 
+(define (make-Pair-runtime-value car cdr)
+  (make-runtime-value 'PairTag (make-Pair car cdr)))
+  
+; list->Pair
+;   Convert a list of RuntimeValues into a Pair object
+; Arguments:
+;    args - A list of RuntimeValues
+; Returns:
+;    A Pair object representing the list
+; Example:
+;    (list->Pair (list (make-runtime-value 'IntTag 1) (make-runtime-value 'IntTag 2))) ; => (1 . 2)
+(define (list->Pair args)
+  (if (null? args)
+      (make-Pair-runtime-value (RuntimeValue 'NilValueTag '()) (RuntimeValue 'NilValueTag '()))
+      (let loop ([lst args] [acc (RuntimeValue 'NilValueTag '())])
+        (if (null? lst)
+            acc
+            (let ([car (car lst)]
+                  [cdr (loop (cdr lst) acc)])
+              (make-Pair-runtime-value car cdr))))))
+
+
 ; Vector
 ;   A structure to represent a vector in the runtime
 ; Arguments:
@@ -132,37 +133,23 @@
       (Vector (make-vector size init-value))
       (error (format "Internal error: make-Vector expects a non-negative number for size, but got ~a" size))))
 
-; list->Pair
-;   Convert a list of RuntimeValues into a Pair object
-; Arguments:
-;    args - A list of RuntimeValues
-; Returns:
-;    A Pair object representing the list
-(define (list->Pair args)
-  (if (null? args)
-      (make-Pair (RuntimeValue 'NilValueTag '()) (RuntimeValue 'NilValueTag '()))
-      (let loop ([lst args] [acc (RuntimeValue 'NilValueTag '())])
-        (if (null? lst)
-            acc
-            (let ([car (car lst)]
-                  [cdr (loop (cdr lst) acc)])
-              (make-Pair car cdr))))))
-
 ; pretty-print-Pair
 ;   Convert a Pair into a string representation
 ; Arguments:
-;    pair - A Pair object
+;    pair - A RuntimeValue with 'PairTag
 ; Returns:
 ;    A string representation of the pair
 ; Example:
 ;    (pretty-print-Pair (make-pair (RuntimeValue 'IntTag 1) (RuntimeValue 'IntTag 2))) ; => "(1 . 2)"
 ;    (pretty-print-Pair (make-pair (RuntimeValue 'IntTag 1) (make-pair (RuntimeValue 'IntTag 2) (RuntimeValue 'NilValueTag)))) ; => "(1 2)"
 (define (pretty-print-Pair pair)
-  (unless (Pair? pair)
-    (error "Internal error: pretty-print-Pair expects a Pair, but got ~a" pair))
-  
-  (let ([car (Pair-car pair)]
-        [cdr (Pair-cdr pair)])
+  (unless (and (RuntimeValue? pair)
+               (equal? (RuntimeValue-tag pair) 'PairTag))
+    (error "Internal error: pretty-print-Pair expects a RuntimeValue with PairTag, but got ~a" pair))
+
+
+  (let ([car (Pair-car (RuntimeValue-value pair))]
+        [cdr (Pair-cdr (RuntimeValue-value pair))])
     (if (equal? cdr (RuntimeValue 'NilValueTag '()))
         (format "(~a)" (runtime-value->string car))
         (format "(~a . ~a)" (runtime-value->string car) (runtime-value->string cdr)))))
@@ -313,9 +300,8 @@
       [(equal? tag 'StringTag)     (format "~a" value)]
       [(equal? tag 'BooleanTag)    (if value "#t" "#f")]
       [(equal? tag 'NilValueTag)   "'()"]
-      [(equal? tag 'PairTag)       (format "~a" (pretty-print-Pair value))]
-      [(equal? tag 'SymbolTag)     (format "~a" value)]
-      [(equal? tag 'EtaExprTag)    (format "<expr: ~a>" (pretty-print-Expr value))]
+      [(equal? tag 'PairTag)       (format "~a" (pretty-print-Pair v))]
+      [(equal? tag 'SymbolTag)     (format "'~a" value)]
       [(equal? tag 'EtaBuiltinTag) (format "<builtin: ~a>" (pretty-print-Builtin value))]
       [(equal? tag 'EtaClosureTag) (pretty-print-Closure value)]
       [(equal? tag 'EtaStructTag)  (format "<StructInstance: ~a>" value)]

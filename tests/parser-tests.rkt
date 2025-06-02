@@ -540,42 +540,6 @@
 
   state)
 
-;; test-do-parsing
-;;     Tests for do expression parsing
-(define (test-do-parsing state output-fn)
-  (output-fn "Running test-do-parsing...")
-
-  (define assert (lambda (a e m)
-                   (assert-equal a e m state (make-indented-output-fn output-fn 1))))
-
-  ;; Simple do
-  (let* ([input "(do ((i 0 (+ i 1)) (sum 0 (+ sum i)))
-                     ((= i 10) sum)
-                   (display i))"]
-         [expr (parse-single input)])
-    (set! state (assert (Expr-head expr) 'DoHead "Simple do parsing test")))
-
-  ;; Do with empty body
-  (let* ([input "(do ((i 0 (+ i 1)))
-                     ((> i 10) i))"]
-         [expr (parse-single input)])
-    (set! state (assert (Expr-head expr) 'DoHead "Do with empty body parsing test")))
-
-  ;; Do with multiple test result expressions
-  (let* ([input "(do ((i 0 (+ i 1)))
-                     ((> i 10) (display i) i))"]
-         [expr (parse-single input)])
-    (set! state (assert (Expr-head expr) 'DoHead "Do with multiple test results test")))
-
-  ;; Do with multiple body expressions
-  (let* ([input "(do ((i 0 (+ i 1)))
-                     ((> i 10) i)
-                   (display i)
-                   (display \"iteration\"))"]
-         [expr (parse-single input)])
-    (set! state (assert (Expr-head expr) 'DoHead "Do with multiple body expressions test")))
-
-  state)
 
 ;; test-load-parsing
 ;;     Tests for load expression parsing
@@ -677,7 +641,6 @@
                     test-set-parsing
                     test-cond-parsing
                     test-and-or-parsing
-                    test-do-parsing
                     test-load-parsing
                     test-error-handling
                     test-complex-expressions)])

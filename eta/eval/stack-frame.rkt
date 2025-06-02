@@ -11,7 +11,6 @@
     make-call-frame
     CallFrame-proc
     CallFrame-args
-    CallFrame-env
     CallFrame-loc
     CallFrame-parent
     CallFrame-tail?
@@ -61,25 +60,23 @@
 ;; Arguments:
 ;;    proc - The procedure/function being called
 ;;    args - The arguments passed to the procedure
-;;    env - The environment in which the procedure is executed
 ;;    loc - The source location information for debugging
 ;;    parent - The parent frame (for maintaining lexical scope chain)
 ;;    tail? - Whether this is a tail call (#t) or not (#f)
-(struct CallFrame (proc args env loc parent tail?) #:transparent)
+(struct CallFrame (proc args loc parent tail?) #:transparent)
 
 ;; make-call-frame
 ;;    Creates a new call frame for a function call
 ;; Arguments:
 ;;    proc - The procedure/function being called
 ;;    args - The arguments passed to the procedure
-;;    env - The environment in which the procedure is executed
 ;;    loc - The source location information for debugging
 ;;    parent - The parent frame (for maintaining lexical scope chain)
 ;;    tail? - Whether this is a tail call (#t) or not (#f)
 ;; Returns:
 ;;    A new CallFrame structure
-(define (make-call-frame proc args env loc parent tail?)
-  (CallFrame proc args env loc parent tail?))
+(define (make-call-frame proc args loc parent tail?)
+  (CallFrame proc args loc parent tail?))
 
 ;; CallStack
 ;;    Represents the runtime call stack of the interpreter

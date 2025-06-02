@@ -313,7 +313,7 @@
 
     (when variadic
       (let ([rest-args (list-tail args (min (length args) (length req-params)))])
-        (define-variable! env variadic (RuntimeValue 'PairTag rest-args) #f)))
+        (define-variable! env variadic (list->Pair rest-args) #f)))
     
     env))
 
@@ -432,7 +432,7 @@
             
         (let* ([func-env (make-child-env captured-env)]
                [func-env (assign-params! param-spec args func-env)]
-               [call-frame (make-call-frame closure-value args func-env proc-loc #f tail?)])
+               [call-frame (make-call-frame closure-value args proc-loc #f tail?)])
            
           (let ([push-result (call-stack-push stack call-frame)])
             (if (RuntimeError? push-result)

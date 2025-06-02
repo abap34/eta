@@ -82,7 +82,7 @@
 ;; List of eta language keywords
 (define eta-keywords
   '("define" "lambda" "quote" "set!" "let" "let*" "letrec"
-    "if" "cond" "else" "and" "or" "begin" "do" "load" "call/cc" "call-with-current-continuation"))
+    "if" "cond" "else" "and" "or" "begin"  "load" "call/cc" "call-with-current-continuation"))
 
 ;; keyword?
 ;;   Check if a string is an eta language keyword

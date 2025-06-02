@@ -21,10 +21,8 @@
       (if (null? (cdr args))
           (car args)
           (let ((first (car args))
-                (rest-max (apply max (cdr args))))
-            (if (> first rest-max)
-                first
-                rest-max)))))
+                (rest (cdr args)))
+            (fold-left (lambda (x y) (if (> x y) x y)) first rest)))))
 
 ;; min - Returns the minimum of its arguments
 ;; Arguments:
@@ -37,10 +35,10 @@
       (if (null? (cdr args))
           (car args)
           (let ((first (car args))
-                (rest-min (apply min (cdr args))))
-            (if (< first rest-min)
-                first
-                rest-min)))))
+                (rest (cdr args)))
+            (fold-left (lambda (x y) (if (< x y) x y)) first rest)))))
+
+
 
 ;; % - Returns the % of the first argument divided by the second
 ;; Arguments:

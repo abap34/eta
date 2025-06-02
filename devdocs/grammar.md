@@ -36,7 +36,6 @@ Exp ::= Const                                 ; Constant
     | (and Exp*)                              ; Logical AND
     | (or Exp*)                               ; Logical OR
     | (begin Exp*)                            ; Sequential execution
-    | (do ((Id Exp Exp)*) (Exp Exp*) Body)    ; Iteration
     | (call/cc Exp)                           ; Call with current continuation
     | (call-with-current-continuation Exp)    ; Call with current continuation (full name)
 

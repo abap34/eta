@@ -1,0 +1,133 @@
+;; logical.eta - Standard library for boolean logic operations
+
+;; not - Logical negation
+;; Arguments:
+;;   x - A boolean value
+;; Returns:
+;;   #t if x is #f, #f otherwise
+(define (not x)
+  (if x #f #t))
+
+;; and? - Logical AND operation
+;; Arguments:
+;;   a - First boolean value
+;;   b - Second boolean value
+;; Returns:
+;;   #t if both a and b are #t, #f otherwise
+;; Note: Unlike the built-in 'and' special form, this evaluates both arguments
+(define (and? a b)
+  (if a b #f))
+
+;; or? - Logical OR operation
+;; Arguments:
+;;   a - First boolean value
+;;   b - Second boolean value
+;; Returns:
+;;   #t if either a or b is #t, #f otherwise
+;; Note: Unlike the built-in 'or' special form, this evaluates both arguments
+(define (or? a b)
+  (if a #t b))
+
+;; xor - Exclusive OR operation
+;; Arguments:
+;;   a - First boolean value
+;;   b - Second boolean value
+;; Returns:
+;;   #t if exactly one of a or b is #t, #f otherwise
+(define (xor a b)
+  (if a (not b) b))
+
+;; nand - Logical NAND operation
+;; Arguments:
+;;   a - First boolean value
+;;   b - Second boolean value
+;; Returns:
+;;   #f if both a and b are #t, #t otherwise
+(define (nand a b)
+  (not (and? a b)))
+
+;; nor - Logical NOR operation
+;; Arguments:
+;;   a - First boolean value
+;;   b - Second boolean value
+;; Returns:
+;;   #t if both a and b are #f, #f otherwise
+(define (nor a b)
+  (not (or? a b)))
+
+;; implies - Logical implication
+;; Arguments:
+;;   a - First boolean value (premise)
+;;   b - Second boolean value (conclusion)
+;; Returns:
+;;   #f if a is #t and b is #f, #t otherwise
+(define (implies a b)
+  (or? (not a) b))
+
+;; equiv - Logical equivalence (XNOR)
+;; Arguments:
+;;   a - First boolean value
+;;   b - Second boolean value
+;; Returns:
+;;   #t if a and b have the same boolean value, #f otherwise
+(define (equiv a b)
+  (not (xor a b)))
+
+;; bool->string - Converts a boolean value to a string
+;; Arguments:
+;;   b - A boolean value
+;; Returns:
+;;   "true" for #t, "false" for #f
+(define (bool->string b)
+  (if b "true" "false"))
+
+;; all? - Tests whether all elements of a list satisfy a predicate
+;; Arguments:
+;;   pred - A predicate function taking one argument
+;;   lst - A list of elements
+;; Returns:
+;;   #t if pred returns true for all elements in lst, #f otherwise
+(define (all? pred lst)
+  (if (null? lst)
+      #t
+      (if (pred (car lst))
+          (all? pred (cdr lst))
+          #f)))
+
+;; any? - Tests whether any element of a list satisfies a predicate
+;; Arguments:
+;;   pred - A predicate function taking one argument
+;;   lst - A list of elements
+;; Returns:
+;;   #t if pred returns true for at least one element in lst, #f otherwise
+(define (any? pred lst)
+  (if (null? lst)
+      #f
+      (if (pred (car lst))
+          #t
+          (any? pred (cdr lst)))))
+
+;; none? - Tests whether no element of a list satisfies a predicate
+;; Arguments:
+;;   pred - A predicate function taking one argument
+;;   lst - A list of elements
+;; Returns:
+;;   #t if pred returns false for all elements in lst, #f otherwise
+(define (none? pred lst)
+  (not (any? pred lst)))
+
+;; bool->int - Converts a boolean value to an integer
+;; Arguments:
+;;   b - A boolean value
+;; Returns:
+;;   1 for #t, 0 for #f
+(define (bool->int b)
+  (if b 1 0))
+
+;; int->bool - Converts an integer to a boolean value
+;; Arguments:
+;;   n - An integer
+;; Returns:
+;;   #f for 0, #t for any other integer
+(define (int->bool n)
+  (not (= n 0)))

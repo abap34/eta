@@ -1,5 +1,10 @@
 ;; higher-order.eta - Standard library for higher-order functions
 
+;; procedure? - Checks if an object is a procedure
+(define (procedure? obj)
+  (or (closure? obj)
+      (builtin? obj)))
+
 ;; map - Applies a procedure to each element of a list and returns a new list
 ;; Arguments:
 ;;   proc - A procedure that takes one argument
@@ -18,7 +23,7 @@
 ;;   lst1 - First list
 ;;   lst2 - Second list
 ;; Returns:
-;;   A new list with the results of applying proc to corresponding elements
+;;   A new list with the results of applying proc  to corresponding elements
 (define (map2 proc lst1 lst2)
   (if (or (null? lst1) (null? lst2))
       '()
@@ -148,29 +153,3 @@
 (define (flip f)
   (lambda (a b . args)
     (apply f b a args)))
-
-;; any? - Returns #t if any element satisfies the predicate
-;; Arguments:
-;;   pred - A predicate procedure that takes one argument
-;;   lst - A list
-;; Returns:
-;;   #t if any element satisfies pred, #f otherwise
-(define (any? pred lst)
-  (if (null? lst)
-      #f
-      (if (pred (car lst))
-          #t
-          (any? pred (cdr lst)))))
-
-;; every? - Returns #t if every element satisfies the predicate
-;; Arguments:
-;;   pred - A predicate procedure that takes one argument
-;;   lst - A list
-;; Returns:
-;;   #t if every element satisfies pred, #f otherwise
-(define (every? pred lst)
-  (if (null? lst)
-      #t
-      (if (pred (car lst))
-          (every? pred (cdr lst))
-          #f)))

@@ -14,7 +14,6 @@
   define-variable!
   define-variable
   is-defined?
-  assign-params
   defined?
   pretty-print-Env
 )
@@ -148,36 +147,6 @@
       [(not e) #f]
       [(hash-has-key? (Env-frame e) name) #t]
       [else (loop (Env-parent e))])))
-
-
-; assign-params
-;     Assign values to parameters based on the parameter specification
-; Arguments:
-;    param-spec - A ParamSpec object
-;    args - A list of arguments
-;    env - The environment to assign the parameters in
-; Returns:
-;    A list of assigned values
-; Example:
-;    (assign-params (make-param-spec (list "x" "y") "z") (list 1 2 3 4) env)
-;    ; => "x" => 1, "y" => 2, "z" => (list 3 4) are assigned in `env`
-;    (assign-params (make-param-spec (list "x" "y") #f) (list 1 2) env)
-;    ; => "x" => 1, "y" => 2 are assigned in `env`
-(define (assign-params param-spec args env)
-  (unless (arity-check param-spec args)
-    (error "Internal error: arity mismatch in assign-params"))
-
- (define (assign-each param-names args env)
-    (if (= (length param-names) 1)
-        (let ([last-param-name (car param-names)])
-          (define-variable! env last-param-name args))
-        (let ([param-name (car param-names)]
-              [arg-value (car args)])
-          (define-variable! env param-name arg-value)
-          (assign-each (cdr param-names) (cdr args) env))))
-
-  (assign-each (ParamSpec-required param-spec) args (make-child-env env))
-  )
 
 
 ;  pretty-print-Env
