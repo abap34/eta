@@ -11,6 +11,7 @@
          "../parser/ast.rkt"
          "../desugar/desugar.rkt"
          racket/exn
+         racket/runtime-path
 )
 
 (provide init-basic-env
@@ -27,6 +28,7 @@
          eta-eval-toplevel-in-thread
 )
 
+(define-runtime-path stdlib-dir "../stdlib")
 
 ; EvalResult
 ;  Represents the result of evaluating an expression.
@@ -87,7 +89,6 @@
 ;   An environment with builtin functions, standard library, and variables.
 (define (init-basic-env)
   (let* ([env (add-builtins-to-env (init-toplevel-env))]
-         [stdlib-dir (build-path (current-directory) "eta" "stdlib")]
          [logical-lib-path (build-path stdlib-dir "logical.eta")]
          [list-lib-path (build-path stdlib-dir "list.eta")]
          [math-lib-path (build-path stdlib-dir "math.eta")]
