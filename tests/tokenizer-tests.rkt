@@ -376,7 +376,7 @@
                               state
                               (make-indented-output-fn output-fn 1))))
 
-  (let* ([input "let let* letrec if cond quote set! and or begin do load else"]
+  (let* ([input "let let* letrec if cond quote set! and or begin load else"]
          [tokens (tokenize-without-eof input)]
          [expected (list
                     (Token 'KeywordToken "let" (Location #f 1 1 1 4))
@@ -389,8 +389,8 @@
                     (Token 'KeywordToken "and" (Location #f 1 36 1 39))
                     (Token 'KeywordToken "or" (Location #f 1 40 1 42))
                     (Token 'KeywordToken "begin" (Location #f 1 43 1 48))
-                    (Token 'KeywordToken "load" (Location #f 1 52 1 56))
-                    (Token 'KeywordToken "else" (Location #f 1 57 1 61)))])
+                    (Token 'KeywordToken "load" (Location #f 1 49 1 53))
+                    (Token 'KeywordToken "else" (Location #f 1 54 1 58)))])
     (set! state (assert-equal tokens expected
                               "All keywords test"
                               state
