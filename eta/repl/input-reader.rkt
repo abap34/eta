@@ -70,39 +70,22 @@
           (cond
             ;; Handle escape sequences inside strings
             [(and in-string? escaped?)
-             (process-chars rest 
-                           (ParseState balance 
-                                        (StringState in-string? #f)))]
-            
+             (process-chars rest (ParseState balance (StringState in-string? #f)))]
             ;; Handle escape character
-            [(and in-string? (char=? char #\\))
-             (process-chars rest 
-                           (ParseState balance 
-                                        (StringState in-string? #t)))]
-            
+            [(and in-string? (char=? char #\\)) (process-chars rest (ParseState balance (StringState in-string? #t)))]
             ;; Handle string delimiters
-            [(char=? char #\")
-             (process-chars rest 
-                           (ParseState balance 
-                                        (StringState (not in-string?) #f)))]
+            [(char=? char #\") (process-chars rest (ParseState balance  (StringState (not in-string?) #f)))]
             
             ;; Count opening brackets (when not in string)
             [(and (not in-string?) (or (char=? char #\() (char=? char #\[) (char=? char #\{)))
-             (process-chars rest 
-                           (ParseState (+ balance 1) 
-                                        (StringState in-string? #f)))]
+             (process-chars rest (ParseState (+ balance 1) (StringState in-string? #f)))]
             
             ;; Count closing brackets (when not in string)
             [(and (not in-string?) (or (char=? char #\)) (char=? char #\]) (char=? char #\})))
-             (process-chars rest 
-                           (ParseState (- balance 1) 
-                                        (StringState in-string? #f)))]
+             (process-chars rest (ParseState (- balance 1) (StringState in-string? #f)))]
             
             ;; Skip other characters
-            [else
-             (process-chars rest 
-                           (ParseState balance 
-                                        (StringState in-string? #f)))]))))
+            [else (process-chars rest (ParseState balance (StringState in-string? #f)))]))))
   
   (process-chars (string->list str) initial-state))
 
