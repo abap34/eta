@@ -4,9 +4,16 @@
 
 **eta** is a toy Scheme interpreter written in Scheme. 
 
-- [x] Tail Call Optimization 
-- [x] First-class Continuations (`call/cc`)
-- [ ] Hygienic Macros
+<div align="center">
+  <img src="assets/repl.png" alt="REPL Screenshot" width="600">
+
+[Examples](/examples)
+
+[Devdocs](/devdocs)
+
+[Presentation (Japanese)](https://abap34.github.io/eta-presentation/)
+</div>
+
 
 
 ---
@@ -31,6 +38,7 @@ eta/
 ### Requirements
 
 Scheme implementation that supports R6RS.
+
 I built and tested with: [Rackets](https://docs.racket-lang.org/).
 
 ### Installation
@@ -52,11 +60,29 @@ $ eta
 $ eta --script <filename>
 ```
 
+In the REPL, you can use following commands:
+
+| Command           | Description                                        |
+| ----------------- | -------------------------------------------------- |
+| `:help`           | Show help                                          |
+| `:env`            | Show environment variables                         |
+| `:env-all`        | Show all environment variables including built-ins |
+| `:history`        | Show REPL history                                  |
+| `:exit` / `:quit` | Exit the REPL                                      |
+
+
+
 ### Run tests
 
 ```
 $ make test
 ```
+
+### Features
+
+- **REPL**: Interactive Read-Eval-Print Loop for immediate feedback.
+- **First-class Continuations**: Supports advanced control flow.
+- **Tail Call Optimization**: Efficient recursion handling.
 
 ## License
 
