@@ -1,0 +1,206 @@
+;; lambda-calc.eta - Simple lambda calculus interpreter
+
+;; Lambda calculus terms representation:
+;; - Variable: ('var name)
+;; - Abstraction: ('lambda var body)  
+;; - Application: ('app func arg)
+
+;; make-var - Create a variable term
+(define (make-var name)
+  (list 'var name))
+
+;; make-lambda - Create a lambda abstraction
+(define (make-lambda var body)
+  (list 'lambda var body))
+
+;; make-app - Create an application
+(define (make-app func arg)
+  (list 'app func arg))
+
+;; var? - Check if term is a variable
+(define (var? term)
+  (and (pair? term) (eq? (car term) 'var)))
+
+;; lambda? - Check if term is a lambda abstraction
+(define (lambda? term)
+  (and (pair? term) (eq? (car term) 'lambda)))
+
+;; app? - Check if term is an application
+(define (app? term)
+  (and (pair? term) (eq? (car term) 'app)))
+
+;; var-name - Get variable name
+(define (var-name term)
+  (cadr term))
+
+;; lambda-var - Get lambda parameter
+(define (lambda-var term)
+  (cadr term))
+
+;; lambda-body - Get lambda body
+(define (lambda-body term)
+  (caddr term))
+
+;; app-func - Get function in application
+(define (app-func term)
+  (cadr term))
+
+;; app-arg - Get argument in application
+(define (app-arg term)
+  (caddr term))
+
+;; substitute - Substitute variable with term in expression
+;; Arguments:
+;;   var - Variable to substitute
+;;   replacement - Term to substitute with
+;;   expr - Expression to substitute in
+;; Returns:
+;;   Expression with substitutions made
+(define (substitute var replacement expr)
+  (cond
+    ((var? expr)
+     (if (eq? (var-name expr) var)
+         replacement
+         expr))
+    ((lambda? expr)
+     (if (eq? (lambda-var expr) var)
+         expr  ; Variable is bound, no substitution
+         (make-lambda (lambda-var expr)
+                     (substitute var replacement (lambda-body expr)))))
+    ((app? expr)
+     (make-app (substitute var replacement (app-func expr))
+              (substitute var replacement (app-arg expr))))
+    (else expr)))
+
+;; beta-reduce - Perform one step of beta reduction
+;; Arguments:
+;;   term - Lambda calculus term
+;; Returns:
+;;   Reduced term, or original if no reduction possible
+(define (beta-reduce term)
+  (cond
+    ((var? term) term)
+    ((lambda? term)
+     (make-lambda (lambda-var term)
+                 (beta-reduce (lambda-body term))))
+    ((app? term)
+     (let ((func (app-func term))
+           (arg (app-arg term)))
+       (if (lambda? func)
+           ; Beta reduction: (λx.body) arg -> body[x := arg]
+           (substitute (lambda-var func) arg (lambda-body func))
+           ; Try to reduce function or argument
+           (let ((reduced-func (beta-reduce func)))
+             (if (equal? reduced-func func)
+                 (make-app func (beta-reduce arg))
+                 (make-app reduced-func arg))))))
+    (else term)))
+
+;; normalize - Normalize term (reduce until no more reductions possible)
+;; Arguments:
+;;   term - Lambda calculus term
+;; Returns:
+;;   Normalized term
+(define (normalize term)
+  (let ((reduced (beta-reduce term)))
+    (if (equal? reduced term)
+        term
+        (normalize reduced))))
+
+;; equal? - Check if two terms are equal
+(define (equal? a b)
+  (cond
+    ((and (var? a) (var? b))
+     (eq? (var-name a) (var-name b)))
+    ((and (lambda? a) (lambda? b))
+     (and (eq? (lambda-var a) (lambda-var b))
+          (equal? (lambda-body a) (lambda-body b))))
+    ((and (app? a) (app? b))
+     (and (equal? (app-func a) (app-func b))
+          (equal? (app-arg a) (app-arg b))))
+    (else #f)))
+
+;; print-term - Pretty print lambda calculus term
+(define (print-term term)
+  (cond
+    ((var? term)
+     (display (var-name term)))
+    ((lambda? term)
+     (display "λ")
+     (display (lambda-var term))
+     (display ".")
+     (print-term (lambda-body term)))
+    ((app? term)
+     (display "(")
+     (print-term (app-func term))
+     (display " ")
+     (print-term (app-arg term))
+     (display ")"))))
+
+;; Church numerals in lambda calculus
+(define church-zero
+  (make-lambda 'f (make-lambda 'x (make-var 'x))))
+
+(define church-one
+  (make-lambda 'f (make-lambda 'x 
+    (make-app (make-var 'f) (make-var 'x)))))
+
+(define church-two
+  (make-lambda 'f (make-lambda 'x 
+    (make-app (make-var 'f) 
+              (make-app (make-var 'f) (make-var 'x))))))
+
+;; Successor function
+(define church-succ
+  (make-lambda 'n (make-lambda 'f (make-lambda 'x
+    (make-app (make-var 'f)
+              (make-app (make-app (make-var 'n) (make-var 'f))
+                        (make-var 'x)))))))
+
+;; Demo
+(display "Lambda Calculus Interpreter")
+(newline)
+(newline)
+
+(display "Church numeral 0: ")
+(print-term church-zero)
+(newline)
+
+(display "Church numeral 1: ")
+(print-term church-one)
+(newline)
+
+(display "Church numeral 2: ")
+(print-term church-two)
+(newline)
+(newline)
+
+(display "Successor function: ")
+(print-term church-succ)
+(newline)
+(newline)
+
+(display "Applying successor to 1:")
+(newline)
+(display "Before: ")
+(print-term (make-app church-succ church-one))
+(newline)
+(display "After:  ")
+(print-term (normalize (make-app church-succ church-one)))
+(newline)
+(newline)
+
+; Identity function
+(define identity (make-lambda 'x (make-var 'x)))
+(display "Identity function: ")
+(print-term identity)
+(newline)
+
+(display "Applying identity to variable 'a':")
+(newline)
+(display "Before: ")
+(print-term (make-app identity (make-var 'a)))
+(newline)
+(display "After:  ")
+(print-term (normalize (make-app identity (make-var 'a))))
+(newline)

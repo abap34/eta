@@ -1,0 +1,148 @@
+;; church-numerals.eta - Church numeral encoding demonstration
+
+;; Church numerals - Numbers encoded as higher-order functions
+;; A Church numeral n is a function that takes a function f and 
+;; applies it n times to its argument
+
+;; zero - Church numeral for 0
+(define zero
+  (lambda (f)
+    (lambda (x) x)))
+
+;; one - Church numeral for 1  
+(define one
+  (lambda (f)
+    (lambda (x) (f x))))
+
+;; two - Church numeral for 2
+(define two
+  (lambda (f)
+    (lambda (x) (f (f x)))))
+
+;; three - Church numeral for 3
+(define three
+  (lambda (f)
+    (lambda (x) (f (f (f x))))))
+
+;; successor - Add 1 to a Church numeral
+;; Arguments:
+;;   n - A Church numeral
+;; Returns:
+;;   Church numeral representing n+1
+(define (successor n)
+  (lambda (f)
+    (lambda (x)
+      (f ((n f) x)))))
+
+;; add - Add two Church numerals
+;; Arguments:
+;;   m, n - Church numerals
+;; Returns:
+;;   Church numeral representing m+n
+(define (add m n)
+  (lambda (f)
+    (lambda (x)
+      ((m f) ((n f) x)))))
+
+;; multiply - Multiply two Church numerals
+;; Arguments:
+;;   m, n - Church numerals  
+;; Returns:
+;;   Church numeral representing m*n
+(define (multiply m n)
+  (lambda (f)
+    (m (n f))))
+
+;; church-to-int - Convert Church numeral to integer
+;; Arguments:
+;;   n - A Church numeral
+;; Returns:
+;;   Integer representation
+(define (church-to-int n)
+  ((n (lambda (x) (+ x 1))) 0))
+
+;; int-to-church - Convert integer to Church numeral
+;; Arguments:
+;;   n - An integer
+;; Returns:
+;;   Church numeral representation
+(define (int-to-church n)
+  (if (= n 0)
+      zero
+      (successor (int-to-church (- n 1)))))
+
+;; is-zero? - Test if Church numeral is zero
+;; Arguments:
+;;   n - A Church numeral
+;; Returns:
+;;   #t if n represents 0, #f otherwise
+(define (is-zero? n)
+  ((n (lambda (x) #f)) #t))
+
+;; Helper for testing
+(define four (successor three))
+(define five (successor four))
+
+;; Demo
+(display "Church Numeral demonstration")
+(newline)
+(newline)
+
+(display "Converting Church numerals to integers:")
+(newline)
+(display "zero = ")
+(display (church-to-int zero))
+(newline)
+(display "one = ")
+(display (church-to-int one))
+(newline)
+(display "two = ")
+(display (church-to-int two))
+(newline)
+(display "three = ")
+(display (church-to-int three))
+(newline)
+(newline)
+
+(display "Successor function:")
+(newline)
+(display "successor of three = ")
+(display (church-to-int (successor three)))
+(newline)
+(newline)
+
+(display "Addition:")
+(newline)
+(display "two + three = ")
+(display (church-to-int (add two three)))
+(newline)
+(display "one + four = ")
+(display (church-to-int (add one four)))
+(newline)
+(newline)
+
+(display "Multiplication:")
+(newline)
+(display "two * three = ")
+(display (church-to-int (multiply two three)))
+(newline)
+(display "three * four = ")
+(display (church-to-int (multiply three four)))
+(newline)
+(newline)
+
+(display "Zero test:")
+(newline)
+(display "is zero zero? ")
+(display (is-zero? zero))
+(newline)
+(display "is two zero? ")
+(display (is-zero? two))
+(newline)
+(newline)
+
+(display "Converting integers to Church numerals:")
+(newline)
+(display "int-to-church(7) = ")
+(display (church-to-int (int-to-church 7)))
+(newline)

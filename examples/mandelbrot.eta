@@ -1,0 +1,149 @@
+;; mandelbrot.eta - Simple Mandelbrot set visualization
+
+;; Complex number operations
+;; Complex number represented as (real imaginary)
+
+;; make-complex - Create a complex number
+(define (make-complex real imag)
+  (list real imag))
+
+;; real-part - Get real part of complex number
+(define (real-part z)
+  (car z))
+
+;; imag-part - Get imaginary part of complex number
+(define (imag-part z)
+  (second z))
+
+;; complex-add - Add two complex numbers
+(define (complex-add z1 z2)
+  (make-complex (+ (real-part z1) (real-part z2))
+                (+ (imag-part z1) (imag-part z2))))
+
+;; complex-multiply - Multiply two complex numbers
+(define (complex-multiply z1 z2)
+  (let ((a (real-part z1))
+        (b (imag-part z1))
+        (c (real-part z2))
+        (d (imag-part z2)))
+    (make-complex (- (* a c) (* b d))
+                  (+ (* a d) (* b c)))))
+
+;; complex-magnitude-squared - Square of magnitude of complex number
+(define (complex-magnitude-squared z)
+  (+ (* (real-part z) (real-part z))
+     (* (imag-part z) (imag-part z))))
+
+;; mandelbrot-iterate - Iterate z -> z^2 + c
+;; Arguments:
+;;   z - Current complex number
+;;   c - Complex constant
+;;   max-iter - Maximum iterations
+;;   current-iter - Current iteration count
+;; Returns:
+;;   Number of iterations before divergence, or max-iter if converges
+(define (mandelbrot-iterate z c max-iter current-iter)
+  (if (or (>= current-iter max-iter)
+          (> (complex-magnitude-squared z) 4))
+      current-iter
+      (mandelbrot-iterate (complex-add (complex-multiply z z) c)
+                         c
+                         max-iter
+                         (+ current-iter 1))))
+
+;; mandelbrot-point - Test if point is in Mandelbrot set
+;; Arguments:
+;;   c - Complex number to test
+;;   max-iter - Maximum iterations
+;; Returns:
+;;   Number of iterations (max-iter means likely in set)
+(define (mandelbrot-point c max-iter)
+  (mandelbrot-iterate (make-complex 0 0) c max-iter 0))
+
+;; mandelbrot-char - Get character representation for iteration count
+;; Arguments:
+;;   iterations - Number of iterations
+;;   max-iter - Maximum iterations
+;; Returns:
+;;   Character representing the point
+(define (mandelbrot-char iterations max-iter)
+  (cond
+    ((= iterations max-iter) "*")  ; In set
+    ((< iterations (/ max-iter 8)) " ")
+    ((< iterations (/ max-iter 4)) ".")
+    ((< iterations (/ max-iter 2)) "o")
+    (else "+")))
+
+;; draw-mandelbrot - Draw ASCII representation of Mandelbrot set
+;; Arguments:
+;;   width - Width in characters
+;;   height - Height in characters
+;;   x-min, x-max - Real axis range
+;;   y-min, y-max - Imaginary axis range
+;;   max-iter - Maximum iterations
+(define (draw-mandelbrot width height x-min x-max y-min y-max max-iter)
+  (define (draw-row y)
+    (define (draw-col x)
+      (if (< x width)
+          (let* ((real-part (+ x-min (* (/ x width) (- x-max x-min))))
+                 (imag-part (+ y-min (* (/ y height) (- y-max y-min))))
+                 (c (make-complex real-part imag-part))
+                 (iterations (mandelbrot-point c max-iter)))
+            (display (mandelbrot-char iterations max-iter))
+            (draw-col (+ x 1)))))
+    (if (< y height)
+        (begin
+          (draw-col 0)
+          (newline)
+          (draw-row (+ y 1)))))
+  (draw-row 0))
+
+;; julia-point - Test if point is in Julia set
+;; Arguments:
+;;   z - Complex number to test (initial value)
+;;   c - Julia set parameter
+;;   max-iter - Maximum iterations
+;; Returns:
+;;   Number of iterations
+(define (julia-point z c max-iter)
+  (mandelbrot-iterate z c max-iter 0))
+
+;; draw-julia - Draw ASCII representation of Julia set
+;; Arguments:
+;;   width, height - Dimensions
+;;   x-min, x-max, y-min, y-max - Complex plane range
+;;   c - Julia set parameter
+;;   max-iter - Maximum iterations
+(define (draw-julia width height x-min x-max y-min y-max c max-iter)
+  (define (draw-row y)
+    (define (draw-col x)
+      (if (< x width)
+          (let* ((real-part (+ x-min (* (/ x width) (- x-max x-min))))
+                 (imag-part (+ y-min (* (/ y height) (- y-max y-min))))
+                 (z (make-complex real-part imag-part))
+                 (iterations (julia-point z c max-iter)))
+            (display (mandelbrot-char iterations max-iter))
+            (draw-col (+ x 1)))))
+    (if (< y height)
+        (begin
+          (draw-col 0)
+          (newline)
+          (draw-row (+ y 1)))))
+  (draw-row 0))
+
+;; Demo
+(display "Mandelbrot Set Visualization")
+(newline)
+(display "Legend: * = in set, + = slow divergence, o = medium, . = fast, space = very fast")
+(newline)
+(newline)
+
+(display "Classic Mandelbrot set view:")
+(newline)
+(draw-mandelbrot 60 20 -2.5 1.0 -1.0 1.0 50)
+(newline)
+
+(display "Julia set with c = -0.7 + 0.27015i:")
+(newline)
+(draw-julia 50 15 -1.5 1.5 -1.0 1.0 (make-complex -0.7 0.27015) 50)
+(newline)
