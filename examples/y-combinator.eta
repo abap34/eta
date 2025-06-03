@@ -1,0 +1,82 @@
+;; y-combinator.eta - Y Combinator demonstration
+
+;; Y - The Y combinator for anonymous recursion
+;; Arguments:
+;;   f - A function that takes itself as first argument
+;; Returns:
+;;   The fixed point of f (recursive function)
+(define (Y f)
+  ((lambda (x) (f (lambda (v) ((x x) v))))
+   (lambda (x) (f (lambda (v) ((x x) v))))))
+
+;; factorial-gen - Factorial function generator
+;; Arguments:
+;;   fact - The factorial function itself (for recursion)
+;; Returns:
+;;   Function that computes factorial
+(define (factorial-gen fact)
+  (lambda (n)
+    (if (<= n 1)
+        1
+        (* n (fact (- n 1))))))
+
+;; fibonacci-gen - Fibonacci function generator  
+;; Arguments:
+;;   fib - The fibonacci function itself (for recursion)
+;; Returns:
+;;   Function that computes fibonacci numbers
+(define (fibonacci-gen fib)
+  (lambda (n)
+    (if (<= n 1)
+        n
+        (+ (fib (- n 1)) (fib (- n 2))))))
+
+;; sum-gen - Sum function generator (1 + 2 + ... + n)
+;; Arguments:
+;;   sum - The sum function itself (for recursion)
+;; Returns:
+;;   Function that computes sum from 1 to n
+(define (sum-gen sum)
+  (lambda (n)
+    (if (<= n 0)
+        0
+        (+ n (sum (- n 1))))))
+
+;; Create recursive functions using Y combinator
+(define factorial (Y factorial-gen))
+(define fibonacci (Y fibonacci-gen))
+(define sum-to-n (Y sum-gen))
+
+;; Demo
+(display "Y Combinator demonstration")
+(newline)
+(newline)
+
+(display "Factorial using Y combinator:")
+(newline)
+(display "5! = ")
+(display (factorial 5))
+(newline)
+(display "7! = ")
+(display (factorial 7))
+(newline)
+(newline)
+
+(display "Fibonacci using Y combinator:")
+(newline)
+(display "fib(8) = ")
+(display (fibonacci 8))
+(newline)
+(display "fib(10) = ")
+(display (fibonacci 10))
+(newline)
+(newline)
+
+(display "Sum 1 to n using Y combinator:")
+(newline)
+(display "sum(5) = ")
+(display (sum-to-n 5))
+(newline)
+(display "sum(10) = ")
+(display (sum-to-n 10))
+(newline)
